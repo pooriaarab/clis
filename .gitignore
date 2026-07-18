@@ -1,0 +1,14 @@
+# Build artifacts
+build/
+bin/
+*.mcpb
+*-pp-cli
+*-pp-mcp
+
+# Local state (real runtime location is XDG dirs outside the repo, but ignore defensively)
+*.db
+credentials.toml
+config.toml
+
+# OS
+.DS_Store

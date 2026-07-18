@@ -1,0 +1,16 @@
+# agentcookie.toml: secrets-bus adoption manifest v2
+# See docs/spec-agentcookie-secrets-bus-v2-adoption.md
+schema_version = 2
+name = "reddit-ads-pp-cli"
+display_name = "Reddit Advertising"
+description = "By accessing or using the Ads API and/or associated Reddit Data, you are agreeing that you have read"
+project_kind = "cli"
+
+[secrets.file]
+path = "~/.config/reddit-ads-pp-cli/config.toml"
+
+[sync]
+default = false
+
+[sync.keys]
+REDDIT_ADS_REDDIT_APIKEY = true

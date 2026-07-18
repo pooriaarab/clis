@@ -1,0 +1,332 @@
+{
+  "api_name": "meta-ads",
+  "base_url": "https://graph.facebook.com/v21.0",
+  "description": "Hand-authored OpenAPI spec for Meta's Graph API ad-management surface (campaigns, ad sets, ads, creatives, audiences",
+  "mcp_ready": "full",
+  "http_transport": "standard",
+  "auth": {
+    "type": "bearer_token",
+    "header": "Authorization",
+    "env_vars": [
+      "META_ADS_BEARER_AUTH"
+    ],
+    "env_var_specs": [
+      {
+        "name": "META_ADS_BEARER_AUTH",
+        "kind": "per_call",
+        "required": true,
+        "sensitive": true,
+        "inferred": true
+      }
+    ]
+  },
+  "required_headers": [],
+  "tools": [
+    {
+      "name": "act-ad-account-id_create-ad",
+      "description": "Create an ad (adset_id, name, creative={creative_id}, status, etc.). Required: ad_account_id. Returns the new GraphSuccess.",
+      "method": "POST",
+      "path": "/act_{ad_account_id}/ads",
+      "params": [
+        {
+          "name": "ad_account_id",
+          "type": "string",
+          "location": "path",
+          "description": "Ad account id",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "act-ad-account-id_create-ad-creative",
+      "description": "Create an ad creative (name, object_story_spec or asset_feed_spec, etc.). Required: ad_account_id. Returns the new GraphSuccess.",
+      "method": "POST",
+      "path": "/act_{ad_account_id}/adcreatives",
+      "params": [
+        {
+          "name": "ad_account_id",
+          "type": "string",
+          "location": "path",
+          "description": "Ad account id",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "act-ad-account-id_create-ad-set",
+      "description": "Create an ad set (campaign_id, name, targeting, daily_budget or lifetime_budget, billing_event, optimization_goal, bid_amount, status, etc.). Required: ad_account_id. Returns the new GraphSuccess.",
+      "method": "POST",
+      "path": "/act_{ad_account_id}/adsets",
+      "params": [
+        {
+          "name": "ad_account_id",
+          "type": "string",
+          "location": "path",
+          "description": "Ad account id",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "act-ad-account-id_create-campaign",
+      "description": "Create a campaign (name, objective, status, special_ad_categories, buying_type, etc.). Required: ad_account_id. Returns the new GraphSuccess.",
+      "method": "POST",
+      "path": "/act_{ad_account_id}/campaigns",
+      "params": [
+        {
+          "name": "ad_account_id",
+          "type": "string",
+          "location": "path",
+          "description": "Ad account id",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "act-ad-account-id_create-custom-audience",
+      "description": "Create a custom audience (name, subtype, description, customer_file_source, etc.). Required: ad_account_id. Returns the new GraphSuccess.",
+      "method": "POST",
+      "path": "/act_{ad_account_id}/customaudiences",
+      "params": [
+        {
+          "name": "ad_account_id",
+          "type": "string",
+          "location": "path",
+          "description": "Ad account id",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "act-ad-account-id_get-ad-account",
+      "description": "Get ad account details. Required: ad_account_id. Optional: fields. Returns the GraphObject.",
+      "method": "GET",
+      "path": "/act_{ad_account_id}",
+      "params": [
+        {
+          "name": "ad_account_id",
+          "type": "string",
+          "location": "path",
+          "description": "Numeric ad account id, without the act_ prefix.",
+          "required": true
+        },
+        {
+          "name": "fields",
+          "type": "string",
+          "location": "query",
+          "description": "Comma-separated list of fields to return."
+        }
+      ]
+    },
+    {
+      "name": "act-ad-account-id_get-ad-account-insights",
+      "description": "Get performance insights for an ad account (reporting). Required: ad_account_id. Optional: fields, date_preset, time_range (plus 2 more). Returns array of GraphObject.",
+      "method": "GET",
+      "path": "/act_{ad_account_id}/insights",
+      "params": [
+        {
+          "name": "ad_account_id",
+          "type": "string",
+          "location": "path",
+          "description": "Ad account id",
+          "required": true
+        },
+        {
+          "name": "fields",
+          "type": "string",
+          "location": "query",
+          "description": "Metric fields, e.g. impressions,clicks,spend,ctr,cpc."
+        },
+        {
+          "name": "date_preset",
+          "type": "string",
+          "location": "query",
+          "description": "e.g. last_7d, last_30d, this_month."
+        },
+        {
+          "name": "time_range",
+          "type": "string",
+          "location": "query",
+          "description": "JSON-encoded {since,until} to override date_preset."
+        },
+        {
+          "name": "level",
+          "type": "string",
+          "location": "query",
+          "description": "Level"
+        },
+        {
+          "name": "breakdowns",
+          "type": "string",
+          "location": "query",
+          "description": "e.g. age,gender,device_platform."
+        }
+      ]
+    },
+    {
+      "name": "act-ad-account-id_list-ad-creatives",
+      "description": "List ad creatives in an ad account. Required: ad_account_id. Optional: fields, limit, after. Returns array of GraphObject.",
+      "method": "GET",
+      "path": "/act_{ad_account_id}/adcreatives",
+      "params": [
+        {
+          "name": "ad_account_id",
+          "type": "string",
+          "location": "path",
+          "description": "Ad account id",
+          "required": true
+        },
+        {
+          "name": "fields",
+          "type": "string",
+          "location": "query",
+          "description": "Comma-separated list of fields to return."
+        },
+        {
+          "name": "limit",
+          "type": "int",
+          "location": "query",
+          "description": "Max results per page."
+        },
+        {
+          "name": "after",
+          "type": "string",
+          "location": "query",
+          "description": "Cursor for the next page (from paging.cursors.after)."
+        }
+      ]
+    },
+    {
+      "name": "act-ad-account-id_list-ad-sets",
+      "description": "List ad sets in an ad account. Required: ad_account_id. Optional: fields, limit, after. Returns array of GraphObject.",
+      "method": "GET",
+      "path": "/act_{ad_account_id}/adsets",
+      "params": [
+        {
+          "name": "ad_account_id",
+          "type": "string",
+          "location": "path",
+          "description": "Ad account id",
+          "required": true
+        },
+        {
+          "name": "fields",
+          "type": "string",
+          "location": "query",
+          "description": "Comma-separated list of fields to return."
+        },
+        {
+          "name": "limit",
+          "type": "int",
+          "location": "query",
+          "description": "Max results per page."
+        },
+        {
+          "name": "after",
+          "type": "string",
+          "location": "query",
+          "description": "Cursor for the next page (from paging.cursors.after)."
+        }
+      ]
+    },
+    {
+      "name": "act-ad-account-id_list-ads",
+      "description": "List ads in an ad account. Required: ad_account_id. Optional: fields, limit, after. Returns array of GraphObject.",
+      "method": "GET",
+      "path": "/act_{ad_account_id}/ads",
+      "params": [
+        {
+          "name": "ad_account_id",
+          "type": "string",
+          "location": "path",
+          "description": "Ad account id",
+          "required": true
+        },
+        {
+          "name": "fields",
+          "type": "string",
+          "location": "query",
+          "description": "Comma-separated list of fields to return."
+        },
+        {
+          "name": "limit",
+          "type": "int",
+          "location": "query",
+          "description": "Max results per page."
+        },
+        {
+          "name": "after",
+          "type": "string",
+          "location": "query",
+          "description": "Cursor for the next page (from paging.cursors.after)."
+        }
+      ]
+    },
+    {
+      "name": "act-ad-account-id_list-campaigns",
+      "description": "List campaigns in an ad account. Required: ad_account_id. Optional: fields, limit, after. Returns array of GraphObject.",
+      "method": "GET",
+      "path": "/act_{ad_account_id}/campaigns",
+      "params": [
+        {
+          "name": "ad_account_id",
+          "type": "string",
+          "location": "path",
+          "description": "Ad account id",
+          "required": true
+        },
+        {
+          "name": "fields",
+          "type": "string",
+          "location": "query",
+          "description": "Comma-separated list of fields to return."
+        },
+        {
+          "name": "limit",
+          "type": "int",
+          "location": "query",
+          "description": "Max results per page."
+        },
+        {
+          "name": "after",
+          "type": "string",
+          "location": "query",
+          "description": "Cursor for the next page (from paging.cursors.after)."
+        }
+      ]
+    },
+    {
+      "name": "act-ad-account-id_list-custom-audiences",
+      "description": "List custom audiences in an ad account. Required: ad_account_id. Optional: fields, limit, after. Returns array of GraphObject.",
+      "method": "GET",
+      "path": "/act_{ad_account_id}/customaudiences",
+      "params": [
+        {
+          "name": "ad_account_id",
+          "type": "string",
+          "location": "path",
+          "description": "Ad account id",
+          "required": true
+        },
+        {
+          "name": "fields",
+          "type": "string",
+          "location": "query",
+          "description": "Comma-separated list of fields to return."
+        },
+        {
+          "name": "limit",
+          "type": "int",
+          "location": "query",
+          "description": "Max results per page."
+        },
+        {
+          "name": "after",
+          "type": "string",
+          "location": "query",
+          "description": "Cursor for the next page (from paging.cursors.after)."
+        }
+      ]
+    }
+  ]
+}

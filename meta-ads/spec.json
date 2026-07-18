@@ -1,0 +1,295 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Meta Marketing API",
+    "version": "v21.0",
+    "description": "Hand-authored OpenAPI spec for Meta's Graph API ad-management surface (campaigns, ad sets, ads, creatives, audiences, insights) plus generic node/edge escape hatches for the long tail of Graph API objects this spec doesn't enumerate individually. Meta does not publish an official machine-readable spec for the Marketing API and its reference docs actively block non-browser scraping, so this spec is grounded directly in the documented Graph API request shape: GET a node or edge, POST to an edge to create a child or to a node to update it, DELETE a node to remove it."
+  },
+  "servers": [
+    { "url": "https://graph.facebook.com/v21.0" }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Meta system-user or long-lived user access token. Graph API also accepts the token as an access_token query param; this spec uses the Bearer header form."
+      }
+    },
+    "parameters": {
+      "fields": {
+        "name": "fields",
+        "in": "query",
+        "schema": { "type": "string" },
+        "description": "Comma-separated list of fields to return."
+      },
+      "limit": {
+        "name": "limit",
+        "in": "query",
+        "schema": { "type": "integer" },
+        "description": "Max results per page."
+      },
+      "after": {
+        "name": "after",
+        "in": "query",
+        "schema": { "type": "string" },
+        "description": "Cursor for the next page (from paging.cursors.after)."
+      }
+    },
+    "schemas": {
+      "GraphObject": {
+        "type": "object",
+        "description": "A Graph API node. Shape varies per object type; returned verbatim.",
+        "additionalProperties": true
+      },
+      "GraphEdgeList": {
+        "type": "object",
+        "properties": {
+          "data": { "type": "array", "items": { "$ref": "#/components/schemas/GraphObject" } },
+          "paging": { "type": "object", "additionalProperties": true }
+        }
+      },
+      "GraphSuccess": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "id": { "type": "string" }
+        }
+      },
+      "MutateOperation": {
+        "type": "object",
+        "description": "Form-encoded field/value pairs for the create or update call. Field names and value shapes are object-type-specific (e.g. Campaign expects name/objective/status; AdSet expects campaign_id/targeting/daily_budget; Ad expects adset_id/creative/status).",
+        "additionalProperties": true
+      }
+    }
+  },
+  "security": [{ "bearerAuth": [] }],
+  "paths": {
+    "/act_{ad_account_id}": {
+      "get": {
+        "operationId": "getAdAccount",
+        "summary": "Get ad account details",
+        "tags": ["AdAccount"],
+        "parameters": [
+          { "name": "ad_account_id", "in": "path", "required": true, "schema": { "type": "string" }, "description": "Numeric ad account id, without the act_ prefix." },
+          { "$ref": "#/components/parameters/fields" }
+        ],
+        "responses": { "200": { "description": "Ad account", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/GraphObject" } } } } }
+      }
+    },
+    "/act_{ad_account_id}/campaigns": {
+      "get": {
+        "operationId": "listCampaigns",
+        "summary": "List campaigns in an ad account",
+        "tags": ["Campaign"],
+        "parameters": [
+          { "name": "ad_account_id", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "$ref": "#/components/parameters/fields" },
+          { "$ref": "#/components/parameters/limit" },
+          { "$ref": "#/components/parameters/after" }
+        ],
+        "responses": { "200": { "description": "Campaigns", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/GraphEdgeList" } } } } }
+      },
+      "post": {
+        "operationId": "createCampaign",
+        "summary": "Create a campaign (name, objective, status, special_ad_categories, buying_type, etc.)",
+        "tags": ["Campaign"],
+        "parameters": [
+          { "name": "ad_account_id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": { "application/x-www-form-urlencoded": { "schema": { "$ref": "#/components/schemas/MutateOperation" } } }
+        },
+        "responses": { "200": { "description": "Created", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/GraphSuccess" } } } } }
+      }
+    },
+    "/act_{ad_account_id}/adsets": {
+      "get": {
+        "operationId": "listAdSets",
+        "summary": "List ad sets in an ad account",
+        "tags": ["AdSet"],
+        "parameters": [
+          { "name": "ad_account_id", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "$ref": "#/components/parameters/fields" },
+          { "$ref": "#/components/parameters/limit" },
+          { "$ref": "#/components/parameters/after" }
+        ],
+        "responses": { "200": { "description": "Ad sets", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/GraphEdgeList" } } } } }
+      },
+      "post": {
+        "operationId": "createAdSet",
+        "summary": "Create an ad set (campaign_id, name, targeting, daily_budget or lifetime_budget, billing_event, optimization_goal, bid_amount, status, etc.)",
+        "tags": ["AdSet"],
+        "parameters": [
+          { "name": "ad_account_id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": { "application/x-www-form-urlencoded": { "schema": { "$ref": "#/components/schemas/MutateOperation" } } }
+        },
+        "responses": { "200": { "description": "Created", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/GraphSuccess" } } } } }
+      }
+    },
+    "/act_{ad_account_id}/ads": {
+      "get": {
+        "operationId": "listAds",
+        "summary": "List ads in an ad account",
+        "tags": ["Ad"],
+        "parameters": [
+          { "name": "ad_account_id", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "$ref": "#/components/parameters/fields" },
+          { "$ref": "#/components/parameters/limit" },
+          { "$ref": "#/components/parameters/after" }
+        ],
+        "responses": { "200": { "description": "Ads", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/GraphEdgeList" } } } } }
+      },
+      "post": {
+        "operationId": "createAd",
+        "summary": "Create an ad (adset_id, name, creative={creative_id}, status, etc.)",
+        "tags": ["Ad"],
+        "parameters": [
+          { "name": "ad_account_id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": { "application/x-www-form-urlencoded": { "schema": { "$ref": "#/components/schemas/MutateOperation" } } }
+        },
+        "responses": { "200": { "description": "Created", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/GraphSuccess" } } } } }
+      }
+    },
+    "/act_{ad_account_id}/adcreatives": {
+      "get": {
+        "operationId": "listAdCreatives",
+        "summary": "List ad creatives in an ad account",
+        "tags": ["AdCreative"],
+        "parameters": [
+          { "name": "ad_account_id", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "$ref": "#/components/parameters/fields" },
+          { "$ref": "#/components/parameters/limit" },
+          { "$ref": "#/components/parameters/after" }
+        ],
+        "responses": { "200": { "description": "Ad creatives", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/GraphEdgeList" } } } } }
+      },
+      "post": {
+        "operationId": "createAdCreative",
+        "summary": "Create an ad creative (name, object_story_spec or asset_feed_spec, etc.)",
+        "tags": ["AdCreative"],
+        "parameters": [
+          { "name": "ad_account_id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": { "application/x-www-form-urlencoded": { "schema": { "$ref": "#/components/schemas/MutateOperation" } } }
+        },
+        "responses": { "200": { "description": "Created", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/GraphSuccess" } } } } }
+      }
+    },
+    "/act_{ad_account_id}/customaudiences": {
+      "get": {
+        "operationId": "listCustomAudiences",
+        "summary": "List custom audiences in an ad account",
+        "tags": ["CustomAudience"],
+        "parameters": [
+          { "name": "ad_account_id", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "$ref": "#/components/parameters/fields" },
+          { "$ref": "#/components/parameters/limit" },
+          { "$ref": "#/components/parameters/after" }
+        ],
+        "responses": { "200": { "description": "Custom audiences", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/GraphEdgeList" } } } } }
+      },
+      "post": {
+        "operationId": "createCustomAudience",
+        "summary": "Create a custom audience (name, subtype, description, customer_file_source, etc.)",
+        "tags": ["CustomAudience"],
+        "parameters": [
+          { "name": "ad_account_id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": { "application/x-www-form-urlencoded": { "schema": { "$ref": "#/components/schemas/MutateOperation" } } }
+        },
+        "responses": { "200": { "description": "Created", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/GraphSuccess" } } } } }
+      }
+    },
+    "/act_{ad_account_id}/insights": {
+      "get": {
+        "operationId": "getAdAccountInsights",
+        "summary": "Get performance insights for an ad account (reporting)",
+        "tags": ["Insights"],
+        "parameters": [
+          { "name": "ad_account_id", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "fields", "in": "query", "schema": { "type": "string" }, "description": "Metric fields, e.g. impressions,clicks,spend,ctr,cpc." },
+          { "name": "date_preset", "in": "query", "schema": { "type": "string" }, "description": "e.g. last_7d, last_30d, this_month." },
+          { "name": "time_range", "in": "query", "schema": { "type": "string" }, "description": "JSON-encoded {since,until} to override date_preset." },
+          { "name": "level", "in": "query", "schema": { "type": "string", "enum": ["account", "campaign", "adset", "ad"] } },
+          { "name": "breakdowns", "in": "query", "schema": { "type": "string" }, "description": "e.g. age,gender,device_platform." }
+        ],
+        "responses": { "200": { "description": "Insights", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/GraphEdgeList" } } } } }
+      }
+    },
+    "/{node_id}": {
+      "get": {
+        "operationId": "getNode",
+        "summary": "Generic: get any Graph API node by id (campaign, adset, ad, adcreative, customaudience, page, etc.)",
+        "tags": ["Generic"],
+        "parameters": [
+          { "name": "node_id", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "$ref": "#/components/parameters/fields" }
+        ],
+        "responses": { "200": { "description": "Node", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/GraphObject" } } } } }
+      },
+      "post": {
+        "operationId": "updateNode",
+        "summary": "Generic: update any Graph API node by id (e.g. pause a campaign with status=PAUSED)",
+        "tags": ["Generic"],
+        "parameters": [
+          { "name": "node_id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": { "application/x-www-form-urlencoded": { "schema": { "$ref": "#/components/schemas/MutateOperation" } } }
+        },
+        "responses": { "200": { "description": "Updated", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/GraphSuccess" } } } } }
+      },
+      "delete": {
+        "operationId": "deleteNode",
+        "summary": "Generic: delete any Graph API node by id",
+        "tags": ["Generic"],
+        "parameters": [
+          { "name": "node_id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "Deleted", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/GraphSuccess" } } } } }
+      }
+    },
+    "/{node_id}/{edge}": {
+      "get": {
+        "operationId": "getEdge",
+        "summary": "Generic: list any edge off any node by name (e.g. a page's /posts, an ad account's /activities) — escape hatch for edges not individually modeled above",
+        "tags": ["Generic"],
+        "parameters": [
+          { "name": "node_id", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "edge", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "$ref": "#/components/parameters/fields" },
+          { "$ref": "#/components/parameters/limit" },
+          { "$ref": "#/components/parameters/after" }
+        ],
+        "responses": { "200": { "description": "Edge list", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/GraphEdgeList" } } } } }
+      },
+      "post": {
+        "operationId": "createOnEdge",
+        "summary": "Generic: create a child object on any edge by name — escape hatch for object types not individually modeled above",
+        "tags": ["Generic"],
+        "parameters": [
+          { "name": "node_id", "in": "path", "required": true, "schema": { "type": "string" } },
+          { "name": "edge", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": { "application/x-www-form-urlencoded": { "schema": { "$ref": "#/components/schemas/MutateOperation" } } }
+        },
+        "responses": { "200": { "description": "Created", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/GraphSuccess" } } } } }
+      }
+    }
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "schema_version": 2,
+  "generated_at": "2026-07-18T04:42:27.570484Z",
+  "printing_press_version": "4.29.0",
+  "api_name": "reddit-ads",
+  "display_name": "Reddit Advertising",
+  "cli_name": "reddit-ads-pp-cli",
+  "creator": {
+    "handle": "pooriaarab",
+    "name": "Pooria Arab"
+  },
+  "owner": "pooriaarab",
+  "printer": "pooriaarab",
+  "printer_name": "Pooria Arab",
+  "spec_url": "https://ads-api.reddit.com/api/v3/openapi.json",
+  "spec_path": "reddit-openapi.json",
+  "spec_format": "openapi3",
+  "spec_source": "official",
+  "spec_checksum": "sha256:e28d306b305605f53a5b754f57f7a5a74676573d0969e73fe3d0350880c50273",
+  "run_id": "20260718-044227",
+  "description": "By accessing or using the Ads API and/or associated Reddit Data, you are agreeing that you have read",
+  "mcp_binary": "reddit-ads-pp-mcp",
+  "mcp_tool_count": 102,
+  "mcp_ready": "full",
+  "api_version": "3",
+  "auth_type": "bearer_token",
+  "auth_preference": "RedditAPIKey",
+  "auth_env_vars": [
+    "REDDIT_ADS_REDDIT_APIKEY"
+  ],
+  "auth_key_url": "https://business.reddithelp.com/s/article/Reddit-Ads-API-Terms"
+}

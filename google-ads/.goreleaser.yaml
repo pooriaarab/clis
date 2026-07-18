@@ -1,0 +1,51 @@
+version: 2
+project_name: google-ads-pp-cli
+changelog:
+  disable: true
+builds:
+  - id: google-ads-pp-cli
+    main: ./cmd/google-ads-pp-cli
+    binary: google-ads-pp-cli
+    env:
+      - CGO_ENABLED=0
+    ldflags:
+      - -s -w -X google-ads-pp-cli/internal/cli.version={{ .Version }}
+    targets:
+      - darwin_amd64
+      - darwin_arm64
+      - linux_amd64
+      - linux_arm64
+      - windows_amd64
+      - windows_arm64
+  - id: google-ads-pp-mcp
+    main: ./cmd/google-ads-pp-mcp
+    binary: google-ads-pp-mcp
+    env:
+      - CGO_ENABLED=0
+    ldflags:
+      - -s -w -X main.version={{ .Version }}
+    targets:
+      - darwin_amd64
+      - darwin_arm64
+      - linux_amd64
+      - linux_arm64
+      - windows_amd64
+      - windows_arm64
+archives:
+  - formats: [tar.gz]
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+checksum:
+  name_template: checksums.txt
+brews:
+  - name: google-ads-pp-cli
+    repository:
+      owner: 
+      name: homebrew-tap
+    homepage: "https://github.com//google-ads-pp-cli"
+    description: "CLI for google-ads"
+    install: |
+      bin.install "google-ads-pp-cli"
+      bin.install "google-ads-pp-mcp"

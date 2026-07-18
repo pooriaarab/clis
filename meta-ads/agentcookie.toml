@@ -1,0 +1,16 @@
+# agentcookie.toml: secrets-bus adoption manifest v2
+# See docs/spec-agentcookie-secrets-bus-v2-adoption.md
+schema_version = 2
+name = "meta-ads-pp-cli"
+display_name = "Meta Marketing"
+description = "Hand-authored OpenAPI spec for Meta's Graph API ad-management surface (campaigns, ad sets, ads, creatives, audiences"
+project_kind = "cli"
+
+[secrets.file]
+path = "~/.config/meta-ads-pp-cli/config.toml"
+
+[sync]
+default = false
+
+[sync.keys]
+META_ADS_BEARER_AUTH = true

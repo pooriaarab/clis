@@ -1,0 +1,51 @@
+version: 2
+project_name: reddit-ads-pp-cli
+changelog:
+  disable: true
+builds:
+  - id: reddit-ads-pp-cli
+    main: ./cmd/reddit-ads-pp-cli
+    binary: reddit-ads-pp-cli
+    env:
+      - CGO_ENABLED=0
+    ldflags:
+      - -s -w -X reddit-ads-pp-cli/internal/cli.version={{ .Version }}
+    targets:
+      - darwin_amd64
+      - darwin_arm64
+      - linux_amd64
+      - linux_arm64
+      - windows_amd64
+      - windows_arm64
+  - id: reddit-ads-pp-mcp
+    main: ./cmd/reddit-ads-pp-mcp
+    binary: reddit-ads-pp-mcp
+    env:
+      - CGO_ENABLED=0
+    ldflags:
+      - -s -w -X main.version={{ .Version }}
+    targets:
+      - darwin_amd64
+      - darwin_arm64
+      - linux_amd64
+      - linux_arm64
+      - windows_amd64
+      - windows_arm64
+archives:
+  - formats: [tar.gz]
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+checksum:
+  name_template: checksums.txt
+brews:
+  - name: reddit-ads-pp-cli
+    repository:
+      owner: pooriaarab
+      name: homebrew-tap
+    homepage: "https://github.com/pooriaarab/reddit-ads-pp-cli"
+    description: "By accessing or using the Ads API and/or associated Reddit Data, you are agreeing that you have read"
+    install: |
+      bin.install "reddit-ads-pp-cli"
+      bin.install "reddit-ads-pp-mcp"

@@ -1,0 +1,55 @@
+{
+  "manifest_version": "0.3",
+  "name": "google-ads-pp-mcp",
+  "display_name": "Google Ads",
+  "version": "1.0.0",
+  "description": "CLI for google-ads",
+  "author": {
+    "name": "CLI Printing Press"
+  },
+  "license": "Apache-2.0",
+  "server": {
+    "type": "binary",
+    "entry_point": "bin/google-ads-pp-mcp",
+    "mcp_config": {
+      "command": "${__dirname}/bin/google-ads-pp-mcp",
+      "args": [],
+      "env": {
+        "GOOGLE_ADS_DEVELOPER_TOKEN": "${user_config.google_ads_developer_token}",
+        "GOOGLE_ADS_LOGIN_CUSTOMER_ID": "${user_config.google_ads_login_customer_id}",
+        "GOOGLE_ADS_OAUTH_TOKEN": "${user_config.google_ads_oauth_token}"
+      }
+    }
+  },
+  "user_config": {
+    "google_ads_developer_token": {
+      "type": "string",
+      "title": "GOOGLE_ADS_DEVELOPER_TOKEN",
+      "description": "Sets GOOGLE_ADS_DEVELOPER_TOKEN for the Google Ads MCP server.",
+      "sensitive": true,
+      "required": true
+    },
+    "google_ads_login_customer_id": {
+      "type": "string",
+      "title": "GOOGLE_ADS_LOGIN_CUSTOMER_ID",
+      "description": "Sets GOOGLE_ADS_LOGIN_CUSTOMER_ID for the Google Ads MCP server.",
+      "sensitive": true,
+      "required": true
+    },
+    "google_ads_oauth_token": {
+      "type": "string",
+      "title": "GOOGLE_ADS_OAUTH_TOKEN",
+      "description": "Sets GOOGLE_ADS_OAUTH_TOKEN for the Google Ads MCP server.",
+      "sensitive": true,
+      "required": true
+    }
+  },
+  "compatibility": {
+    "claude_desktop": ">=1.0.0",
+    "platforms": [
+      "darwin",
+      "linux",
+      "win32"
+    ]
+  }
+}

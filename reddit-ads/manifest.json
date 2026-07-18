@@ -1,0 +1,39 @@
+{
+  "manifest_version": "0.3",
+  "name": "reddit-ads-pp-mcp",
+  "display_name": "Reddit Advertising",
+  "version": "4.29.0",
+  "description": "By accessing or using the Ads API and/or associated Reddit Data, you are agreeing that you have read",
+  "author": {
+    "name": "CLI Printing Press"
+  },
+  "license": "Apache-2.0",
+  "server": {
+    "type": "binary",
+    "entry_point": "bin/reddit-ads-pp-mcp",
+    "mcp_config": {
+      "command": "${__dirname}/bin/reddit-ads-pp-mcp",
+      "args": [],
+      "env": {
+        "REDDIT_ADS_REDDIT_APIKEY": "${user_config.reddit_ads_reddit_apikey}"
+      }
+    }
+  },
+  "user_config": {
+    "reddit_ads_reddit_apikey": {
+      "type": "string",
+      "title": "REDDIT_ADS_REDDIT_APIKEY",
+      "description": "Sets REDDIT_ADS_REDDIT_APIKEY for the Reddit Advertising MCP server. Get a credential from https://business.reddithelp.com/s/article/Reddit-Ads-API-Terms.",
+      "sensitive": true,
+      "required": true
+    }
+  },
+  "compatibility": {
+    "claude_desktop": ">=1.0.0",
+    "platforms": [
+      "darwin",
+      "linux",
+      "win32"
+    ]
+  }
+}

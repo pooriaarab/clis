@@ -1,0 +1,266 @@
+{
+  "api_name": "google-ads",
+  "base_url": "https://googleads.googleapis.com",
+  "description": "CLI for google-ads",
+  "mcp_ready": "full",
+  "http_transport": "standard",
+  "auth": {
+    "type": "oauth2",
+    "header": "Authorization",
+    "format": "Bearer {GOOGLE_ADS_OAUTH_TOKEN}",
+    "env_vars": [
+      "GOOGLE_ADS_OAUTH_TOKEN",
+      "GOOGLE_ADS_DEVELOPER_TOKEN",
+      "GOOGLE_ADS_LOGIN_CUSTOMER_ID"
+    ],
+    "env_var_specs": [
+      {
+        "name": "GOOGLE_ADS_OAUTH_TOKEN",
+        "kind": "per_call",
+        "required": true,
+        "sensitive": true,
+        "inferred": true
+      },
+      {
+        "name": "GOOGLE_ADS_DEVELOPER_TOKEN",
+        "kind": "per_call",
+        "required": true,
+        "sensitive": true,
+        "inferred": true
+      },
+      {
+        "name": "GOOGLE_ADS_LOGIN_CUSTOMER_ID",
+        "kind": "per_call",
+        "required": true,
+        "sensitive": true,
+        "inferred": true
+      }
+    ]
+  },
+  "required_headers": [],
+  "tools": [
+    {
+      "name": "ad_group_ads_mutate",
+      "description": "Create, update, or remove ad group ads. Required: customerId. Optional: operations.",
+      "method": "POST",
+      "path": "/v24/customers/{customerId}/adGroupAds:mutate",
+      "params": [
+        {
+          "name": "customerId",
+          "type": "string",
+          "location": "path",
+          "description": "The customer account identifier",
+          "required": true
+        },
+        {
+          "name": "operations",
+          "type": "array",
+          "location": "body",
+          "description": "List of ad group ad mutate operations"
+        }
+      ]
+    },
+    {
+      "name": "ad_groups_mutate",
+      "description": "Create, update, or remove ad groups. Required: customerId. Optional: operations.",
+      "method": "POST",
+      "path": "/v24/customers/{customerId}/adGroups:mutate",
+      "params": [
+        {
+          "name": "customerId",
+          "type": "string",
+          "location": "path",
+          "description": "The customer account identifier",
+          "required": true
+        },
+        {
+          "name": "operations",
+          "type": "array",
+          "location": "body",
+          "description": "List of ad group mutate operations"
+        }
+      ]
+    },
+    {
+      "name": "assets_mutate",
+      "description": "Create assets. Required: customerId. Optional: operations.",
+      "method": "POST",
+      "path": "/v24/customers/{customerId}/assets:mutate",
+      "params": [
+        {
+          "name": "customerId",
+          "type": "string",
+          "location": "path",
+          "description": "The customer account identifier",
+          "required": true
+        },
+        {
+          "name": "operations",
+          "type": "array",
+          "location": "body",
+          "description": "List of asset mutate operations"
+        }
+      ]
+    },
+    {
+      "name": "campaign_budgets_mutate",
+      "description": "Create, update, or remove campaign budgets. Required: customerId. Optional: operations.",
+      "method": "POST",
+      "path": "/v24/customers/{customerId}/campaignBudgets:mutate",
+      "params": [
+        {
+          "name": "customerId",
+          "type": "string",
+          "location": "path",
+          "description": "The customer account identifier",
+          "required": true
+        },
+        {
+          "name": "operations",
+          "type": "array",
+          "location": "body",
+          "description": "List of campaign budget mutate operations"
+        }
+      ]
+    },
+    {
+      "name": "campaigns_mutate",
+      "description": "Create, update, or remove campaigns. Required: customerId. Optional: operations.",
+      "method": "POST",
+      "path": "/v24/customers/{customerId}/campaigns:mutate",
+      "params": [
+        {
+          "name": "customerId",
+          "type": "string",
+          "location": "path",
+          "description": "The customer account identifier",
+          "required": true
+        },
+        {
+          "name": "operations",
+          "type": "array",
+          "location": "body",
+          "description": "List of campaign mutate operations"
+        }
+      ]
+    },
+    {
+      "name": "conversion_actions_mutate",
+      "description": "Create, update, or remove conversion actions. Required: customerId. Optional: operations.",
+      "method": "POST",
+      "path": "/v24/customers/{customerId}/conversionActions:mutate",
+      "params": [
+        {
+          "name": "customerId",
+          "type": "string",
+          "location": "path",
+          "description": "The customer account identifier",
+          "required": true
+        },
+        {
+          "name": "operations",
+          "type": "array",
+          "location": "body",
+          "description": "List of conversion action mutate operations"
+        }
+      ]
+    },
+    {
+      "name": "customers_get",
+      "description": "Get a customer by ID. Required: customerId.",
+      "method": "GET",
+      "path": "/v24/customers/{customerId}",
+      "params": [
+        {
+          "name": "customerId",
+          "type": "string",
+          "location": "path",
+          "description": "The customer account identifier",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "customers_list_accessible_customers",
+      "description": "List customer resource names accessible to the authenticated user. Returns array.",
+      "method": "GET",
+      "path": "/v24/customers:listAccessibleCustomers",
+      "params": []
+    },
+    {
+      "name": "customers_mutate",
+      "description": "Mutate a customer. Required: customerId. Optional: operation.",
+      "method": "POST",
+      "path": "/v24/customers/{customerId}:mutate",
+      "params": [
+        {
+          "name": "customerId",
+          "type": "string",
+          "location": "path",
+          "description": "The customer account identifier",
+          "required": true
+        },
+        {
+          "name": "operation",
+          "type": "object",
+          "location": "body",
+          "description": "The customer mutate operation"
+        }
+      ]
+    },
+    {
+      "name": "google_ads_search",
+      "description": "Run a GAQL search query and return paginated results. Required: customerId. Optional: query, pageToken, pageSize.",
+      "method": "POST",
+      "path": "/v24/customers/{customerId}/googleAds:search",
+      "params": [
+        {
+          "name": "customerId",
+          "type": "string",
+          "location": "path",
+          "description": "The customer account identifier",
+          "required": true
+        },
+        {
+          "name": "query",
+          "type": "string",
+          "location": "body",
+          "description": "The GAQL query string"
+        },
+        {
+          "name": "pageToken",
+          "type": "string",
+          "location": "body",
+          "description": "Token for the next page of results"
+        },
+        {
+          "name": "pageSize",
+          "type": "integer",
+          "location": "body",
+          "description": "Number of results per page"
+        }
+      ]
+    },
+    {
+      "name": "google_ads_search_stream",
+      "description": "Run a GAQL search query and stream results. Required: customerId. Optional: query. Returns array.",
+      "method": "POST",
+      "path": "/v24/customers/{customerId}/googleAds:searchStream",
+      "params": [
+        {
+          "name": "customerId",
+          "type": "string",
+          "location": "path",
+          "description": "The customer account identifier",
+          "required": true
+        },
+        {
+          "name": "query",
+          "type": "string",
+          "location": "body",
+          "description": "The GAQL query string"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "schema_version": 2,
+  "generated_at": "2026-07-16T23:16:15.773775Z",
+  "printing_press_version": "4.29.0",
+  "api_name": "google-ads",
+  "display_name": "Google Ads",
+  "cli_name": "google-ads-pp-cli",
+  "creator": {
+    "name": "Pooria Arab"
+  },
+  "printer_name": "Pooria Arab",
+  "spec_url": "https://developers.google.com/google-ads/api/rest/reference/rest",
+  "spec_format": "docs",
+  "spec_source": "official",
+  "run_id": "20260716-231615",
+  "description": "CLI for google-ads",
+  "mcp_binary": "google-ads-pp-mcp",
+  "mcp_tool_count": 11,
+  "mcp_ready": "full",
+  "api_version": "1.0.0",
+  "auth_type": "oauth2",
+  "auth_env_vars": [
+    "GOOGLE_ADS_OAUTH_TOKEN",
+    "GOOGLE_ADS_DEVELOPER_TOKEN",
+    "GOOGLE_ADS_LOGIN_CUSTOMER_ID"
+  ]
+}

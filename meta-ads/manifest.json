@@ -1,0 +1,46 @@
+{
+  "manifest_version": "0.3",
+  "name": "meta-ads-pp-mcp",
+  "display_name": "Meta Marketing",
+  "version": "4.29.0",
+  "description": "Hand-authored OpenAPI spec for Meta's Graph API ad-management surface (campaigns, ad sets, ads, creatives, audiences",
+  "author": {
+    "name": "CLI Printing Press"
+  },
+  "license": "Apache-2.0",
+  "server": {
+    "type": "binary",
+    "entry_point": "bin/meta-ads-pp-mcp",
+    "mcp_config": {
+      "command": "${__dirname}/bin/meta-ads-pp-mcp",
+      "args": [],
+      "env": {
+        "META_ADS_AD_ACCOUNT_ID": "${user_config.meta_ads_ad_account_id}",
+        "META_ADS_BEARER_AUTH": "${user_config.meta_ads_bearer_auth}"
+      }
+    }
+  },
+  "user_config": {
+    "meta_ads_ad_account_id": {
+      "type": "string",
+      "title": "META_ADS_AD_ACCOUNT_ID",
+      "description": "Sets META_ADS_AD_ACCOUNT_ID for the endpoint template variable {ad_account_id}.",
+      "required": true
+    },
+    "meta_ads_bearer_auth": {
+      "type": "string",
+      "title": "META_ADS_BEARER_AUTH",
+      "description": "Sets META_ADS_BEARER_AUTH for the Meta Marketing MCP server.",
+      "sensitive": true,
+      "required": true
+    }
+  },
+  "compatibility": {
+    "claude_desktop": ">=1.0.0",
+    "platforms": [
+      "darwin",
+      "linux",
+      "win32"
+    ]
+  }
+}
