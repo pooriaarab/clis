@@ -16,5 +16,6 @@ func newSitesCmd(flags *rootFlags) *cobra.Command {
 		RunE:        parentNoSubcommandRunE(flags),
 	}
 	cmd.AddCommand(newSitesSectionsCmd(flags))
+	cmd.AddCommand(newSitesPublishCmd(flags))
 	return cmd
 }
