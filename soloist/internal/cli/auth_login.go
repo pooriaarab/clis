@@ -74,10 +74,10 @@ func newAuthLoginCmd(flags *rootFlags) *cobra.Command {
 			ctx := cmd.Context()
 			// The Firebase web API key is referrer-restricted; a CLI must present
 			// the app origin as Referer or Google blocks the identitytoolkit call.
-			refHdr := map[string]string{"Referer": soloistWebBaseURL + "/"}
+			refHdr := map[string]string{"Referer": soloistWebBase() + "/"}
 
 			// 1. Request a one-time code.
-			web := client.New(&config.Config{BaseURL: soloistWebBaseURL}, flags.timeout, flags.rateLimit)
+			web := client.New(&config.Config{BaseURL: soloistWebBase()}, flags.timeout, flags.rateLimit)
 			genResp, status, err := web.PostWithHeaders(ctx, soloistOTPGeneratePath, map[string]any{"email": email}, refHdr)
 			if err != nil {
 				return classifyAPIError(err, flags)

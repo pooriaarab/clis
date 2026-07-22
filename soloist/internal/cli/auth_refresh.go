@@ -88,7 +88,7 @@ func secureTokenRefresh(ctx context.Context, refreshToken, apiKey string, timeou
 	// The Firebase web API key is HTTP-referrer-restricted to the app origin;
 	// a CLI request has no referer and is blocked (API_KEY_HTTP_REFERRER_BLOCKED)
 	// without this header.
-	req.Header.Set("Referer", soloistWebBaseURL+"/")
+	req.Header.Set("Referer", soloistWebBase()+"/")
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
