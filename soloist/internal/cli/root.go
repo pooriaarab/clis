@@ -544,6 +544,10 @@ func (f *rootFlags) newClient() (*client.Client, error) {
 	if err != nil {
 		return nil, configErr(err)
 	}
+	// Transparent ID-token refresh: if the stored token is expired and a
+	// refresh token is present, mint a fresh one before building the client.
+	// (Hand-added; see .printing-press-patches/token-auto-refresh.md.)
+	maybeRefreshToken(cfg, f.timeout)
 	c := client.New(cfg, f.timeout, f.rateLimit)
 	c.DryRun = f.dryRun
 	c.NoCache = f.noCache

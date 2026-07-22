@@ -72,10 +72,13 @@ func newAuthLoginCmd(flags *rootFlags) *cobra.Command {
 			}
 
 			ctx := cmd.Context()
+			// The Firebase web API key is referrer-restricted; a CLI must present
+			// the app origin as Referer or Google blocks the identitytoolkit call.
+			refHdr := map[string]string{"Referer": soloistWebBaseURL + "/"}
 
 			// 1. Request a one-time code.
 			web := client.New(&config.Config{BaseURL: soloistWebBaseURL}, flags.timeout, flags.rateLimit)
-			genResp, status, err := web.Post(ctx, soloistOTPGeneratePath, map[string]any{"email": email})
+			genResp, status, err := web.PostWithHeaders(ctx, soloistOTPGeneratePath, map[string]any{"email": email}, refHdr)
 			if err != nil {
 				return classifyAPIError(err, flags)
 			}
@@ -105,9 +108,9 @@ func newAuthLoginCmd(flags *rootFlags) *cobra.Command {
 			}
 
 			// 3. Verify the code -> get a Firebase email sign-in link.
-			verResp, status, err := web.Post(ctx, soloistLoginVerifyPath, map[string]any{
+			verResp, status, err := web.PostWithHeaders(ctx, soloistLoginVerifyPath, map[string]any{
 				"email": email, "sessionId": gen.SessionID, "code": code,
-			})
+			}, refHdr)
 			if err != nil {
 				return classifyAPIError(err, flags)
 			}
@@ -135,9 +138,9 @@ func newAuthLoginCmd(flags *rootFlags) *cobra.Command {
 				firebaseKey = defaultFirebaseWebAPIKey()
 			}
 			idp := client.New(&config.Config{BaseURL: soloistIdentityBaseURL}, flags.timeout, flags.rateLimit)
-			signInResp, status, err := idp.Post(ctx, fmt.Sprintf(soloistSignInEmailLinkFmt, firebaseKey), map[string]any{
+			signInResp, status, err := idp.PostWithHeaders(ctx, fmt.Sprintf(soloistSignInEmailLinkFmt, firebaseKey), map[string]any{
 				"email": email, "oobCode": oobCode,
-			})
+			}, refHdr)
 			if err != nil {
 				return classifyAPIError(err, flags)
 			}

@@ -6,6 +6,7 @@ package cli
 import (
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/spf13/cobra"
 	"soloist-pp-cli/internal/cliutil"
@@ -105,7 +106,9 @@ func newAuthStatusCmd(flags *rootFlags) *cobra.Command {
 }
 
 func newAuthSetTokenCmd(flags *rootFlags) *cobra.Command {
-	return &cobra.Command{
+	var refreshToken string
+	var expiresIn int
+	cmd := &cobra.Command{
 		Use:     "set-token <token>",
 		Short:   "Save an API token to the credentials file",
 		Example: "  soloist-pp-cli auth set-token YOUR_TOKEN_HERE",
@@ -123,7 +126,16 @@ func newAuthSetTokenCmd(flags *rootFlags) *cobra.Command {
 			// log line): a masked-tail variant could leak token bytes through
 			// scripted dogfood that captures stderr.
 			cfg.AuthHeaderVal = ""
-			if err := cfg.SaveTokens("", "", args[0], "", cfg.TokenExpiry); err != nil {
+			// Optionally store a refresh token + expiry so the CLI can
+			// transparently renew the ID token (see maybeRefreshToken).
+			expiry := cfg.TokenExpiry
+			if expiresIn <= 0 && refreshToken != "" {
+				expiresIn = 3600 // a stored refresh token needs a real expiry to trigger renewal
+			}
+			if expiresIn > 0 {
+				expiry = time.Now().Add(time.Duration(expiresIn) * time.Second)
+			}
+			if err := cfg.SaveTokens("", "", args[0], refreshToken, expiry); err != nil {
 				return configErr(fmt.Errorf("saving token: %w", err))
 			}
 
@@ -143,6 +155,9 @@ func newAuthSetTokenCmd(flags *rootFlags) *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&refreshToken, "refresh-token", "", "optional Firebase refresh token (enables transparent ID-token renewal)")
+	cmd.Flags().IntVar(&expiresIn, "expires-in", 0, "optional token lifetime in seconds (default: 3600 when a refresh token is given)")
+	return cmd
 }
 
 func credentialSavePath(cfg *config.Config) string {
