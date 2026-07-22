@@ -47,7 +47,7 @@ func newSitesPublishCmd(flags *rootFlags) *cobra.Command {
 					"action":   "publish",
 					"dry_run":  true,
 					"draftId":  siteID,
-					"endpoint": soloistPublishBaseURL + soloistPublishPath,
+					"endpoint": soloistWebBase() + soloistPublishPath,
 					"note":     "dry-run does not fetch or publish; live mode GETs the draft, decodes websiteSettings to plain JSON, and POSTs {handle, websiteSettings, draftId}.",
 				}, fmt.Sprintf("would publish draft %s", siteID))
 			}
@@ -85,7 +85,7 @@ func newSitesPublishCmd(flags *rootFlags) *cobra.Command {
 			if err != nil {
 				return configErr(err)
 			}
-			cfg.BaseURL = soloistPublishBaseURL
+			cfg.BaseURL = soloistWebBase()
 			pc := client.New(cfg, flags.timeout, flags.rateLimit)
 			body := map[string]any{
 				"handle":          handle,
