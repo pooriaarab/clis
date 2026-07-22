@@ -1,0 +1,259 @@
+{
+  "api_name": "soloist",
+  "base_url": "https://firestore.googleapis.com",
+  "description": "Manage your Solo websites (draft + published), custom domains, and share invites directly against Firestore, the same backend the soloist.ai designer uses.",
+  "mcp_ready": "full",
+  "http_transport": "standard",
+  "auth": {
+    "type": "bearer_token",
+    "header": "Authorization",
+    "in": "header",
+    "env_vars": [
+      "SOLOIST_ID_TOKEN"
+    ],
+    "env_var_specs": [
+      {
+        "name": "SOLOIST_ID_TOKEN",
+        "kind": "per_call",
+        "required": true,
+        "sensitive": true,
+        "inferred": true
+      }
+    ]
+  },
+  "required_headers": [],
+  "tools": [
+    {
+      "name": "domains_create",
+      "description": "Create a custom domain mapping. Optional: documentId.",
+      "method": "POST",
+      "path": "/v1/projects/moz-ocho-solo-prod/databases/(default)/documents/WebsiteDomains",
+      "params": [
+        {
+          "name": "documentId",
+          "type": "string",
+          "location": "body",
+          "description": "Optional explicit document id."
+        }
+      ]
+    },
+    {
+      "name": "domains_delete",
+      "description": "Delete a domain mapping. Required: id. Destructive.",
+      "method": "DELETE",
+      "path": "/v1/projects/moz-ocho-solo-prod/databases/(default)/documents/WebsiteDomains/{id}",
+      "params": [
+        {
+          "name": "id",
+          "type": "string",
+          "location": "path",
+          "description": "Domain document id.",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "domains_get",
+      "description": "Get one domain mapping document by id. Required: id.",
+      "method": "GET",
+      "path": "/v1/projects/moz-ocho-solo-prod/databases/(default)/documents/WebsiteDomains/{id}",
+      "params": [
+        {
+          "name": "id",
+          "type": "string",
+          "location": "path",
+          "description": "Domain document id.",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "domains_list",
+      "description": "List your custom domains (runQuery on WebsiteDomains where userId == you).",
+      "method": "POST",
+      "path": "/v1/projects/moz-ocho-solo-prod/databases/(default)/documents:runQuery",
+      "params": []
+    },
+    {
+      "name": "draft-websites_create",
+      "description": "Create a new draft website document. Optional: documentId.",
+      "method": "POST",
+      "path": "/v1/projects/moz-ocho-solo-prod/databases/(default)/documents/DraftWebsites",
+      "params": [
+        {
+          "name": "documentId",
+          "type": "string",
+          "location": "body",
+          "description": "Optional explicit document id (UUID). Firestore generates one if omitted."
+        }
+      ]
+    },
+    {
+      "name": "draft-websites_delete",
+      "description": "Delete a draft website document. Required: id. Destructive.",
+      "method": "DELETE",
+      "path": "/v1/projects/moz-ocho-solo-prod/databases/(default)/documents/DraftWebsites/{id}",
+      "params": [
+        {
+          "name": "id",
+          "type": "string",
+          "location": "path",
+          "description": "Draft website document id.",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "draft-websites_get",
+      "description": "Get one draft website document by id (full JSON — pages, sections, theme). Required: id.",
+      "method": "GET",
+      "path": "/v1/projects/moz-ocho-solo-prod/databases/(default)/documents/DraftWebsites/{id}",
+      "params": [
+        {
+          "name": "id",
+          "type": "string",
+          "location": "path",
+          "description": "Draft website document id (site UUID).",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "draft-websites_list",
+      "description": "List your website drafts (runQuery on DraftWebsites where userId == you).",
+      "method": "POST",
+      "path": "/v1/projects/moz-ocho-solo-prod/databases/(default)/documents:runQuery",
+      "params": []
+    },
+    {
+      "name": "draft-websites_update",
+      "description": "Update fields on a draft website. Use updateMask.fieldPaths (repeatable) to patch specific paths (e.g. theme.primaryColor) without replacing the doc. Required: id. Optional: updateMask.fieldPaths. Partial update.",
+      "method": "PATCH",
+      "path": "/v1/projects/moz-ocho-solo-prod/databases/(default)/documents/DraftWebsites/{id}",
+      "params": [
+        {
+          "name": "id",
+          "type": "string",
+          "location": "path",
+          "description": "Draft website document id.",
+          "required": true
+        },
+        {
+          "name": "updateMask.fieldPaths",
+          "type": "string",
+          "location": "body",
+          "description": "Field path(s) to update; repeat for multiple. Omit to replace all provided fields."
+        }
+      ]
+    },
+    {
+      "name": "invites_create",
+      "description": "Create a share invite for a website. Optional: documentId.",
+      "method": "POST",
+      "path": "/v1/projects/moz-ocho-solo-prod/databases/(default)/documents/WebsiteInvites",
+      "params": [
+        {
+          "name": "documentId",
+          "type": "string",
+          "location": "body",
+          "description": "Optional explicit document id."
+        }
+      ]
+    },
+    {
+      "name": "invites_delete",
+      "description": "Revoke a share invite. Required: id. Destructive.",
+      "method": "DELETE",
+      "path": "/v1/projects/moz-ocho-solo-prod/databases/(default)/documents/WebsiteInvites/{id}",
+      "params": [
+        {
+          "name": "id",
+          "type": "string",
+          "location": "path",
+          "description": "Invite document id.",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "invites_get",
+      "description": "Get one invite document by id. Required: id.",
+      "method": "GET",
+      "path": "/v1/projects/moz-ocho-solo-prod/databases/(default)/documents/WebsiteInvites/{id}",
+      "params": [
+        {
+          "name": "id",
+          "type": "string",
+          "location": "path",
+          "description": "Invite document id.",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "invites_list",
+      "description": "List share invites (runQuery on WebsiteInvites by websiteId or invited email).",
+      "method": "POST",
+      "path": "/v1/projects/moz-ocho-solo-prod/databases/(default)/documents:runQuery",
+      "params": []
+    },
+    {
+      "name": "websites_delete",
+      "description": "Delete a published website document. Required: id. Destructive.",
+      "method": "DELETE",
+      "path": "/v1/projects/moz-ocho-solo-prod/databases/(default)/documents/Websites/{id}",
+      "params": [
+        {
+          "name": "id",
+          "type": "string",
+          "location": "path",
+          "description": "Published website document id.",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "websites_get",
+      "description": "Get one published website document by id. Required: id.",
+      "method": "GET",
+      "path": "/v1/projects/moz-ocho-solo-prod/databases/(default)/documents/Websites/{id}",
+      "params": [
+        {
+          "name": "id",
+          "type": "string",
+          "location": "path",
+          "description": "Published website document id.",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "websites_list",
+      "description": "List your published websites (runQuery on Websites where userId == you).",
+      "method": "POST",
+      "path": "/v1/projects/moz-ocho-solo-prod/databases/(default)/documents:runQuery",
+      "params": []
+    },
+    {
+      "name": "websites_update",
+      "description": "Update fields on a published website document. Required: id. Optional: updateMask.fieldPaths. Partial update.",
+      "method": "PATCH",
+      "path": "/v1/projects/moz-ocho-solo-prod/databases/(default)/documents/Websites/{id}",
+      "params": [
+        {
+          "name": "id",
+          "type": "string",
+          "location": "path",
+          "description": "Published website document id.",
+          "required": true
+        },
+        {
+          "name": "updateMask.fieldPaths",
+          "type": "string",
+          "location": "body",
+          "description": "Field path(s) to update; repeat for multiple."
+        }
+      ]
+    }
+  ]
+}

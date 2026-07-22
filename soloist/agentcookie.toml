@@ -1,0 +1,16 @@
+# agentcookie.toml: secrets-bus adoption manifest v2
+# See docs/spec-agentcookie-secrets-bus-v2-adoption.md
+schema_version = 2
+name = "soloist-pp-cli"
+display_name = "Soloist"
+description = "Manage your Solo websites (draft + published), custom domains, and share invites directly against Firestore, the same backend the soloist.ai designer uses."
+project_kind = "cli"
+
+[secrets.file]
+path = "~/.config/soloist-pp-cli/config.toml"
+
+[sync]
+default = false
+
+[sync.keys]
+SOLOIST_ID_TOKEN = true

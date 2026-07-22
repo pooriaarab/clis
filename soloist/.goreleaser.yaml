@@ -1,0 +1,51 @@
+version: 2
+project_name: soloist-pp-cli
+changelog:
+  disable: true
+builds:
+  - id: soloist-pp-cli
+    main: ./cmd/soloist-pp-cli
+    binary: soloist-pp-cli
+    env:
+      - CGO_ENABLED=0
+    ldflags:
+      - -s -w -X soloist-pp-cli/internal/cli.version={{ .Version }}
+    targets:
+      - darwin_amd64
+      - darwin_arm64
+      - linux_amd64
+      - linux_arm64
+      - windows_amd64
+      - windows_arm64
+  - id: soloist-pp-mcp
+    main: ./cmd/soloist-pp-mcp
+    binary: soloist-pp-mcp
+    env:
+      - CGO_ENABLED=0
+    ldflags:
+      - -s -w -X main.version={{ .Version }}
+    targets:
+      - darwin_amd64
+      - darwin_arm64
+      - linux_amd64
+      - linux_arm64
+      - windows_amd64
+      - windows_arm64
+archives:
+  - formats: [tar.gz]
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+checksum:
+  name_template: checksums.txt
+brews:
+  - name: soloist-pp-cli
+    repository:
+      owner: pooriaarab
+      name: homebrew-tap
+    homepage: "https://github.com/pooriaarab/soloist-pp-cli"
+    description: "Manage your Solo websites (draft + published), custom domains, and share invites directly against Firestore, the same backend the soloist.ai designer uses."
+    install: |
+      bin.install "soloist-pp-cli"
+      bin.install "soloist-pp-mcp"
