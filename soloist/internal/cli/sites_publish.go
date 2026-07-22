@@ -6,6 +6,7 @@ package cli
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -28,6 +29,7 @@ const (
 // soloist.ai/api/websites/publish using the same bearer token the CLI already
 // holds (the route authenticates with the Firebase ID token, no cookie).
 func newSitesPublishCmd(flags *rootFlags) *cobra.Command {
+	var force bool
 	cmd := &cobra.Command{
 		Use:     "publish <siteId>",
 		Short:   "Publish a draft website live (soloist.ai/<handle>).",
@@ -80,6 +82,14 @@ func newSitesPublishCmd(flags *rootFlags) *cobra.Command {
 			}
 			websiteSettings := fsDecode(wsVal) // Firestore-typed -> plain JSON
 
+			// Readiness guard: refuse to publish a site whose websiteSettings is
+			// missing the structure Solo's renderer needs (a Header + Footer
+			// section, at least one page, and a theme). Publishing an incomplete
+			// site produces a live 500. --force overrides.
+			if issues := publishReadinessIssues(websiteSettings); len(issues) > 0 && !force {
+				return usageErr(fmt.Errorf("site not ready to publish (would likely 500):\n  - %s\nfix these or re-run with --force", strings.Join(issues, "\n  - ")))
+			}
+
 			// 2. POST to the publish route on soloist.ai (same bearer token).
 			cfg, err := config.Load(flags.configPath)
 			if err != nil {
@@ -110,5 +120,42 @@ func newSitesPublishCmd(flags *rootFlags) *cobra.Command {
 			}, fmt.Sprintf("published: %s", url))
 		},
 	}
+	cmd.Flags().BoolVar(&force, "force", false, "publish even if the readiness check fails")
 	return cmd
+}
+
+// publishReadinessIssues returns human-readable reasons the site is not safe to
+// publish. Empty means ready. Solo's renderer 500s without a Header + Footer,
+// at least one page, and a theme (colorScheme).
+func publishReadinessIssues(ws any) []string {
+	var issues []string
+	m, ok := ws.(map[string]any)
+	if !ok {
+		return []string{"websiteSettings is missing or malformed"}
+	}
+	sections, _ := m["sections"].([]any)
+	if len(sections) == 0 {
+		issues = append(issues, "no sections")
+	}
+	types := map[string]bool{}
+	for _, s := range sections {
+		if sm, ok := s.(map[string]any); ok {
+			if t, ok := sm["type"].(string); ok {
+				types[t] = true
+			}
+		}
+	}
+	if !types["Header"] {
+		issues = append(issues, "no Header section")
+	}
+	if !types["Footer"] {
+		issues = append(issues, "no Footer section")
+	}
+	if pages, _ := m["pages"].([]any); len(pages) == 0 {
+		issues = append(issues, "no pages")
+	}
+	if cs, ok := m["colorScheme"].(map[string]any); !ok || len(cs) == 0 {
+		issues = append(issues, "no theme (colorScheme)")
+	}
+	return issues
 }

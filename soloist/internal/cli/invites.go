@@ -15,6 +15,7 @@ func newInvitesCmd(flags *rootFlags) *cobra.Command {
 		RunE:        parentNoSubcommandRunE(flags),
 	}
 
+	cmd.AddCommand(newInvitesAddCmd(flags))
 	cmd.AddCommand(newInvitesCreateCmd(flags))
 	cmd.AddCommand(newInvitesDeleteCmd(flags))
 	cmd.AddCommand(newInvitesGetCmd(flags))
