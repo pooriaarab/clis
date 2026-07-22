@@ -22,5 +22,6 @@ func newSitesCmd(flags *rootFlags) *cobra.Command {
 	cmd.AddCommand(newSitesPagesCmd(flags))
 	cmd.AddCommand(newSitesBlogCmd(flags))
 	cmd.AddCommand(newSitesNewCmd(flags))
+	cmd.AddCommand(newSitesAICmd(flags))
 	return cmd
 }
