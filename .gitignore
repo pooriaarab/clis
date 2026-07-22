@@ -4,6 +4,9 @@ bin/
 *.mcpb
 *-pp-cli
 *-pp-mcp
+# ...but never ignore the cmd/ source dirs, whose names match the binary globs above.
+!**/cmd/
+!**/cmd/**
 
 # Local state (real runtime location is XDG dirs outside the repo, but ignore defensively)
 *.db
