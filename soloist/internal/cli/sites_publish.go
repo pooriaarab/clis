@@ -4,9 +4,14 @@
 package cli
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -29,7 +34,9 @@ const (
 // soloist.ai/api/websites/publish using the same bearer token the CLI already
 // holds (the route authenticates with the Firebase ID token, no cookie).
 func newSitesPublishCmd(flags *rootFlags) *cobra.Command {
-	var force bool
+	var force, waitLive bool
+	var waitTimeout int
+	var expect string
 	cmd := &cobra.Command{
 		Use:     "publish <siteId>",
 		Short:   "Publish a draft website live (soloist.ai/<handle>).",
@@ -111,17 +118,100 @@ func newSitesPublishCmd(flags *rootFlags) *cobra.Command {
 			}
 
 			url := "https://soloist.ai/" + handle
-			return writeSitesMutationResult(cmd, flags, map[string]any{
+
+			result := map[string]any{
 				"action":  "publish",
 				"draftId": siteID,
 				"handle":  handle,
 				"status":  status,
 				"url":     url,
-			}, fmt.Sprintf("published: %s", url))
+			}
+			msg := fmt.Sprintf("published: %s", url)
+
+			// Optionally wait until the change is actually live-served. Publishing
+			// returns before the CDN/edge reflects the new content, so a fetch
+			// immediately after publish can serve a stale page. --wait-live polls
+			// the live URL (cache-busted) until it returns 2xx and, if --expect is
+			// given, until the served HTML contains that marker.
+			if waitLive {
+				live, elapsed, detail := waitForLive(cmd.Context(), url, expect, waitTimeout)
+				result["waited"] = true
+				result["live"] = live
+				result["wait_seconds"] = elapsed
+				if expect != "" {
+					result["expect"] = expect
+					result["expect_seen"] = detail == "matched"
+				}
+				if live {
+					msg += fmt.Sprintf(" (live after %ds%s)", elapsed, map[bool]string{true: ", marker seen", false: ""}[detail == "matched"])
+				} else {
+					msg += fmt.Sprintf(" (WARNING: not confirmed live after %ds: %s)", elapsed, detail)
+				}
+			}
+
+			return writeSitesMutationResult(cmd, flags, result, msg)
 		},
 	}
 	cmd.Flags().BoolVar(&force, "force", false, "publish even if the readiness check fails")
+	cmd.Flags().BoolVar(&waitLive, "wait-live", false, "after publishing, poll the live URL until it serves the new content (beats CDN lag)")
+	cmd.Flags().IntVar(&waitTimeout, "wait-timeout", 120, "max seconds to wait for --wait-live")
+	cmd.Flags().StringVar(&expect, "expect", "", "with --wait-live, keep polling until the served HTML contains this substring")
 	return cmd
+}
+
+// waitForLive polls url (cache-busted) until it returns 2xx and, when expect is
+// non-empty, until the body contains expect. Returns whether it went live, the
+// seconds elapsed, and a detail string ("matched", "ok", or the last error/
+// status on timeout).
+func waitForLive(ctx context.Context, url, expect string, timeoutSec int) (bool, int, string) {
+	if timeoutSec <= 0 {
+		timeoutSec = 120
+	}
+	deadline := timeoutSec
+	elapsed := 0
+	last := "no response"
+	attempt := 0
+	for elapsed <= deadline {
+		attempt++
+		// Base liveness polls the normal URL (what a visitor sees). Only when a
+		// content marker is required do we cache-bust to force an origin-fresh
+		// render — that hits a slower, rebuild-sensitive path, so it's reserved
+		// for the --expect case.
+		target := url
+		if expect != "" {
+			target = url + "?_pp=" + strconv.Itoa(attempt) + "-" + strconv.FormatInt(time.Now().UnixNano(), 10)
+		}
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, target, nil)
+		if err == nil {
+			// Browser-like headers: the app edge returns 406 to requests without
+			// a User-Agent / Accept (bot protection), which would make every poll
+			// look like a failure.
+			req.Header.Set("User-Agent", "Mozilla/5.0")
+			req.Header.Set("Accept", "*/*")
+			req.Header.Set("Accept-Language", "en-US,en;q=0.9")
+			resp, err := http.DefaultClient.Do(req)
+			if err == nil {
+				body, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+				resp.Body.Close()
+				if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+					if expect == "" {
+						return true, elapsed, "ok"
+					}
+					if strings.Contains(string(body), expect) {
+						return true, elapsed, "matched"
+					}
+					last = "200 but marker not present yet"
+				} else {
+					last = "HTTP " + strconv.Itoa(resp.StatusCode)
+				}
+			} else {
+				last = err.Error()
+			}
+		}
+		time.Sleep(4 * time.Second)
+		elapsed += 4
+	}
+	return false, elapsed, last
 }
 
 // publishReadinessIssues returns human-readable reasons the site is not safe to

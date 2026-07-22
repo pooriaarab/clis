@@ -8,6 +8,7 @@ package cli
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -38,13 +39,24 @@ func maybeRefreshToken(cfg *config.Config, timeout time.Duration) bool {
 	if os.Getenv("SOLOIST_ID_TOKEN") != "" {
 		return false
 	}
-	// Still valid with margin -> nothing to do. A zero expiry means "unknown";
-	// only refresh then if there is no usable access token at all.
+	// Still valid with margin -> nothing to do.
 	if !cfg.TokenExpiry.IsZero() && time.Now().Add(tokenSkew).Before(cfg.TokenExpiry) {
 		return false
 	}
+	// Stored expiry unknown (e.g. token set via `auth set-token`): derive the
+	// real expiry from the ID token's own `exp` claim so an expired token still
+	// gets refreshed. Previously this returned false whenever an access token
+	// was present, so an expired-but-unknown-expiry token never refreshed and
+	// every request 401'd until a manual re-login.
 	if cfg.TokenExpiry.IsZero() && cfg.AccessToken != "" {
-		return false
+		exp, ok := jwtExp(cfg.AccessToken)
+		if !ok {
+			return false // can't tell; leave the existing token to be tried
+		}
+		if time.Now().Add(tokenSkew).Before(exp) {
+			return false // still valid per the token's own exp claim
+		}
+		// else: expired -> fall through and refresh
 	}
 
 	key := os.Getenv(soloistFirebaseKeyEnv)
@@ -118,4 +130,28 @@ type refreshError struct {
 
 func (e *refreshError) Error() string {
 	return "securetoken refresh failed: HTTP " + strconv.Itoa(e.status) + ": " + e.body
+}
+
+// jwtExp reads the `exp` (seconds since epoch) claim from a JWT's payload
+// without verifying the signature. Used to recover a token's real expiry when
+// none was persisted alongside it. Returns ok=false if the token isn't a
+// parseable JWT or has no exp.
+func jwtExp(token string) (time.Time, bool) {
+	parts := strings.Split(token, ".")
+	if len(parts) < 2 {
+		return time.Time{}, false
+	}
+	payload, err := base64.RawURLEncoding.DecodeString(parts[1])
+	if err != nil {
+		if payload, err = base64.URLEncoding.DecodeString(parts[1]); err != nil {
+			return time.Time{}, false
+		}
+	}
+	var claims struct {
+		Exp int64 `json:"exp"`
+	}
+	if json.Unmarshal(payload, &claims) != nil || claims.Exp == 0 {
+		return time.Time{}, false
+	}
+	return time.Unix(claims.Exp, 0), true
 }
