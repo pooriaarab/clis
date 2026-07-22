@@ -1,0 +1,238 @@
+name: soloist
+display_name: Soloist
+description: >-
+  Full CRUD over your Solo (soloist.ai / main.soloist.ai) websites from the
+  terminal or an AI agent. Talks directly to the same Firestore documents the
+  soloist.ai /designer app reads and writes, authorized by a Firebase ID token —
+  so the CLI can do exactly what a signed-in user can, and nothing more.
+version: 1.0.0
+category: developer-tools
+base_url: https://firestore.googleapis.com
+cli_description: >-
+  Manage your Solo websites (draft + published), custom domains, and share
+  invites directly against Firestore, the same backend the soloist.ai designer uses.
+
+# Auth: the soloist.ai web app authenticates with Firebase Auth and sends a
+# short-lived Firebase ID token as `Authorization: Bearer <token>` on every
+# Firestore REST call. The token is minted by an email+OTP login flow that the
+# generic generator cannot express; `solo auth login` is hand-patched on top
+# (see .printing-press-patches/firebase-otp-login.md). Here we model the wire
+# contract: a bearer token in the Authorization header.
+auth:
+  type: bearer_token
+  header: Authorization
+  in: header
+  env_vars:
+    - SOLOIST_ID_TOKEN
+
+config:
+  format: toml
+  path: ~/.config/soloist-pp-cli/config.toml
+
+# Firebase project + database observed in the captured traffic.
+# Documents live under:
+#   /v1/projects/moz-ocho-solo-prod/databases/(default)/documents/<Collection>/<docId>
+# Listing is a structured query (documents:runQuery) filtered by userId == <uid>.
+# Every collection is user-scoped by Firestore security rules, so the token
+# holder can only ever see/modify their own documents.
+
+resources:
+  draft-websites:
+    description: >-
+      Editable website drafts (Firestore collection DraftWebsites). Doc id is the
+      site UUID; the document holds pages, sections, theme, and quickStartTasks.
+      This is what the /designer edits live.
+    endpoints:
+      list:
+        method: POST
+        path: /v1/projects/moz-ocho-solo-prod/databases/(default)/documents:runQuery
+        description: List your website drafts (runQuery on DraftWebsites where userId == you).
+        no_auth: false
+      get:
+        method: GET
+        path: /v1/projects/moz-ocho-solo-prod/databases/(default)/documents/DraftWebsites/{id}
+        description: Get one draft website document by id (full JSON — pages, sections, theme).
+        no_auth: false
+        params:
+          - name: id
+            type: string
+            required: true
+            positional: true
+            description: Draft website document id (site UUID).
+      create:
+        method: POST
+        path: /v1/projects/moz-ocho-solo-prod/databases/(default)/documents/DraftWebsites
+        description: Create a new draft website document.
+        no_auth: false
+        params:
+          - name: documentId
+            type: string
+            required: false
+            positional: false
+            description: Optional explicit document id (UUID). Firestore generates one if omitted.
+      update:
+        method: PATCH
+        path: /v1/projects/moz-ocho-solo-prod/databases/(default)/documents/DraftWebsites/{id}
+        description: >-
+          Update fields on a draft website. Use updateMask.fieldPaths (repeatable)
+          to patch specific paths (e.g. theme.primaryColor) without replacing the doc.
+        no_auth: false
+        params:
+          - name: id
+            type: string
+            required: true
+            positional: true
+            description: Draft website document id.
+          - name: updateMask.fieldPaths
+            type: string
+            required: false
+            positional: false
+            description: Field path(s) to update; repeat for multiple. Omit to replace all provided fields.
+      delete:
+        method: DELETE
+        path: /v1/projects/moz-ocho-solo-prod/databases/(default)/documents/DraftWebsites/{id}
+        description: Delete a draft website document.
+        no_auth: false
+        params:
+          - name: id
+            type: string
+            required: true
+            positional: true
+            description: Draft website document id.
+
+  websites:
+    description: >-
+      Published website documents (Firestore collection Websites). The live copy
+      served at soloist.ai/<slug>.
+    endpoints:
+      list:
+        method: POST
+        path: /v1/projects/moz-ocho-solo-prod/databases/(default)/documents:runQuery
+        description: List your published websites (runQuery on Websites where userId == you).
+        no_auth: false
+      get:
+        method: GET
+        path: /v1/projects/moz-ocho-solo-prod/databases/(default)/documents/Websites/{id}
+        description: Get one published website document by id.
+        no_auth: false
+        params:
+          - name: id
+            type: string
+            required: true
+            positional: true
+            description: Published website document id.
+      update:
+        method: PATCH
+        path: /v1/projects/moz-ocho-solo-prod/databases/(default)/documents/Websites/{id}
+        description: Update fields on a published website document.
+        no_auth: false
+        params:
+          - name: id
+            type: string
+            required: true
+            positional: true
+            description: Published website document id.
+          - name: updateMask.fieldPaths
+            type: string
+            required: false
+            positional: false
+            description: Field path(s) to update; repeat for multiple.
+      delete:
+        method: DELETE
+        path: /v1/projects/moz-ocho-solo-prod/databases/(default)/documents/Websites/{id}
+        description: Delete a published website document.
+        no_auth: false
+        params:
+          - name: id
+            type: string
+            required: true
+            positional: true
+            description: Published website document id.
+
+  domains:
+    description: >-
+      Custom domain mappings for your websites (Firestore collection
+      WebsiteDomains, userId-scoped).
+    endpoints:
+      list:
+        method: POST
+        path: /v1/projects/moz-ocho-solo-prod/databases/(default)/documents:runQuery
+        description: List your custom domains (runQuery on WebsiteDomains where userId == you).
+        no_auth: false
+      get:
+        method: GET
+        path: /v1/projects/moz-ocho-solo-prod/databases/(default)/documents/WebsiteDomains/{id}
+        description: Get one domain mapping document by id.
+        no_auth: false
+        params:
+          - name: id
+            type: string
+            required: true
+            positional: true
+            description: Domain document id.
+      create:
+        method: POST
+        path: /v1/projects/moz-ocho-solo-prod/databases/(default)/documents/WebsiteDomains
+        description: Create a custom domain mapping.
+        no_auth: false
+        params:
+          - name: documentId
+            type: string
+            required: false
+            positional: false
+            description: Optional explicit document id.
+      delete:
+        method: DELETE
+        path: /v1/projects/moz-ocho-solo-prod/databases/(default)/documents/WebsiteDomains/{id}
+        description: Delete a domain mapping.
+        no_auth: false
+        params:
+          - name: id
+            type: string
+            required: true
+            positional: true
+            description: Domain document id.
+
+  invites:
+    description: >-
+      Website share/collaboration invites (Firestore collection WebsiteInvites).
+      Queryable by websiteId or by invited email.
+    endpoints:
+      list:
+        method: POST
+        path: /v1/projects/moz-ocho-solo-prod/databases/(default)/documents:runQuery
+        description: List share invites (runQuery on WebsiteInvites by websiteId or invited email).
+        no_auth: false
+      get:
+        method: GET
+        path: /v1/projects/moz-ocho-solo-prod/databases/(default)/documents/WebsiteInvites/{id}
+        description: Get one invite document by id.
+        no_auth: false
+        params:
+          - name: id
+            type: string
+            required: true
+            positional: true
+            description: Invite document id.
+      create:
+        method: POST
+        path: /v1/projects/moz-ocho-solo-prod/databases/(default)/documents/WebsiteInvites
+        description: Create a share invite for a website.
+        no_auth: false
+        params:
+          - name: documentId
+            type: string
+            required: false
+            positional: false
+            description: Optional explicit document id.
+      delete:
+        method: DELETE
+        path: /v1/projects/moz-ocho-solo-prod/databases/(default)/documents/WebsiteInvites/{id}
+        description: Revoke a share invite.
+        no_auth: false
+        params:
+          - name: id
+            type: string
+            required: true
+            positional: true
+            description: Invite document id.

@@ -1,0 +1,39 @@
+{
+  "manifest_version": "0.3",
+  "name": "soloist-pp-mcp",
+  "display_name": "Soloist",
+  "version": "1.0.0",
+  "description": "Manage your Solo websites (draft + published), custom domains, and share invites directly against Firestore, the same backend the soloist.ai designer uses.",
+  "author": {
+    "name": "CLI Printing Press"
+  },
+  "license": "Apache-2.0",
+  "server": {
+    "type": "binary",
+    "entry_point": "bin/soloist-pp-mcp",
+    "mcp_config": {
+      "command": "${__dirname}/bin/soloist-pp-mcp",
+      "args": [],
+      "env": {
+        "SOLOIST_ID_TOKEN": "${user_config.soloist_id_token}"
+      }
+    }
+  },
+  "user_config": {
+    "soloist_id_token": {
+      "type": "string",
+      "title": "SOLOIST_ID_TOKEN",
+      "description": "Sets SOLOIST_ID_TOKEN for the Soloist MCP server.",
+      "sensitive": true,
+      "required": true
+    }
+  },
+  "compatibility": {
+    "claude_desktop": ">=1.0.0",
+    "platforms": [
+      "darwin",
+      "linux",
+      "win32"
+    ]
+  }
+}
