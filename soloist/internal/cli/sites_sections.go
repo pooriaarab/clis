@@ -42,6 +42,8 @@ func newSitesSectionsCmd(flags *rootFlags) *cobra.Command {
 	cmd.AddCommand(newSitesSectionsRmCmd(flags))
 	cmd.AddCommand(newSitesSectionsEditCmd(flags))
 	cmd.AddCommand(newSitesSectionsDupCmd(flags))
+	cmd.AddCommand(newSitesSectionsMoveCmd(flags))
+	cmd.AddCommand(newSitesSectionsHideCmd(flags))
 	return cmd
 }
 
