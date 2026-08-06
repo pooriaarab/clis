@@ -59,6 +59,33 @@ const (
 
 	// NIP-MP: multi-repo projects.
 	KindProject = 30621
+
+	// Workflow engine (buzz-core/src/kind.rs).
+	KindWorkflowDef           = 30620
+	KindWorkflowTrigger       = 46020
+	KindApprovalGrant         = 46030
+	KindApprovalDeny          = 46031
+	KindWorkflowTriggered     = 46001
+	KindWorkflowStepStarted   = 46002
+	KindWorkflowStepCompleted = 46003
+	KindWorkflowStepFailed    = 46004
+	KindWorkflowCompleted     = 46005
+	KindWorkflowFailed        = 46006
+	KindWorkflowCancelled     = 46007
+
+	// Community moderation commands (buzz-core/src/kind.rs, is_moderation_command_kind).
+	KindReport              = 1984
+	KindModerationBan       = 9040
+	KindModerationUnban     = 9041
+	KindModerationTimeout   = 9042
+	KindModerationUntimeout = 9043
+	KindModerationResolve   = 9044
+
+	// Media / Blossom (BUD-01/BUD-02).
+	KindBlossomAuth = 24242
+
+	// NIP-AE: Agent Engram.
+	KindAgentEngram = 30174
 )
 
 var nsecPrefix = "nsec" + "1"

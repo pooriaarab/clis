@@ -114,6 +114,134 @@ func (c *Client) postJSON(ctx context.Context, path string, payload any) (json.R
 	return json.RawMessage(respBody), nil
 }
 
+// Get issues a NIP-98-signed GET to an arbitrary relay path (incl. query
+// string), returning the raw JSON body. Used by moderation reads, which
+// serve structured queue/audit rows rather than stored events.
+func (c *Client) Get(ctx context.Context, path string) (json.RawMessage, error) {
+	if strings.TrimSpace(c.RelayURL) == "" {
+		return nil, errors.New("relay URL is required")
+	}
+	endpoint, err := c.httpEndpoint(path)
+	if err != nil {
+		return nil, err
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
+	if err != nil {
+		return nil, err
+	}
+	if len(c.AuthTag) > 0 {
+		authTag, err := nostr.AuthTagJSON(c.AuthTag)
+		if err != nil {
+			return nil, err
+		}
+		req.Header.Set("x-auth-tag", authTag)
+	}
+	if c.Keys != nil {
+		auth, err := c.httpAuthHeader(endpoint, http.MethodGet, nil)
+		if err != nil {
+			return nil, err
+		}
+		req.Header.Set("authorization", auth)
+	}
+	hc := c.HTTP
+	if hc == nil {
+		hc = http.DefaultClient
+	}
+	resp, err := hc.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	respBody, readErr := io.ReadAll(io.LimitReader(resp.Body, 8<<20))
+	if readErr != nil {
+		return nil, readErr
+	}
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, fmt.Errorf("relay returned %s: %s", resp.Status, strings.TrimSpace(string(respBody)))
+	}
+	return json.RawMessage(respBody), nil
+}
+
+// PutRaw issues a PUT to a relay-relative path with an explicit header set
+// and a raw (non-JSON-marshaled) body, returning the raw response body.
+// Used for Blossom media upload (BUD-02), which carries its own
+// kind:24242 auth header rather than NIP-98.
+func (c *Client) PutRaw(ctx context.Context, path string, body []byte, headers map[string]string, timeout time.Duration) (json.RawMessage, int, error) {
+	endpoint, err := c.httpEndpoint(path)
+	if err != nil {
+		return nil, 0, err
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPut, endpoint, bytes.NewReader(body))
+	if err != nil {
+		return nil, 0, err
+	}
+	for k, v := range headers {
+		req.Header.Set(k, v)
+	}
+	if len(c.AuthTag) > 0 {
+		authTag, err := nostr.AuthTagJSON(c.AuthTag)
+		if err != nil {
+			return nil, 0, err
+		}
+		req.Header.Set("x-auth-tag", authTag)
+	}
+	hc := c.HTTP
+	if hc == nil {
+		hc = http.DefaultClient
+	}
+	if timeout > 0 {
+		client := *hc
+		client.Timeout = timeout
+		hc = &client
+	}
+	resp, err := hc.Do(req)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer resp.Body.Close()
+	respBody, err := io.ReadAll(io.LimitReader(resp.Body, 512<<20))
+	if err != nil {
+		return nil, 0, err
+	}
+	return json.RawMessage(respBody), resp.StatusCode, nil
+}
+
+// GetBytes issues a GET to an absolute URL (not relay-relative — callers
+// validate same-origin themselves) with explicit headers, returning raw
+// response bytes without following redirects. Used for Blossom media
+// download (BUD-01), whose Authorization/x-auth-tag headers must never be
+// forwarded to a redirect target.
+func (c *Client) GetBytes(ctx context.Context, absoluteURL string, headers map[string]string, timeout time.Duration) ([]byte, int, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, absoluteURL, nil)
+	if err != nil {
+		return nil, 0, err
+	}
+	for k, v := range headers {
+		req.Header.Set(k, v)
+	}
+	if len(c.AuthTag) > 0 {
+		authTag, err := nostr.AuthTagJSON(c.AuthTag)
+		if err != nil {
+			return nil, 0, err
+		}
+		req.Header.Set("x-auth-tag", authTag)
+	}
+	hc := &http.Client{CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
+	if timeout > 0 {
+		hc.Timeout = timeout
+	}
+	resp, err := hc.Do(req)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer resp.Body.Close()
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 512<<20))
+	if err != nil {
+		return nil, 0, err
+	}
+	return body, resp.StatusCode, nil
+}
+
 // GetRelayInfo fetches the NIP-11 relay information document from "/" without auth.
 func (c *Client) GetRelayInfo(ctx context.Context) (json.RawMessage, error) {
 	endpoint, err := c.httpEndpoint("/")
@@ -144,16 +272,22 @@ func (c *Client) GetRelayInfo(ctx context.Context) (json.RawMessage, error) {
 	return json.RawMessage(body), nil
 }
 
+// httpAuthHeader signs a NIP-98 (kind:27235) HTTP auth event for endpoint.
+// payload is nil for GET requests without a body — the "payload" tag is
+// only included when there is a body to hash, matching the bundled CLI's
+// sign_nip98 (buzz-cli/src/client.rs).
 func (c *Client) httpAuthHeader(endpoint, method string, payload []byte) (string, error) {
 	if c.Keys == nil {
 		return "", errors.New("private key is required")
 	}
-	payloadHash := sha256.Sum256(payload)
 	tags := nostr.Tags{
 		{"u", endpoint},
 		{"method", strings.ToUpper(method)},
 		{"nonce", uuid.NewString()},
-		{"payload", hex.EncodeToString(payloadHash[:])},
+	}
+	if payload != nil {
+		payloadHash := sha256.Sum256(payload)
+		tags = append(tags, nostr.Tag{"payload", hex.EncodeToString(payloadHash[:])})
 	}
 	if len(c.AuthTag) > 0 {
 		tags = append(tags, c.AuthTag)
