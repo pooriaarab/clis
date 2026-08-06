@@ -152,6 +152,23 @@ func BuildManagedAgentCreateEvents(input ManagedAgentCreateInput) (ManagedAgentC
 	}, nil
 }
 
+// BuildArchiveIdentityRequest builds an unsigned NIP-IA kind:9035 archive
+// request for targetPubKeyHex, owner-signed by ownerPubHex's key (caller
+// signs). Mirrors desktop/src-tauri/src/events.rs
+// build_archive_identity_request / identity_archive_tags for the "retired"
+// reason path used by `buzz desktop delete`.
+func BuildArchiveIdentityRequest(ownerPubHex, targetPubKeyHex string, authTag nostr.Tag, createdAt int64) (nostr.Event, error) {
+	target := strings.ToLower(strings.TrimSpace(targetPubKeyHex))
+	if !isHex64(target) {
+		return nostr.Event{}, errors.New("target pubkey must be 64 hex characters")
+	}
+	tags := nostr.Tags{{"-"}, {"p", target}, {"reason", "retired"}}
+	if len(authTag) == 4 {
+		tags = append(tags, authTag)
+	}
+	return nostr.NewUnsignedEvent(nostr.KindIAArchiveRequest, ownerPubHex, "", tags, createdAt), nil
+}
+
 func (i ManagedAgentCreateInput) validate() error {
 	if !isHex64(i.AgentPubKey) {
 		return errors.New("agent pubkey must be 64 hex characters")
