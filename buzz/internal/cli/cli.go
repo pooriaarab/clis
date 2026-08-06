@@ -95,26 +95,26 @@ func NewRootCommand() (*cobra.Command, *rootOptions) {
 	root.AddCommand(agents)
 	root.AddCommand(fleetCommand(opts))
 
-	root.AddCommand(stubGroup("canvas", "get", "set"))
-	root.AddCommand(stubGroup("reactions", "add", "remove", "get"))
-	root.AddCommand(stubGroup("emoji", "list", "set", "rm", "export", "import"))
-	root.AddCommand(stubGroup("dms", "list", "open", "add-member", "hide"))
+	root.AddCommand(canvasCommand(opts))
+	root.AddCommand(reactionsCommand(opts))
+	root.AddCommand(emojiCommand(opts))
+	root.AddCommand(dmsCommand(opts))
 	root.AddCommand(stubGroup("workflows", "list", "get", "create", "update", "delete", "trigger", "runs", "approve"))
-	root.AddCommand(stubGroup("feed", "get"))
-	root.AddCommand(stubGroup("social", "publish", "set-contacts", "event", "notes", "contacts", "set-list", "list"))
-	root.AddCommand(stubGroup("notes", "set", "get", "ls", "rm"))
-	root.AddCommand(stubGroup("repos", "create", "get", "list", "bind", "protect"))
-	root.AddCommand(stubGroup("projects", "create", "get", "list", "add-repo", "remove-repo", "update", "delete"))
-	root.AddCommand(stubGroup("patches", "send", "get", "list", "status"))
-	root.AddCommand(stubGroup("issues", "create", "get", "list", "status"))
-	root.AddCommand(stubGroup("pr", "open", "update", "get", "list", "status"))
+	root.AddCommand(feedCommand(opts))
+	root.AddCommand(socialCommand(opts))
+	root.AddCommand(notesCommand(opts))
+	root.AddCommand(reposCommand(opts))
+	root.AddCommand(projectsCommand(opts))
+	root.AddCommand(patchesCommand(opts))
+	root.AddCommand(issuesCommand(opts))
+	root.AddCommand(prCommand(opts))
 	root.AddCommand(stubGroup("media", "get"))
 	root.AddCommand(stubGroup("upload", "file"))
 	root.AddCommand(stubGroup("mem", "ls", "get", "hash", "set", "patch", "rm"))
 	root.AddCommand(stubGroup("pack", "validate", "inspect"))
 	root.AddCommand(stubGroup("moderation", "reports", "resolve", "ban", "unban", "timeout", "untimeout", "restricted", "audit"))
-	root.AddCommand(stubGroup("invite", "create", "claim", "list"))
-	root.AddCommand(stubGroup("settings", "get", "set"))
+	root.AddCommand(inviteCommand(opts))
+	root.AddCommand(settingsCommand(opts))
 
 	return root, opts
 }
@@ -937,19 +937,27 @@ func (opts *rootOptions) query(ctx context.Context, filters []client.Filter) err
 }
 
 func (opts *rootOptions) queryResolved(ctx context.Context, resolved config.Resolved, keys *nostr.KeyPair, filters []client.Filter) error {
+	raw, err := opts.fetchQuery(ctx, resolved, keys, filters)
+	if err != nil {
+		return err
+	}
+	return opts.writeRawJSON(raw)
+}
+
+func (opts *rootOptions) fetchQuery(ctx context.Context, resolved config.Resolved, keys *nostr.KeyPair, filters []client.Filter) (json.RawMessage, error) {
 	if resolved.RelayURL == "" {
-		return inputError("relay URL is required")
+		return nil, inputError("relay URL is required")
 	}
 	tag, err := nostr.ParseAuthTagJSON(resolved.AuthTag)
 	if err != nil {
-		return inputWrap("parse auth tag", err)
+		return nil, inputWrap("parse auth tag", err)
 	}
 	relayClient := client.New(resolved.RelayURL, keys, tag)
 	raw, err := relayClient.Query(ctx, filters)
 	if err != nil {
-		return ExitError{Code: ExitRelay, Message: "query relay failed", Err: err}
+		return nil, ExitError{Code: ExitRelay, Message: "query relay failed", Err: err}
 	}
-	return opts.writeRawJSON(raw)
+	return raw, nil
 }
 
 func (opts *rootOptions) publish(ctx context.Context, resolved config.Resolved, keys *nostr.KeyPair, event nostr.Event) error {

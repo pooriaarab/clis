@@ -59,6 +59,11 @@ func (c *Client) Count(ctx context.Context, filters []Filter) (json.RawMessage, 
 	return c.postJSON(ctx, "/count", filters)
 }
 
+// Post issues a NIP-98-signed (when Keys is set) POST to an arbitrary relay path.
+func (c *Client) Post(ctx context.Context, path string, payload any) (json.RawMessage, error) {
+	return c.postJSON(ctx, path, payload)
+}
+
 func (c *Client) postJSON(ctx context.Context, path string, payload any) (json.RawMessage, error) {
 	if strings.TrimSpace(c.RelayURL) == "" {
 		return nil, errors.New("relay URL is required")
@@ -107,6 +112,36 @@ func (c *Client) postJSON(ctx context.Context, path string, payload any) (json.R
 		return nil, fmt.Errorf("relay returned %s: %s", resp.Status, strings.TrimSpace(string(respBody)))
 	}
 	return json.RawMessage(respBody), nil
+}
+
+// GetRelayInfo fetches the NIP-11 relay information document from "/" without auth.
+func (c *Client) GetRelayInfo(ctx context.Context) (json.RawMessage, error) {
+	endpoint, err := c.httpEndpoint("/")
+	if err != nil {
+		return nil, err
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("accept", "application/nostr+json")
+	hc := c.HTTP
+	if hc == nil {
+		hc = http.DefaultClient
+	}
+	resp, err := hc.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 8<<20))
+	if err != nil {
+		return nil, err
+	}
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, fmt.Errorf("relay returned %s: %s", resp.Status, strings.TrimSpace(string(body)))
+	}
+	return json.RawMessage(body), nil
 }
 
 func (c *Client) httpAuthHeader(endpoint, method string, payload []byte) (string, error) {

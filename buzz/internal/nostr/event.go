@@ -19,10 +19,14 @@ import (
 const (
 	KindProfile             = 0
 	KindTextNote            = 1
+	KindContactList         = 3
 	KindDeletion            = 5
+	KindReaction            = 7
 	KindChannelMessage      = 9
 	KindAuth                = 22242
 	KindHTTPAuth            = 27235
+	KindLongForm            = 30023
+	KindEmojiSet            = 30030
 	KindPersona             = 30175
 	KindManagedAgent        = 30177
 	KindChannelMetadata     = 39000
@@ -31,10 +35,30 @@ const (
 	KindNIP29PutUser        = 9000
 	KindNIP29RemoveUser     = 9001
 	KindNIP29JoinRequest    = 9021
+	KindSetWorkspaceProfile = 9033
 	KindStatus              = 30315
 	KindPresence            = 20001
 	KindPresenceSnapshot    = 40902
+	KindDMCreated           = 41001
+	KindDMOpen              = 41010
+	KindDMAddMember         = 41011
+	KindDMHide              = 41012
+	KindCanvas              = 40100
 	KindManagedAgentArchive = 9035
+
+	// NIP-34: git collaboration (repos.rs kind::KIND_GIT_* in crates/buzz-core/src/kind.rs).
+	KindGitRepoAnnouncement = 30617
+	KindGitPatch            = 1617
+	KindGitPullRequest      = 1618
+	KindGitPrUpdate         = 1619
+	KindGitIssue            = 1621
+	KindGitStatusOpen       = 1630
+	KindGitStatusMerged     = 1631
+	KindGitStatusClosed     = 1632
+	KindGitStatusDraft      = 1633
+
+	// NIP-MP: multi-repo projects.
+	KindProject = 30621
 )
 
 var nsecPrefix = "nsec" + "1"

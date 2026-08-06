@@ -25,6 +25,16 @@ type File struct {
 	OwnerKey   string            `toml:"owner_key,omitempty"`
 	Identities map[string]string `toml:"identities,omitempty"`
 	AuthTags   map[string]string `toml:"auth_tags,omitempty"`
+	Invites    []InviteRecord    `toml:"invites,omitempty"`
+}
+
+type InviteRecord struct {
+	Code          string `toml:"code"`
+	URL           string `toml:"url,omitempty"`
+	ExpiresAt     int64  `toml:"expires_at,omitempty"`
+	MaxUses       int    `toml:"max_uses,omitempty"`
+	UsesRemaining int    `toml:"uses_remaining,omitempty"`
+	CreatedAt     int64  `toml:"created_at"`
 }
 
 type Options struct {
@@ -133,6 +143,12 @@ func (f File) SaveIdentity(path, name, secret, authTag string) error {
 	if authTag != "" {
 		f.AuthTags[name] = authTag
 	}
+	return SaveFile(path, f)
+}
+
+func (f File) AppendInvite(path string, record InviteRecord) error {
+	f.ensureMaps()
+	f.Invites = append(f.Invites, record)
 	return SaveFile(path, f)
 }
 
