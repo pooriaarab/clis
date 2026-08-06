@@ -914,10 +914,6 @@ func (c *Client) refreshAccessToken(ctx context.Context) error {
 	params := url.Values{
 		"grant_type":    {"refresh_token"},
 		"refresh_token": {c.Config.RefreshToken},
-		"client_id":     {c.Config.ClientID},
-	}
-	if c.Config.ClientSecret != "" {
-		params.Set("client_secret", c.Config.ClientSecret)
 	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, tokenURL, strings.NewReader(params.Encode()))
@@ -925,6 +921,10 @@ func (c *Client) refreshAccessToken(ctx context.Context) error {
 		return fmt.Errorf("building refresh request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	// Reddit's token endpoint requires the OAuth client credentials via HTTP
+	// Basic auth, not form fields. Sending client_id/client_secret in the body
+	// returns 401, which broke auto-refresh and forced a daily re-login.
+	req.SetBasicAuth(c.Config.ClientID, c.Config.ClientSecret)
 	resp, err := c.HTTPClient.Do(req)
 	if err != nil {
 		return fmt.Errorf("refreshing access token: %w", err)
