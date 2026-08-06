@@ -492,6 +492,10 @@ type agentCreateOptions struct {
 	Channels         []string
 	RespondTo        string
 	PersonaDir       string
+	// ACPCommand/HarnessCommand are optional and, when set, persisted with
+	// the agent's identity so `agents run <name>` needs no flags later.
+	ACPCommand     string
+	HarnessCommand string
 }
 
 type createdAgent struct {
@@ -518,6 +522,8 @@ func agentsCommand(opts *rootOptions) *cobra.Command {
 		},
 	}
 	addAgentCreateFlags(create, createOpts)
+	create.Flags().StringVar(&createOpts.ACPCommand, "acp-command", "", "ACP runner command to persist for later `agents run` (optional)")
+	create.Flags().StringVar(&createOpts.HarnessCommand, "harness-command", "", "agent harness command to persist for later `agents run` (optional)")
 
 	list := &cobra.Command{
 		Use:   "list",
@@ -569,7 +575,9 @@ func agentsCommand(opts *rootOptions) *cobra.Command {
 			pidfile, _ := cmd.Flags().GetString("pidfile")
 			command, _ := cmd.Flags().GetString("acp-command")
 			harness, _ := cmd.Flags().GetString("harness-command")
-			return opts.runAgent(cmd.Context(), args[0], command, harness, detach, pidfile)
+			acpSet := cmd.Flags().Changed("acp-command")
+			harnessSet := cmd.Flags().Changed("harness-command")
+			return opts.runAgent(cmd.Context(), args[0], command, harness, acpSet, harnessSet, detach, pidfile)
 		},
 	}
 	run.Flags().Bool("detach", false, "run in the background")
@@ -632,6 +640,8 @@ func fleetCommand(opts *rootOptions) *cobra.Command {
 			for i := 1; i <= count; i++ {
 				current := *fleetOpts
 				current.Name = fmt.Sprintf("%s-%d", namePrefix, i)
+				current.ACPCommand = acpCommand
+				current.HarnessCommand = harnessCommand
 				if current.PersonaDir != "" {
 					personaPath := filepath.Join(current.PersonaDir, current.Name+".txt")
 					if b, err := os.ReadFile(personaPath); err == nil {
@@ -799,7 +809,16 @@ func (opts *rootOptions) createAgent(ctx context.Context, input agentCreateOptio
 	if file.OwnerKey == "" && resolved.OwnerKey != "" {
 		file.OwnerKey = resolved.OwnerKey
 	}
-	if err := file.SaveIdentity(resolved.ConfigPath, input.Name, nsec, authTagJSON); err != nil {
+	// Persist the agent's key + auth tag + relay + runtime now, or it can
+	// never be run again: nsec/auth_tag are only ever generated here.
+	record := config.AgentRecord{
+		Nsec:           nsec,
+		AuthTag:        authTagJSON,
+		RelayURL:       resolved.RelayURL,
+		ACPCommand:     input.ACPCommand,
+		HarnessCommand: input.HarnessCommand,
+	}
+	if err := file.SaveAgent(resolved.ConfigPath, input.Name, record); err != nil {
 		return createdAgent{}, otherWrap("save identity", err)
 	}
 	return createdAgent{
@@ -812,7 +831,7 @@ func (opts *rootOptions) createAgent(ctx context.Context, input agentCreateOptio
 	}, nil
 }
 
-func (opts *rootOptions) runAgent(ctx context.Context, target, acpCommand, harnessCommand string, detach bool, pidfile string) error {
+func (opts *rootOptions) runAgent(ctx context.Context, target, acpCommand, harnessCommand string, acpSet, harnessSet, detach bool, pidfile string) error {
 	resolved, err := config.Resolve(config.Options{
 		ConfigPath: opts.ConfigPath,
 		RelayURL:   opts.RelayURL,
@@ -824,23 +843,22 @@ func (opts *rootOptions) runAgent(ctx context.Context, target, acpCommand, harne
 	if err != nil {
 		return otherWrap("resolve config", err)
 	}
-	if resolved.PrivateKey == "" {
-		if key, ok := resolved.File.Identities[target]; ok {
-			resolved.PrivateKey = key
-			resolved.AuthTag = resolved.File.AuthTags[target]
-		}
-	}
-	if resolved.PrivateKey == "" {
+	// config.Resolve already pulled private key + auth tag from
+	// File.Identities/AuthTags by name; fill in the rest (relay, ACP
+	// command, harness command) from the persisted agent record so `agents
+	// run <name>` works with no flags beyond the name itself.
+	privateKey, relayURL, authTag, acpCommand, harnessCommand := resolveAgentRuntime(resolved, target, acpCommand, harnessCommand, acpSet, harnessSet)
+	if privateKey == "" {
 		return inputError("agent identity key is required")
 	}
-	if resolved.RelayURL == "" {
+	if relayURL == "" {
 		return inputError("relay URL is required")
 	}
 	if acpCommand == "" {
 		return inputError("acp-command is required")
 	}
 	proc := exec.CommandContext(ctx, acpCommand)
-	proc.Env = buildAgentRuntimeEnv(resolved.PrivateKey, resolved.RelayURL, resolved.AuthTag, harnessCommand)
+	proc.Env = buildAgentRuntimeEnv(privateKey, relayURL, authTag, harnessCommand)
 	if !detach {
 		proc.Stdout = opts.stdout()
 		proc.Stderr = opts.stderr()
@@ -863,6 +881,36 @@ func (opts *rootOptions) runAgent(ctx context.Context, target, acpCommand, harne
 	}
 	_ = proc.Process.Release()
 	return opts.writeJSON(map[string]any{"pid": proc.Process.Pid, "pidfile": pidfile})
+}
+
+// resolveAgentRuntime fills in an agent's private key, auth tag, relay URL,
+// and runtime commands from its persisted config.AgentRecord (saved by
+// createAgent) wherever the caller didn't already supply a value. Explicit
+// flags/env (already folded into resolved.PrivateKey/AuthTag/RelayURL, and
+// signaled here by acpSet/harnessSet) always win over the saved record.
+func resolveAgentRuntime(resolved config.Resolved, target, acpCommand, harnessCommand string, acpSet, harnessSet bool) (privateKey, relayURL, authTag, acp, harness string) {
+	privateKey, relayURL, authTag = resolved.PrivateKey, resolved.RelayURL, resolved.AuthTag
+	acp, harness = acpCommand, harnessCommand
+	record, ok := resolved.File.Agents[target]
+	if !ok {
+		return
+	}
+	if privateKey == "" {
+		privateKey = record.Nsec
+	}
+	if authTag == "" {
+		authTag = record.AuthTag
+	}
+	if relayURL == "" {
+		relayURL = record.RelayURL
+	}
+	if !acpSet && record.ACPCommand != "" {
+		acp = record.ACPCommand
+	}
+	if !harnessSet && record.HarnessCommand != "" {
+		harness = record.HarnessCommand
+	}
+	return
 }
 
 // buildAgentRuntimeEnv builds the environment for a buzz-acp child process,

@@ -73,6 +73,51 @@ func TestSaveIdentityPersistsAuthTag(t *testing.T) {
 	}
 }
 
+func TestSaveAgentPersistsRecordAndFileMode(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "config.toml")
+	secret := keyHex("fleet-agent")
+	cfg := File{}
+	record := AgentRecord{
+		Nsec:           secret,
+		AuthTag:        "auth-tag-value",
+		RelayURL:       "wss://relay.example",
+		ACPCommand:     "buzz-acp",
+		HarnessCommand: "claude",
+	}
+	if err := cfg.SaveAgent(path, "fleet-1", record); err != nil {
+		t.Fatalf("SaveAgent() error = %v", err)
+	}
+
+	info, err := os.Stat(path)
+	if err != nil {
+		t.Fatalf("Stat() error = %v", err)
+	}
+	if mode := info.Mode().Perm(); mode != 0o600 {
+		t.Fatalf("config file mode = %o, want 0600", mode)
+	}
+
+	loaded, err := LoadFile(path)
+	if err != nil {
+		t.Fatalf("LoadFile() error = %v", err)
+	}
+	// nsec/auth tag round-trip through the legacy identities maps too, so
+	// --identity lookups elsewhere (agents get/delete) keep working.
+	if loaded.Identities["fleet-1"] != secret {
+		t.Fatalf("identity not saved via legacy map")
+	}
+	if loaded.AuthTags["fleet-1"] != record.AuthTag {
+		t.Fatalf("auth tag not saved via legacy map")
+	}
+	got, ok := loaded.Agents["fleet-1"]
+	if !ok {
+		t.Fatalf("agent record not saved")
+	}
+	if got != record {
+		t.Fatalf("agent record = %+v, want %+v", got, record)
+	}
+}
+
 func keyHex(label string) string {
 	sum := sha256.Sum256([]byte(label))
 	return hex.EncodeToString(sum[:])
