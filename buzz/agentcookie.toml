@@ -1,0 +1,11 @@
+schema_version = 2
+name = "buzz-cli"
+display_name = "Buzz"
+description = "Headless CLI + MCP for Buzz relays. Full parity with the Buzz desktop app (messages, channels, agents and agent fleets, invites, settings) over the Nostr/WebSocket protocol."
+project_kind = "cli"
+
+[secrets.file]
+path = "~/.config/buzz-cli/config.toml"
+
+[sync]
+default = false
