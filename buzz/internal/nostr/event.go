@@ -44,7 +44,29 @@ const (
 	KindDMAddMember         = 41011
 	KindDMHide              = 41012
 	KindCanvas              = 40100
-	KindManagedAgentArchive = 9035
+
+	// NIP-29 channel-metadata commands (buzz-core/src/kind.rs).
+	KindNIP29EditMetadata = 9002 // KIND_NIP29_EDIT_METADATA — update/topic/purpose/archive/unarchive
+	KindNIP29DeleteEvent  = 9005 // KIND_NIP29_DELETE_EVENT — messages delete (buzz-sdk build_delete_message_with_options)
+	KindNIP29DeleteGroup  = 9008 // KIND_NIP29_DELETE_GROUP — channels delete
+	KindNIP29LeaveRequest = 9022 // KIND_NIP29_LEAVE_REQUEST — channels leave
+
+	// NIP-IA: identity archive (buzz-core/src/kind.rs).
+	KindIAArchiveRequest   = 9035  // KIND_IA_ARCHIVE_REQUEST
+	KindIAUnarchiveRequest = 9036  // KIND_IA_UNARCHIVE_REQUEST
+	KindIAArchivedList     = 13535 // KIND_IA_ARCHIVED_LIST
+
+	// Stream messages / forum (buzz-core/src/kind.rs).
+	KindStreamMessageV2 = 40002 // KIND_STREAM_MESSAGE_V2
+	KindMessageEdit     = 40003 // KIND_STREAM_MESSAGE_EDIT — messages edit
+	KindMessageDiff     = 40008 // KIND_STREAM_MESSAGE_DIFF — messages send-diff
+	KindForumPost       = 45001 // KIND_FORUM_POST
+	KindForumVote       = 45002 // KIND_FORUM_VOTE — messages vote
+	KindForumComment    = 45003 // KIND_FORUM_COMMENT
+
+	// Agent observer frames (buzz-core/src/kind.rs; NIP-44 encrypted content).
+	KindAgentObserverFrame = 24200 // KIND_AGENT_OBSERVER_FRAME — agents draft-create/draft-update
+	KindAgentProfile       = 10100 // KIND_AGENT_PROFILE — channels set-add-policy
 
 	// NIP-34: git collaboration (repos.rs kind::KIND_GIT_* in crates/buzz-core/src/kind.rs).
 	KindGitRepoAnnouncement = 30617
@@ -166,6 +188,27 @@ func DecodeNsec(value string) ([]byte, error) {
 		return nil, fmt.Errorf("nsec decoded to %d bytes, want 32", len(raw))
 	}
 	return raw, nil
+}
+
+// ParseNpub decodes a bech32 "npub1..." string into a lowercase 64-char hex
+// pubkey. Used by `messages search --author`, which accepts hex, npub, or a
+// display name (buzz-cli/src/commands/messages.rs resolve_author).
+func ParseNpub(value string) (string, error) {
+	hrp, data, err := bech32.Decode(value)
+	if err != nil {
+		return "", fmt.Errorf("decode npub: %w", err)
+	}
+	if hrp != "npub" {
+		return "", fmt.Errorf("bech32 human-readable part %q is not npub", hrp)
+	}
+	raw, err := bech32.ConvertBits(data, 5, 8, false)
+	if err != nil {
+		return "", fmt.Errorf("decode npub data: %w", err)
+	}
+	if len(raw) != 32 {
+		return "", fmt.Errorf("npub decoded to %d bytes, want 32", len(raw))
+	}
+	return hex.EncodeToString(raw), nil
 }
 
 func EncodeNsec(raw []byte) (string, error) {

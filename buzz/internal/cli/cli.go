@@ -379,15 +379,15 @@ func channelsCommand(opts *rootOptions) *cobra.Command {
 	members.Flags().String("channel", "", "channel id")
 
 	cmd.AddCommand(list, get, create, join, addMember, removeMember, members)
-	cmd.AddCommand(stubCommand("search", "Search channels"))
-	cmd.AddCommand(stubCommand("update", "Update channel metadata"))
-	cmd.AddCommand(stubCommand("topic", "Set channel topic"))
-	cmd.AddCommand(stubCommand("purpose", "Set channel purpose"))
-	cmd.AddCommand(stubCommand("leave", "Leave a channel"))
-	cmd.AddCommand(stubCommand("archive", "Archive a channel"))
-	cmd.AddCommand(stubCommand("unarchive", "Unarchive a channel"))
-	cmd.AddCommand(stubCommand("delete", "Delete a channel"))
-	cmd.AddCommand(stubCommand("set-add-policy", "Set channel add policy"))
+	cmd.AddCommand(channelsSearchCommand(opts))
+	cmd.AddCommand(channelsUpdateCommand(opts))
+	cmd.AddCommand(channelsTopicCommand(opts))
+	cmd.AddCommand(channelsPurposeCommand(opts))
+	cmd.AddCommand(channelsLeaveCommand(opts))
+	cmd.AddCommand(channelsArchiveCommand(opts))
+	cmd.AddCommand(channelsUnarchiveCommand(opts))
+	cmd.AddCommand(channelsDeleteCommand(opts))
+	cmd.AddCommand(channelsSetAddPolicyCommand(opts))
 	return cmd
 }
 
@@ -472,11 +472,11 @@ func messagesCommand(opts *rootOptions) *cobra.Command {
 	thread.Flags().String("root", "", "root event id")
 
 	cmd.AddCommand(send, get, thread)
-	cmd.AddCommand(stubCommand("send-diff", "Send a diff message"))
-	cmd.AddCommand(stubCommand("edit", "Edit a message"))
-	cmd.AddCommand(stubCommand("delete", "Delete a message"))
-	cmd.AddCommand(stubCommand("search", "Search messages"))
-	cmd.AddCommand(stubCommand("vote", "Vote on a message"))
+	cmd.AddCommand(messagesSendDiffCommand(opts))
+	cmd.AddCommand(messagesEditCommand(opts))
+	cmd.AddCommand(messagesDeleteCommand(opts))
+	cmd.AddCommand(messagesSearchCommand(opts))
+	cmd.AddCommand(messagesVoteCommand(opts))
 	return cmd
 }
 
@@ -599,12 +599,12 @@ func agentsCommand(opts *rootOptions) *cobra.Command {
 	}
 
 	cmd.AddCommand(create, list, get, run, stop, delete, fleetCommand(opts))
-	cmd.AddCommand(stubCommand("update", "Update a managed agent"))
-	cmd.AddCommand(stubCommand("draft-create", "Create an agent draft"))
-	cmd.AddCommand(stubCommand("draft-update", "Update an agent draft"))
-	cmd.AddCommand(stubCommand("archive", "Archive an agent"))
-	cmd.AddCommand(stubCommand("unarchive", "Unarchive an agent"))
-	cmd.AddCommand(stubCommand("archived", "List archived agents"))
+	cmd.AddCommand(agentsUpdateCommand(opts))
+	cmd.AddCommand(agentsDraftCreateCommand(opts))
+	cmd.AddCommand(agentsDraftUpdateCommand(opts))
+	cmd.AddCommand(agentsArchiveCommand(opts))
+	cmd.AddCommand(agentsUnarchiveCommand(opts))
+	cmd.AddCommand(agentsArchivedCommand(opts))
 	return cmd
 }
 
@@ -960,6 +960,34 @@ func (opts *rootOptions) fetchQuery(ctx context.Context, resolved config.Resolve
 	return raw, nil
 }
 
+// queryEvents resolves config and runs filters against the relay, decoding
+// the response into typed events. Used by the channels/messages/agents
+// subcommands that post-process query results (search, thread resolution,
+// author lookup, archive-snapshot verification) instead of passing the raw
+// relay response straight through.
+func (opts *rootOptions) queryEvents(ctx context.Context, filters []client.Filter) ([]nostr.Event, error) {
+	resolved, err := config.Resolve(config.Options{
+		ConfigPath: opts.ConfigPath,
+		RelayURL:   opts.RelayURL,
+		Identity:   opts.Identity,
+		PrivateKey: opts.PrivateKey,
+		AuthTag:    opts.AuthTag,
+		OwnerKey:   opts.OwnerKey,
+	})
+	if err != nil {
+		return nil, otherWrap("resolve config", err)
+	}
+	raw, err := opts.fetchQuery(ctx, resolved, nil, filters)
+	if err != nil {
+		return nil, err
+	}
+	var events []nostr.Event
+	if err := json.Unmarshal(raw, &events); err != nil {
+		return nil, otherWrap("parse query response", err)
+	}
+	return events, nil
+}
+
 func (opts *rootOptions) publish(ctx context.Context, resolved config.Resolved, keys *nostr.KeyPair, event nostr.Event) error {
 	if resolved.RelayURL == "" {
 		return inputError("relay URL is required")
@@ -1087,27 +1115,6 @@ func (opts *rootOptions) stderr() io.Writer {
 		return os.Stderr
 	}
 	return opts.Stderr
-}
-
-func stubGroup(name string, subcommands ...string) *cobra.Command {
-	cmd := &cobra.Command{Use: name}
-	for _, sub := range subcommands {
-		cmd.AddCommand(stubCommand(sub, ""))
-	}
-	return cmd
-}
-
-func stubCommand(name, short string) *cobra.Command {
-	return &cobra.Command{
-		Use:   name,
-		Short: short,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return ExitError{
-				Code:    ExitOther,
-				Message: fmt.Sprintf("%s is not implemented in this increment", cmd.CommandPath()),
-			}
-		},
-	}
 }
 
 func requiredFlag(cmd *cobra.Command, name string) (string, error) {
