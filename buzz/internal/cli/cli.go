@@ -614,6 +614,7 @@ func fleetCommand(opts *rootOptions) *cobra.Command {
 	var namePrefix string
 	var run bool
 	var maxConcurrent int
+	var acpCommand, harnessCommand, logDir string
 	cmd := &cobra.Command{
 		Use:   "fleet",
 		Short: "Create a managed agent fleet",
@@ -650,16 +651,33 @@ func fleetCommand(opts *rootOptions) *cobra.Command {
 				"agents":         created,
 				"run":            run,
 			}
-			if run {
-				result["message"] = "fleet runtime launch is not implemented in this increment"
+			// NEVER silently cap: when --max-concurrent bounds the fleet below
+			// its full count, say so in the printed result instead of quietly
+			// queueing agents with no explanation.
+			if run && maxConcurrent < count {
+				result["bound_note"] = fmt.Sprintf(
+					"max-concurrent=%d caps simultaneously-running runtimes; %d of %d agents will queue behind it",
+					maxConcurrent, count-maxConcurrent, count)
 			}
-			return opts.writeJSON(result)
+			if err := opts.writeJSON(result); err != nil {
+				return err
+			}
+			if !run {
+				return nil
+			}
+			// Blocks supervising the fleet until a shutdown signal; prints a
+			// manifest once every agent has made its first start attempt,
+			// then a final summary after shutdown (see fleet_run.go).
+			return opts.runFleet(cmd.Context(), created, maxConcurrent, logDir, acpCommand, harnessCommand)
 		},
 	}
 	cmd.Flags().IntVar(&count, "count", 0, "number of agents")
 	cmd.Flags().StringVar(&namePrefix, "name-prefix", "", "agent name prefix")
 	cmd.Flags().BoolVar(&run, "run", false, "run agents after creation")
 	cmd.Flags().IntVar(&maxConcurrent, "max-concurrent", 0, "maximum concurrent runtimes")
+	cmd.Flags().StringVar(&acpCommand, "acp-command", "buzz-acp", "ACP runner command")
+	cmd.Flags().StringVar(&harnessCommand, "harness-command", "", "agent harness command")
+	cmd.Flags().StringVar(&logDir, "log-dir", "", "directory for per-agent runtime logs (default: a generated temp directory)")
 	addAgentCreateFlags(cmd, fleetOpts)
 	cmd.Flags().Lookup("name").Hidden = true
 	return cmd
@@ -808,15 +826,8 @@ func (opts *rootOptions) runAgent(ctx context.Context, target, acpCommand, harne
 	if acpCommand == "" {
 		return inputError("acp-command is required")
 	}
-	env := os.Environ()
-	env = append(env,
-		config.EnvPrivateKey+"="+resolved.PrivateKey,
-		config.EnvRelayURL+"="+resolved.RelayURL,
-		config.EnvAuthTag+"="+resolved.AuthTag,
-		"BUZZ_ACP_AGENT_COMMAND="+harnessCommand,
-	)
 	proc := exec.CommandContext(ctx, acpCommand)
-	proc.Env = env
+	proc.Env = buildAgentRuntimeEnv(resolved.PrivateKey, resolved.RelayURL, resolved.AuthTag, harnessCommand)
 	if !detach {
 		proc.Stdout = opts.stdout()
 		proc.Stderr = opts.stderr()
@@ -839,6 +850,19 @@ func (opts *rootOptions) runAgent(ctx context.Context, target, acpCommand, harne
 	}
 	_ = proc.Process.Release()
 	return opts.writeJSON(map[string]any{"pid": proc.Process.Pid, "pidfile": pidfile})
+}
+
+// buildAgentRuntimeEnv builds the environment for a buzz-acp child process,
+// shared by `agents run` (single agent, foreground or --detach) and the
+// `fleet --run` supervisor (fleet_run.go).
+func buildAgentRuntimeEnv(privateKey, relayURL, authTag, harnessCommand string) []string {
+	env := os.Environ()
+	return append(env,
+		config.EnvPrivateKey+"="+privateKey,
+		config.EnvRelayURL+"="+relayURL,
+		config.EnvAuthTag+"="+authTag,
+		"BUZZ_ACP_AGENT_COMMAND="+harnessCommand,
+	)
 }
 
 func (opts *rootOptions) deleteAgent(ctx context.Context, target string) error {
