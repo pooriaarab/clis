@@ -94,6 +94,7 @@ func NewRootCommand() (*cobra.Command, *rootOptions) {
 	agents := agentsCommand(opts)
 	root.AddCommand(agents)
 	root.AddCommand(fleetCommand(opts))
+	root.AddCommand(desktopCommand(opts))
 
 	root.AddCommand(canvasCommand(opts))
 	root.AddCommand(reactionsCommand(opts))
