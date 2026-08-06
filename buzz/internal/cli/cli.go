@@ -766,10 +766,23 @@ func (opts *rootOptions) createAgent(ctx context.Context, input agentCreateOptio
 		}
 	}
 
-	relayClient := client.New(resolved.RelayURL, owner, nil)
+	// Each event's NIP-98 request auth must be signed by the same key that
+	// signed the event body (relay rule: "event pubkey does not match
+	// authenticated identity"). The agent's own profile (signed above with
+	// agentKeys) needs the agent client, carrying the owner-minted auth tag
+	// since the agent isn't a relay member yet; the owner-signed events
+	// (persona, managed-agent projection, channel memberships) go out on the
+	// owner client, which needs no auth tag since the owner is already a
+	// member.
+	agentClient := client.New(resolved.RelayURL, agentKeys, authTag)
+	ownerClient := client.New(resolved.RelayURL, owner, nil)
 	eventIDs := make([]string, 0, len(signed))
-	for _, event := range signed {
-		if _, err := relayClient.PostEvent(ctx, event); err != nil {
+	for i, event := range signed {
+		rc := ownerClient
+		if i == 0 {
+			rc = agentClient
+		}
+		if _, err := rc.PostEvent(ctx, event); err != nil {
 			return createdAgent{}, ExitError{Code: ExitRelay, Message: "publish event failed", Err: err}
 		}
 		eventIDs = append(eventIDs, event.ID)
@@ -976,6 +989,14 @@ func (opts *rootOptions) fetchQuery(ctx context.Context, resolved config.Resolve
 	if err != nil {
 		return nil, inputWrap("parse auth tag", err)
 	}
+	// The relay requires Nostr auth on reads; derive the identity key from
+	// resolved config when a caller didn't pass one so NIP-98 is always sent.
+	if keys == nil && resolved.PrivateKey != "" {
+		keys, err = nostr.ParsePrivateKey(resolved.PrivateKey)
+		if err != nil {
+			return nil, inputWrap("parse private key", err)
+		}
+	}
 	relayClient := client.New(resolved.RelayURL, keys, tag)
 	raw, err := relayClient.Query(ctx, filters)
 	if err != nil {
@@ -990,18 +1011,11 @@ func (opts *rootOptions) fetchQuery(ctx context.Context, resolved config.Resolve
 // author lookup, archive-snapshot verification) instead of passing the raw
 // relay response straight through.
 func (opts *rootOptions) queryEvents(ctx context.Context, filters []client.Filter) ([]nostr.Event, error) {
-	resolved, err := config.Resolve(config.Options{
-		ConfigPath: opts.ConfigPath,
-		RelayURL:   opts.RelayURL,
-		Identity:   opts.Identity,
-		PrivateKey: opts.PrivateKey,
-		AuthTag:    opts.AuthTag,
-		OwnerKey:   opts.OwnerKey,
-	})
+	resolved, keys, err := opts.resolveKeys(true)
 	if err != nil {
-		return nil, otherWrap("resolve config", err)
+		return nil, err
 	}
-	raw, err := opts.fetchQuery(ctx, resolved, nil, filters)
+	raw, err := opts.fetchQuery(ctx, resolved, keys, filters)
 	if err != nil {
 		return nil, err
 	}
