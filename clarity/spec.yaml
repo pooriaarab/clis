@@ -1,0 +1,66 @@
+openapi: 3.0.3
+info:
+  title: Microsoft Clarity Data Export API
+  version: "1.0"
+  description: Export project traffic and behavioral insights from Microsoft Clarity. Project creation is done in the Clarity dashboard; this API exports metrics only.
+servers:
+  - url: https://www.clarity.ms
+    description: Microsoft Clarity
+security:
+  - bearerAuth: []
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      x-auth-env-vars:
+        - CLARITY_API_TOKEN
+paths:
+  /export-data/api/v1/project-live-insights:
+    get:
+      operationId: getProjectLiveInsights
+      summary: Get live traffic and behavioral insights for a Clarity project
+      description: Returns aggregated metrics (sessions, page views, scroll depth, engagement, dead/rage clicks, quickbacks, script errors) for the last N days, optionally broken down by up to three dimensions.
+      parameters:
+        - name: numOfDays
+          in: query
+          required: true
+          description: Number of days to report (1 to 3).
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 3
+        - name: dimension1
+          in: query
+          required: false
+          description: First breakdown dimension (e.g. Browser, Device, OS, Country, Source, Referrer, URL, Channel).
+          schema:
+            type: string
+        - name: dimension2
+          in: query
+          required: false
+          description: Second breakdown dimension.
+          schema:
+            type: string
+        - name: dimension3
+          in: query
+          required: false
+          description: Third breakdown dimension.
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Array of metric objects, one per metric name, each with dimension-keyed information rows.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    metricName:
+                      type: string
+                    information:
+                      type: array
+                      items:
+                        type: object

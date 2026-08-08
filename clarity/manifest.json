@@ -1,0 +1,39 @@
+{
+  "manifest_version": "0.3",
+  "name": "clarity-pp-mcp",
+  "display_name": "Microsoft Clarity Data",
+  "version": "4.29.0",
+  "description": "Export project traffic and behavioral insights from Microsoft Clarity.",
+  "author": {
+    "name": "CLI Printing Press"
+  },
+  "license": "Apache-2.0",
+  "server": {
+    "type": "binary",
+    "entry_point": "bin/clarity-pp-mcp",
+    "mcp_config": {
+      "command": "${__dirname}/bin/clarity-pp-mcp",
+      "args": [],
+      "env": {
+        "CLARITY_API_TOKEN": "${user_config.clarity_api_token}"
+      }
+    }
+  },
+  "user_config": {
+    "clarity_api_token": {
+      "type": "string",
+      "title": "CLARITY_API_TOKEN",
+      "description": "Sets CLARITY_API_TOKEN for the Microsoft Clarity Data MCP server.",
+      "sensitive": true,
+      "required": true
+    }
+  },
+  "compatibility": {
+    "claude_desktop": ">=1.0.0",
+    "platforms": [
+      "darwin",
+      "linux",
+      "win32"
+    ]
+  }
+}
