@@ -1,0 +1,39 @@
+{
+  "manifest_version": "0.3",
+  "name": "posthog-pp-mcp",
+  "display_name": "Posthog",
+  "version": "1.0.0",
+  "description": "Printing Press CLI for Posthog.",
+  "author": {
+    "name": "CLI Printing Press"
+  },
+  "license": "Apache-2.0",
+  "server": {
+    "type": "binary",
+    "entry_point": "bin/posthog-pp-mcp",
+    "mcp_config": {
+      "command": "${__dirname}/bin/posthog-pp-mcp",
+      "args": [],
+      "env": {
+        "POSTHOG_PERSONAL_APIKEY_AUTH": "${user_config.posthog_personal_apikey_auth}"
+      }
+    }
+  },
+  "user_config": {
+    "posthog_personal_apikey_auth": {
+      "type": "string",
+      "title": "POSTHOG_PERSONAL_APIKEY_AUTH",
+      "description": "Sets POSTHOG_PERSONAL_APIKEY_AUTH for the Posthog MCP server.",
+      "sensitive": true,
+      "required": true
+    }
+  },
+  "compatibility": {
+    "claude_desktop": ">=1.0.0",
+    "platforms": [
+      "darwin",
+      "linux",
+      "win32"
+    ]
+  }
+}
