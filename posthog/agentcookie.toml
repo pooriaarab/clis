@@ -1,0 +1,16 @@
+# agentcookie.toml: secrets-bus adoption manifest v2
+# See docs/spec-agentcookie-secrets-bus-v2-adoption.md
+schema_version = 2
+name = "posthog-pp-cli"
+display_name = "Posthog"
+description = "Printing Press CLI for Posthog."
+project_kind = "cli"
+
+[secrets.file]
+path = "~/.config/posthog-pp-cli/config.toml"
+
+[sync]
+default = false
+
+[sync.keys]
+POSTHOG_PERSONAL_APIKEY_AUTH = true
