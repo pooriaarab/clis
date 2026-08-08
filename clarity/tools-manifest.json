@@ -1,0 +1,59 @@
+{
+  "api_name": "clarity",
+  "base_url": "https://www.clarity.ms",
+  "description": "Export project traffic and behavioral insights from Microsoft Clarity.",
+  "mcp_ready": "full",
+  "http_transport": "standard",
+  "auth": {
+    "type": "bearer_token",
+    "header": "Authorization",
+    "env_vars": [
+      "CLARITY_API_TOKEN"
+    ],
+    "env_var_specs": [
+      {
+        "name": "CLARITY_API_TOKEN",
+        "kind": "per_call",
+        "required": true,
+        "sensitive": true,
+        "inferred": true
+      }
+    ]
+  },
+  "required_headers": [],
+  "tools": [
+    {
+      "name": "export-data_get-project-live-insights",
+      "description": "Returns aggregated metrics (sessions, page views, scroll depth, engagement, dead/rage clicks, quickbacks, script errors) for the last N days, optionally broken down by up to three dimensions. Required: numOfDays. Optional: dimension1, dimension2, dimension3.",
+      "method": "GET",
+      "path": "/export-data/api/v1/project-live-insights",
+      "params": [
+        {
+          "name": "numOfDays",
+          "type": "int",
+          "location": "query",
+          "description": "Number of days to report (1 to 3).",
+          "required": true
+        },
+        {
+          "name": "dimension1",
+          "type": "string",
+          "location": "query",
+          "description": "First breakdown dimension (e.g. Browser, Device, OS, Country, Source, Referrer, URL, Channel)."
+        },
+        {
+          "name": "dimension2",
+          "type": "string",
+          "location": "query",
+          "description": "Second breakdown dimension."
+        },
+        {
+          "name": "dimension3",
+          "type": "string",
+          "location": "query",
+          "description": "Third breakdown dimension."
+        }
+      ]
+    }
+  ]
+}
