@@ -1,0 +1,15 @@
+{
+  "schema_version": 2,
+  "generated_at": "2026-08-11T00:00:00Z",
+  "printing_press_version": "4.29.0",
+  "api_name": "kakao-ads",
+  "display_name": "Kakao Moment",
+  "cli_name": "kakao-ads-pp-cli",
+  "spec_source": "official",
+  "spec_urls": [
+    "https://developers.kakao.com/docs/en/kakaomoment/report",
+    "https://developers.kakao.com/docs/latest/en/kakaomoment/auth"
+  ],
+  "auth_type": "token",
+  "mode": "api"
+}
