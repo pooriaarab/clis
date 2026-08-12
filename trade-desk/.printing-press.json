@@ -1,0 +1,15 @@
+{
+  "schema_version": 2,
+  "generated_at": "2026-08-11T00:00:00Z",
+  "printing_press_version": "4.29.0",
+  "api_name": "trade-desk",
+  "display_name": "The Trade Desk",
+  "cli_name": "trade-desk-pp-cli",
+  "spec_source": "official",
+  "spec_urls": [
+    "https://partner.thetradedesk.com/",
+    "https://www.thetradedesk.com/us/"
+  ],
+  "auth_type": "token",
+  "mode": "stub"
+}

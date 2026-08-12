@@ -19,6 +19,13 @@ Each CLI is generated from the platform's real API spec via [cli-printing-press]
 | [`x-ads/`](x-ads/README.md) | Auth-only X Ads stub pending approved Ads API access and OAuth 1.0a signing | OAuth 1.0a TODO |
 | [`amazon-ads/`](amazon-ads/README.md) | Auth-only Amazon Ads stub pending application approval | OAuth 2.0 access token TODO |
 | [`apple-search-ads/`](apple-search-ads/README.md) | Apple Search Ads campaign list/create and campaign-level reports | OAuth 2.0 access token |
+| [`criteo/`](criteo/README.md) | Auth-only Criteo Marketing Solutions stub pending product and permission selection | OAuth 2.0 TODO |
+| [`taboola/`](taboola/README.md) | Taboola campaign list/create and campaign summary reports | OAuth 2.0 access token |
+| [`outbrain/`](outbrain/README.md) | Auth-only Outbrain Amplify stub pending a public endpoint reference | Token TODO |
+| [`quora/`](quora/README.md) | Auth-only Quora Ads stub; no public advertiser API reference found | Token TODO |
+| [`trade-desk/`](trade-desk/README.md) | Auth-only The Trade Desk stub pending partner access | Token TODO |
+| [`stackadapt/`](stackadapt/README.md) | Auth-only StackAdapt stub pending a public advertiser API reference | Token TODO |
+| [`nextdoor/`](nextdoor/README.md) | Auth-only Nextdoor Ads stub pending partner access | Token TODO |
 
 Each subdirectory's README has the exact setup steps for that platform: where to register a developer app, which environment variables the CLI needs, and how to get your first real credential.
 

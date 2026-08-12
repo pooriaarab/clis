@@ -1,0 +1,15 @@
+{
+  "schema_version": 2,
+  "generated_at": "2026-08-11T00:00:00Z",
+  "printing_press_version": "4.29.0",
+  "api_name": "nextdoor",
+  "display_name": "Nextdoor Ads",
+  "cli_name": "nextdoor-pp-cli",
+  "spec_source": "official",
+  "spec_urls": [
+    "https://business.nextdoor.com/",
+    "https://business.nextdoor.com/en-us/advertise"
+  ],
+  "auth_type": "token",
+  "mode": "stub"
+}
