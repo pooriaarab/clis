@@ -1,0 +1,14 @@
+{
+  "schema_version": 2,
+  "generated_at": "2026-08-11T00:00:00Z",
+  "printing_press_version": "4.29.0",
+  "api_name": "linkedin-ads",
+  "display_name": "LinkedIn Ads",
+  "cli_name": "linkedin-ads-pp-cli",
+  "spec_source": "official",
+  "spec_urls": [
+    "LinkedIn grants advertising products and permissions through partner access. Keep this auth-only until the app has the required product approval and current versioned endpoint contract."
+  ],
+  "auth_type": "token",
+  "mode": "stub"
+}

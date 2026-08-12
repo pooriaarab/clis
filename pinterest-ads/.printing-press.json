@@ -1,0 +1,17 @@
+{
+  "schema_version": 2,
+  "generated_at": "2026-08-11T00:00:00Z",
+  "printing_press_version": "4.29.0",
+  "api_name": "pinterest-ads",
+  "display_name": "Pinterest Ads",
+  "cli_name": "pinterest-ads-pp-cli",
+  "spec_source": "official",
+  "spec_urls": [
+    "https://developers.pinterest.com/docs/api/v5/introduction/?query=authentication",
+    "https://developers.pinterest.com/docs/work-with-ads/create-campaigns-and-ad-groups/",
+    "https://developers.pinterest.com/docs/work-with-targets-and-audiences/create-audiences/",
+    "https://developers.pinterest.com/docs/analytics-and-reports/ads-reporting/"
+  ],
+  "auth_type": "token",
+  "mode": "api"
+}

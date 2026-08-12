@@ -1,0 +1,14 @@
+{
+  "schema_version": 2,
+  "generated_at": "2026-08-11T00:00:00Z",
+  "printing_press_version": "4.29.0",
+  "api_name": "amazon-ads",
+  "display_name": "Amazon Ads",
+  "cli_name": "amazon-ads-pp-cli",
+  "spec_source": "official",
+  "spec_urls": [
+    "Amazon Ads API access is application-gated and region-specific. Add the current profile, campaign, audience, and report resources after approval."
+  ],
+  "auth_type": "token",
+  "mode": "stub"
+}

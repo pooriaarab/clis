@@ -1,0 +1,14 @@
+{
+  "schema_version": 2,
+  "generated_at": "2026-08-11T00:00:00Z",
+  "printing_press_version": "4.29.0",
+  "api_name": "snapchat-ads",
+  "display_name": "Snapchat Ads",
+  "cli_name": "snapchat-ads-pp-cli",
+  "spec_source": "official",
+  "spec_urls": [
+    "Reporting and audience writes stay TODO until each current Ads API resource is added from its official reference. Campaign list and create use the paths shown in the official Ads API docs."
+  ],
+  "auth_type": "token",
+  "mode": "api"
+}
