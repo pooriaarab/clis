@@ -11,6 +11,14 @@ Each CLI is generated from the platform's real API spec via [cli-printing-press]
 | [`google-ads/`](google-ads/README.md) | Full read (GAQL) and near-full write coverage of the Google Ads API — campaigns, ad groups, keywords, experiments, and every other mutable resource via a generic escape hatch | OAuth2 (Desktop client + refresh token) |
 | [`reddit-ads/`](reddit-ads/README.md) | Reddit's Ads API v3 — ad accounts, campaigns, ad groups, ads, custom audiences, funding instruments, reporting, forecasting | OAuth2 (interactive browser login built in) |
 | [`meta-ads/`](meta-ads/README.md) | Meta Marketing API — campaigns, ad sets, ads, creatives, custom audiences, insights, plus a generic node/edge escape hatch for the rest of the Graph API | Access token (no built-in login flow — see that CLI's README for why) |
+| [`microsoft-ads/`](microsoft-ads/README.md) | Auth-only Microsoft Advertising stub pending the SOAP-to-REST migration and developer-token access | OAuth access token + developer token TODO |
+| [`tiktok-ads/`](tiktok-ads/README.md) | Auth-only TikTok Ads stub pending Marketing API app approval | OAuth access token TODO |
+| [`linkedin-ads/`](linkedin-ads/README.md) | Auth-only LinkedIn Ads stub pending Marketing Developer Platform approval | OAuth 2.0 access token TODO |
+| [`pinterest-ads/`](pinterest-ads/README.md) | Pinterest campaigns, customer-list audience upload, audience reads, and campaign analytics | OAuth 2.0 access token |
+| [`snapchat-ads/`](snapchat-ads/README.md) | Snapchat organization discovery and campaign list/create | OAuth 2.0 access token |
+| [`x-ads/`](x-ads/README.md) | Auth-only X Ads stub pending approved Ads API access and OAuth 1.0a signing | OAuth 1.0a TODO |
+| [`amazon-ads/`](amazon-ads/README.md) | Auth-only Amazon Ads stub pending application approval | OAuth 2.0 access token TODO |
+| [`apple-search-ads/`](apple-search-ads/README.md) | Apple Search Ads campaign list/create and campaign-level reports | OAuth 2.0 access token |
 
 Each subdirectory's README has the exact setup steps for that platform: where to register a developer app, which environment variables the CLI needs, and how to get your first real credential.
 

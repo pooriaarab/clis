@@ -1,0 +1,16 @@
+{
+  "schema_version": 2,
+  "generated_at": "2026-08-11T00:00:00Z",
+  "printing_press_version": "4.29.0",
+  "api_name": "snapchat-ads",
+  "display_name": "Snapchat Ads",
+  "cli_name": "snapchat-ads-pp-cli",
+  "spec_source": "official",
+  "spec_urls": [
+    "https://developers.snap.com/marketing-api/Ads-API/authentication",
+    "https://developers.snap.com/marketing-api/Ads-API/quick-start",
+    "https://developers.snap.com/marketing-api/Ads-API/campaigns"
+  ],
+  "auth_type": "token",
+  "mode": "api"
+}
