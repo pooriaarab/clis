@@ -30,7 +30,7 @@ import (
 func newAuthCmd(flags *rootFlags) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "auth",
-		Short: "Manage authentication for Google Analytics",
+		Short: "Manage authentication for Google Analytics Solo",
 		RunE:  parentNoSubcommandRunE(flags),
 	}
 
@@ -84,8 +84,8 @@ func newAuthLoginCmd(flags *rootFlags) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVar(&clientID, "client-id", os.Getenv("GOOGLE_ANALYTICS_CLIENT_ID"), "OAuth2 client ID")
-	cmd.Flags().StringVar(&clientSecret, "client-secret", os.Getenv("GOOGLE_ANALYTICS_CLIENT_SECRET"), "OAuth2 client secret")
+	cmd.Flags().StringVar(&clientID, "client-id", os.Getenv("GOOGLE_ANALYTICS_SOLO_CLIENT_ID"), "OAuth2 client ID")
+	cmd.Flags().StringVar(&clientSecret, "client-secret", os.Getenv("GOOGLE_ANALYTICS_SOLO_CLIENT_SECRET"), "OAuth2 client secret")
 	cmd.Flags().IntVar(&port, "port", 8085, "Local callback server port")
 
 	return cmd
@@ -301,7 +301,7 @@ func resolveOAuthCredentials(cmd *cobra.Command, flags *rootFlags, cfg *config.C
 		return clientID, clientSecret, nil
 	}
 	if flags.noInput {
-		return "", "", fmt.Errorf("OAuth2 client ID is required; pass --client-id, set GOOGLE_ANALYTICS_CLIENT_ID, or run 'google-analytics-solo-pp-cli login' without --no-input")
+		return "", "", fmt.Errorf("OAuth2 client ID is required; pass --client-id, set GOOGLE_ANALYTICS_SOLO_CLIENT_ID, or run 'google-analytics-solo-pp-cli login' without --no-input")
 	}
 	reader := bufio.NewReader(cmd.InOrStdin())
 	printOAuthCredentialHint(cmd.ErrOrStderr())
