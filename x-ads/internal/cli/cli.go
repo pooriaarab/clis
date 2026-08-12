@@ -21,7 +21,7 @@ type spec struct {
 
 var platform = spec{
 	Name: "x-ads", Display: "X Ads", Env: "X_ADS", BaseURL: "https://ads-api.x.com", Mode: "stub",
-	Accounts: "", Campaigns: "", CampaignCreate: "", Audiences: "", AudienceCreate: "", Report: "https://docs.x.com/x-ads-api/fundamentals/making-authenticated-requests|https://docs.x.com/x-ads-api/campaign-management|https://docs.x.com/x-ads-api/introduction", Todo: "undefined",
+	Accounts: "", Campaigns: "", CampaignCreate: "", Audiences: "", AudienceCreate: "", Report: "", Todo: "X requires an approved developer account, approved Ads API access, and OAuth 1.0a signed requests. This print avoids an incomplete signer and keeps endpoint coverage TODO.",
 }
 
 func Execute() error { return root().Execute() }

@@ -30,8 +30,10 @@ Use --help for command details. JSON output is the default.
 
 ## API coverage
 
-undefined
+Microsoft is moving from SOAP to REST. This print does not guess a REST resource or hide SOAP envelopes. Add verified campaign, account, reporting, and audience operations after the target account receives the required developer token.
 
 ## Official references checked 2026-08-11
 
-- Microsoft is moving from SOAP to REST. This print does not guess a REST resource or hide SOAP envelopes. Add verified campaign, account, reporting, and audience operations after the target account receives the required developer token.
+- https://learn.microsoft.com/en-us/advertising/guides/authentication-oauth-quick-start?view=bingads-13
+- https://learn.microsoft.com/en-us/advertising/guides/authentication-oauth-get-tokens?view=bingads-13
+- https://learn.microsoft.com/en-us/advertising/guides/?view=bingads-13

@@ -21,7 +21,7 @@ type spec struct {
 
 var platform = spec{
 	Name: "snapchat-ads", Display: "Snapchat Ads", Env: "SNAPCHAT_ADS", BaseURL: "https://adsapi.snapchat.com", Mode: "api",
-	Accounts: "/v1/me/organizations?with_ad_accounts=true", Campaigns: "/v1/adaccounts/{account}/campaigns", CampaignCreate: "/v1/adaccounts/{account}/campaigns", Audiences: "", AudienceCreate: "", Report: "https://developers.snap.com/marketing-api/Ads-API/authentication|https://developers.snap.com/marketing-api/Ads-API/quick-start|https://developers.snap.com/marketing-api/Ads-API/campaigns", Todo: "undefined",
+	Accounts: "/v1/me/organizations?with_ad_accounts=true", Campaigns: "/v1/adaccounts/{account}/campaigns", CampaignCreate: "/v1/adaccounts/{account}/campaigns", Audiences: "", AudienceCreate: "", Report: "", Todo: "Reporting and audience writes stay TODO until each current Ads API resource is added from its official reference. Campaign list and create use the paths shown in the official Ads API docs.",
 }
 
 func Execute() error { return root().Execute() }

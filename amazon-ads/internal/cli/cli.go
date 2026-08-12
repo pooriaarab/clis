@@ -21,7 +21,7 @@ type spec struct {
 
 var platform = spec{
 	Name: "amazon-ads", Display: "Amazon Ads", Env: "AMAZON_ADS", BaseURL: "https://advertising-api.amazon.com", Mode: "stub",
-	Accounts: "", Campaigns: "", CampaignCreate: "", Audiences: "", AudienceCreate: "", Report: "https://advertising.amazon.com/API/docs/en-us|https://advertising.amazon.com/resources/ad-policy/api|https://developer.amazon.com/docs/app-submission-api/auth.html", Todo: "undefined",
+	Accounts: "", Campaigns: "", CampaignCreate: "", Audiences: "", AudienceCreate: "", Report: "", Todo: "Amazon Ads API access is application-gated and region-specific. Add the current profile, campaign, audience, and report resources after approval.",
 }
 
 func Execute() error { return root().Execute() }

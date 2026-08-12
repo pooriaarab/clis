@@ -7,7 +7,9 @@
   "cli_name": "snapchat-ads-pp-cli",
   "spec_source": "official",
   "spec_urls": [
-    "Reporting and audience writes stay TODO until each current Ads API resource is added from its official reference. Campaign list and create use the paths shown in the official Ads API docs."
+    "https://developers.snap.com/marketing-api/Ads-API/authentication",
+    "https://developers.snap.com/marketing-api/Ads-API/quick-start",
+    "https://developers.snap.com/marketing-api/Ads-API/campaigns"
   ],
   "auth_type": "token",
   "mode": "api"

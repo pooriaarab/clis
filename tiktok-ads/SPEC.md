@@ -5,5 +5,4 @@ Generated shape: CLI Printing Press style with cmd, internal/cli, internal/clien
 
 The implementation uses only endpoint paths listed in the official references in README.md. It does not infer missing scopes, resource names, request bodies, or write operations.
 
-TODO: undefined
-
+TODO: TikTok Marketing API access and scopes require app review. The current public docs do not provide enough generally available endpoint detail for a safe generated write client.

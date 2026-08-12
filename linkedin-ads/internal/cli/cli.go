@@ -21,7 +21,7 @@ type spec struct {
 
 var platform = spec{
 	Name: "linkedin-ads", Display: "LinkedIn Ads", Env: "LINKEDIN_ADS", BaseURL: "https://api.linkedin.com", Mode: "stub",
-	Accounts: "", Campaigns: "", CampaignCreate: "", Audiences: "", AudienceCreate: "", Report: "https://learn.microsoft.com/en-us/linkedin/marketing/integrations/marketing-integrations-overview?view=li-lms-2026-03|https://learn.microsoft.com/en-us/linkedin/shared/authentication/authentication|https://learn.microsoft.com/en-us/linkedin/marketing/integrations/ads-reporting/ads-reporting?view=li-lms-2026-04", Todo: "undefined",
+	Accounts: "", Campaigns: "", CampaignCreate: "", Audiences: "", AudienceCreate: "", Report: "", Todo: "LinkedIn grants advertising products and permissions through partner access. Keep this auth-only until the app has the required product approval and current versioned endpoint contract.",
 }
 
 func Execute() error { return root().Execute() }

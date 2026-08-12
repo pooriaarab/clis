@@ -32,8 +32,10 @@ Use --help for command details. JSON output is the default.
 
 ## API coverage
 
-undefined
+Reporting and audience writes stay TODO until each current Ads API resource is added from its official reference. Campaign list and create use the paths shown in the official Ads API docs.
 
 ## Official references checked 2026-08-11
 
-- Reporting and audience writes stay TODO until each current Ads API resource is added from its official reference. Campaign list and create use the paths shown in the official Ads API docs.
+- https://developers.snap.com/marketing-api/Ads-API/authentication
+- https://developers.snap.com/marketing-api/Ads-API/quick-start
+- https://developers.snap.com/marketing-api/Ads-API/campaigns

@@ -7,7 +7,9 @@
   "cli_name": "amazon-ads-pp-cli",
   "spec_source": "official",
   "spec_urls": [
-    "Amazon Ads API access is application-gated and region-specific. Add the current profile, campaign, audience, and report resources after approval."
+    "https://advertising.amazon.com/API/docs/en-us",
+    "https://advertising.amazon.com/resources/ad-policy/api",
+    "https://developer.amazon.com/docs/app-submission-api/auth.html"
   ],
   "auth_type": "token",
   "mode": "stub"

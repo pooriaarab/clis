@@ -21,7 +21,7 @@ type spec struct {
 
 var platform = spec{
 	Name: "tiktok-ads", Display: "TikTok Ads", Env: "TIKTOK_ADS", BaseURL: "https://business-api.tiktok.com", Mode: "stub",
-	Accounts: "", Campaigns: "", CampaignCreate: "", Audiences: "", AudienceCreate: "", Report: "https://developers.tiktok.com/doc/login-kit-overview|https://developers.tiktok.com/doc/marketing-api-overview|https://developers.tiktok.com/doc/marketing-api-authentication", Todo: "undefined",
+	Accounts: "", Campaigns: "", CampaignCreate: "", Audiences: "", AudienceCreate: "", Report: "", Todo: "TikTok Marketing API access and scopes require app review. The current public docs do not provide enough generally available endpoint detail for a safe generated write client.",
 }
 
 func Execute() error { return root().Execute() }

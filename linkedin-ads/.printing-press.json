@@ -7,7 +7,9 @@
   "cli_name": "linkedin-ads-pp-cli",
   "spec_source": "official",
   "spec_urls": [
-    "LinkedIn grants advertising products and permissions through partner access. Keep this auth-only until the app has the required product approval and current versioned endpoint contract."
+    "https://learn.microsoft.com/en-us/linkedin/marketing/integrations/marketing-integrations-overview?view=li-lms-2026-03",
+    "https://learn.microsoft.com/en-us/linkedin/shared/authentication/authentication",
+    "https://learn.microsoft.com/en-us/linkedin/marketing/integrations/ads-reporting/ads-reporting?view=li-lms-2026-04"
   ],
   "auth_type": "token",
   "mode": "stub"

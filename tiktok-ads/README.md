@@ -30,8 +30,10 @@ Use --help for command details. JSON output is the default.
 
 ## API coverage
 
-undefined
+TikTok Marketing API access and scopes require app review. The current public docs do not provide enough generally available endpoint detail for a safe generated write client.
 
 ## Official references checked 2026-08-11
 
-- TikTok Marketing API access and scopes require app review. The current public docs do not provide enough generally available endpoint detail for a safe generated write client.
+- https://developers.tiktok.com/doc/login-kit-overview
+- https://developers.tiktok.com/doc/marketing-api-overview
+- https://developers.tiktok.com/doc/marketing-api-authentication

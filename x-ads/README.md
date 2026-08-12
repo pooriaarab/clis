@@ -30,8 +30,10 @@ Use --help for command details. JSON output is the default.
 
 ## API coverage
 
-undefined
+X requires an approved developer account, approved Ads API access, and OAuth 1.0a signed requests. This print avoids an incomplete signer and keeps endpoint coverage TODO.
 
 ## Official references checked 2026-08-11
 
-- X requires an approved developer account, approved Ads API access, and OAuth 1.0a signed requests. This print avoids an incomplete signer and keeps endpoint coverage TODO.
+- https://docs.x.com/x-ads-api/fundamentals/making-authenticated-requests
+- https://docs.x.com/x-ads-api/campaign-management
+- https://docs.x.com/x-ads-api/introduction

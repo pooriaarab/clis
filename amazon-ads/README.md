@@ -30,8 +30,10 @@ Use --help for command details. JSON output is the default.
 
 ## API coverage
 
-undefined
+Amazon Ads API access is application-gated and region-specific. Add the current profile, campaign, audience, and report resources after approval.
 
 ## Official references checked 2026-08-11
 
-- Amazon Ads API access is application-gated and region-specific. Add the current profile, campaign, audience, and report resources after approval.
+- https://advertising.amazon.com/API/docs/en-us
+- https://advertising.amazon.com/resources/ad-policy/api
+- https://developer.amazon.com/docs/app-submission-api/auth.html

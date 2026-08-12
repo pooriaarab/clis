@@ -7,7 +7,9 @@
   "cli_name": "tiktok-ads-pp-cli",
   "spec_source": "official",
   "spec_urls": [
-    "TikTok Marketing API access and scopes require app review. The current public docs do not provide enough generally available endpoint detail for a safe generated write client."
+    "https://developers.tiktok.com/doc/login-kit-overview",
+    "https://developers.tiktok.com/doc/marketing-api-overview",
+    "https://developers.tiktok.com/doc/marketing-api-authentication"
   ],
   "auth_type": "token",
   "mode": "stub"

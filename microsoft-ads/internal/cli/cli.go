@@ -21,7 +21,7 @@ type spec struct {
 
 var platform = spec{
 	Name: "microsoft-ads", Display: "Microsoft Advertising", Env: "MICROSOFT_ADS", BaseURL: "https://clientcenter.api.sandbox.bingads.microsoft.com", Mode: "stub",
-	Accounts: "", Campaigns: "", CampaignCreate: "", Audiences: "", AudienceCreate: "", Report: "https://learn.microsoft.com/en-us/advertising/guides/authentication-oauth-quick-start?view=bingads-13|https://learn.microsoft.com/en-us/advertising/guides/authentication-oauth-get-tokens?view=bingads-13|https://learn.microsoft.com/en-us/advertising/guides/?view=bingads-13", Todo: "undefined",
+	Accounts: "", Campaigns: "", CampaignCreate: "", Audiences: "", AudienceCreate: "", Report: "", Todo: "Microsoft is moving from SOAP to REST. This print does not guess a REST resource or hide SOAP envelopes. Add verified campaign, account, reporting, and audience operations after the target account receives the required developer token.",
 }
 
 func Execute() error { return root().Execute() }

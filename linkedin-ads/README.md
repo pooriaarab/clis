@@ -30,8 +30,10 @@ Use --help for command details. JSON output is the default.
 
 ## API coverage
 
-undefined
+LinkedIn grants advertising products and permissions through partner access. Keep this auth-only until the app has the required product approval and current versioned endpoint contract.
 
 ## Official references checked 2026-08-11
 
-- LinkedIn grants advertising products and permissions through partner access. Keep this auth-only until the app has the required product approval and current versioned endpoint contract.
+- https://learn.microsoft.com/en-us/linkedin/marketing/integrations/marketing-integrations-overview?view=li-lms-2026-03
+- https://learn.microsoft.com/en-us/linkedin/shared/authentication/authentication
+- https://learn.microsoft.com/en-us/linkedin/marketing/integrations/ads-reporting/ads-reporting?view=li-lms-2026-04
