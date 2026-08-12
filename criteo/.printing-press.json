@@ -1,0 +1,16 @@
+{
+  "schema_version": 2,
+  "generated_at": "2026-08-11T00:00:00Z",
+  "printing_press_version": "4.29.0",
+  "api_name": "criteo",
+  "display_name": "Criteo Marketing Solutions",
+  "cli_name": "criteo-pp-cli",
+  "spec_source": "official",
+  "spec_urls": [
+    "https://developers.criteo.com/marketing-solutions/v2025.07/docs/audiences",
+    "https://developers.criteo.com/retail-media/docs/create-your-app",
+    "https://developers.criteo.com/marketing-solutions/v2025.01/docs/criteo-api-swagger"
+  ],
+  "auth_type": "token",
+  "mode": "stub"
+}

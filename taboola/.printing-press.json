@@ -1,0 +1,17 @@
+{
+  "schema_version": 2,
+  "generated_at": "2026-08-11T00:00:00Z",
+  "printing_press_version": "4.29.0",
+  "api_name": "taboola",
+  "display_name": "Taboola Backstage",
+  "cli_name": "taboola-pp-cli",
+  "spec_source": "official",
+  "spec_urls": [
+    "https://developers.taboola.com/backstage-api/reference/getting-an-access-token",
+    "https://developers.taboola.com/backstage-api/reference/get-all-campaigns",
+    "https://developers.taboola.com/backstage-api/reference/create-a-campaign",
+    "https://developers.taboola.com/backstage-api/docs/reporting-overview"
+  ],
+  "auth_type": "token",
+  "mode": "api"
+}

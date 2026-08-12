@@ -1,0 +1,15 @@
+{
+  "schema_version": 2,
+  "generated_at": "2026-08-11T00:00:00Z",
+  "printing_press_version": "4.29.0",
+  "api_name": "stackadapt",
+  "display_name": "StackAdapt",
+  "cli_name": "stackadapt-pp-cli",
+  "spec_source": "official",
+  "spec_urls": [
+    "https://www.stackadapt.com/",
+    "https://www.stackadapt.com/contact"
+  ],
+  "auth_type": "token",
+  "mode": "stub"
+}
