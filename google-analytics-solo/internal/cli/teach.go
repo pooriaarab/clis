@@ -38,7 +38,7 @@ import (
 // noLearnEnvVar is the environment variable that disables the learning
 // loop for a session. Used by deterministic agent flows that don't
 // want a learning row to silently change subsequent query results.
-const noLearnEnvVar = "GOOGLE_ANALYTICS_NO_LEARN"
+const noLearnEnvVar = "GOOGLE_ANALYTICS_SOLO_NO_LEARN"
 
 // learningsAuditFileName is the JSONL audit log alongside the DB.
 const learningsAuditFileName = "learnings.jsonl"

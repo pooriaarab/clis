@@ -13,7 +13,7 @@ import (
 )
 
 const appName = "google-analytics-solo-pp-cli"
-const envPrefix = "GOOGLE_ANALYTICS"
+const envPrefix = "GOOGLE_ANALYTICS_SOLO"
 
 type PathKind int
 

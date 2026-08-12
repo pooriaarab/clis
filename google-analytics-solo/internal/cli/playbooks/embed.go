@@ -33,4 +33,4 @@ var FS embed.FS
 // The generator ships the initial placeholder. Bump this when shipping
 // authored playbook content (JSON + notes files alongside this file)
 // so existing installs re-seed on the next CLI invocation.
-var SeedVersion = "google-analytics-initial-001"
+var SeedVersion = "google-analytics-solo-initial-001"

@@ -11,7 +11,7 @@ import (
 )
 
 // SiblingCLIPath resolves the companion CLI via sibling-of-executable,
-// GOOGLE_ANALYTICS_CLI_PATH env var, then PATH.
+// GOOGLE_ANALYTICS_SOLO_CLI_PATH env var, then PATH.
 func SiblingCLIPath() (string, error) {
 	if exe, err := os.Executable(); err == nil {
 		for _, candidate := range siblingCLICandidates(runtime.GOOS, exe) {
@@ -20,7 +20,7 @@ func SiblingCLIPath() (string, error) {
 			}
 		}
 	}
-	if v := os.Getenv("GOOGLE_ANALYTICS_CLI_PATH"); v != "" {
+	if v := os.Getenv("GOOGLE_ANALYTICS_SOLO_CLI_PATH"); v != "" {
 		return v, nil
 	}
 	return exec.LookPath(cliExecutableName(runtime.GOOS))

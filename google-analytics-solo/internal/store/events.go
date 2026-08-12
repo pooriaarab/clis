@@ -61,7 +61,7 @@ const learnEventTimeFormat = time.RFC3339
 // learnSurfaceEnvVar is the environment variable the MCP server sets
 // (in its own process, inherited by the shelled-out CLI) so events
 // recorded during an MCP-surfaced invocation carry surface=mcp.
-const learnSurfaceEnvVar = "GOOGLE_ANALYTICS_LEARN_SURFACE"
+const learnSurfaceEnvVar = "GOOGLE_ANALYTICS_SOLO_LEARN_SURFACE"
 
 // learnSurfaceOverride is the in-process seam for surface detection:
 // an entrypoint that hosts commands without a subprocess boundary can

@@ -52,7 +52,7 @@ func shellOutToCLI(cliPath func() (string, error), commandPath []string, blocked
 	prefixArgs := append([]string{}, commandPath...)
 	return func(ctx context.Context, req mcplib.CallToolRequest) (*mcplib.CallToolResult, error) {
 		if lookupErr != nil {
-			return boundedToolResultError(fmt.Sprintf("companion CLI binary not found: %v\nTried sibling lookup, GOOGLE_ANALYTICS_CLI_PATH env var, and PATH.", lookupErr)), nil
+			return boundedToolResultError(fmt.Sprintf("companion CLI binary not found: %v\nTried sibling lookup, GOOGLE_ANALYTICS_SOLO_CLI_PATH env var, and PATH.", lookupErr)), nil
 		}
 		args := req.GetArguments()
 		if err := validateMCPArgumentNames(args, allowedStructuredArgs); err != nil {

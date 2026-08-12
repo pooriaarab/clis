@@ -32,8 +32,8 @@ import (
 // per-endpoint registrations when MCP.Orchestration is "code".
 func RegisterCodeOrchestrationTools(s *server.MCPServer) {
 	s.AddTool(
-		mcplib.NewTool("google-analytics_search",
-			mcplib.WithDescription("Search the google-analytics API for endpoints matching a natural-language query. Returns a ranked list of {endpoint_id, method, path, summary} entries. Call this first to find the endpoint to execute."),
+		mcplib.NewTool("google-analytics-solo_search",
+			mcplib.WithDescription("Search the google-analytics-solo API for endpoints matching a natural-language query. Returns a ranked list of {endpoint_id, method, path, summary} entries. Call this first to find the endpoint to execute."),
 			mcplib.WithString("query", mcplib.Required(), mcplib.Description("Natural-language description of what you want to do.")),
 			mcplib.WithNumber("limit", mcplib.Description("Max endpoints to return (default 10).")),
 		),
@@ -41,9 +41,9 @@ func RegisterCodeOrchestrationTools(s *server.MCPServer) {
 	)
 
 	s.AddTool(
-		mcplib.NewTool("google-analytics_execute",
-			mcplib.WithDescription("Execute one google-analytics API endpoint by its endpoint_id (from google-analytics_search). Params are passed as a JSON object; path placeholders and query strings are resolved automatically."),
-			mcplib.WithString("endpoint_id", mcplib.Required(), mcplib.Description("Endpoint identifier returned by google-analytics_search (e.g., \"users.list\").")),
+		mcplib.NewTool("google-analytics-solo_execute",
+			mcplib.WithDescription("Execute one google-analytics-solo API endpoint by its endpoint_id (from google-analytics-solo_search). Params are passed as a JSON object; path placeholders and query strings are resolved automatically."),
+			mcplib.WithString("endpoint_id", mcplib.Required(), mcplib.Description("Endpoint identifier returned by google-analytics-solo_search (e.g., \"users.list\").")),
 			mcplib.WithObject("params", mcplib.Description("Parameters for the endpoint. Path placeholders match by name; remaining entries become query string on GET/DELETE or JSON body on POST/PUT/PATCH.")),
 		),
 		handleCodeOrchExecute,
@@ -865,7 +865,7 @@ func handleCodeOrchExecute(ctx context.Context, req mcplib.CallToolRequest) (*mc
 	args := req.GetArguments()
 	id, ok := args["endpoint_id"].(string)
 	if !ok || id == "" {
-		return mcplib.NewToolResultError("endpoint_id is required (call google-analytics_search first)"), nil
+		return mcplib.NewToolResultError("endpoint_id is required (call google-analytics-solo_search first)"), nil
 	}
 
 	var ep *codeOrchEndpoint
@@ -876,7 +876,7 @@ func handleCodeOrchExecute(ctx context.Context, req mcplib.CallToolRequest) (*mc
 		}
 	}
 	if ep == nil {
-		return mcplib.NewToolResultError(fmt.Sprintf("unknown endpoint_id %q — call google-analytics_search to discover valid ids", id)), nil
+		return mcplib.NewToolResultError(fmt.Sprintf("unknown endpoint_id %q — call google-analytics-solo_search to discover valid ids", id)), nil
 	}
 
 	params, _ := args["params"].(map[string]any)

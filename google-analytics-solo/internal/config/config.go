@@ -191,13 +191,13 @@ func Load(configPath string) (*Config, error) {
 	}
 
 	// Base URL override (used by printing-press verify to point at mock/test servers)
-	if v := os.Getenv("GOOGLE_ANALYTICS_BASE_URL"); v != "" {
+	if v := os.Getenv("GOOGLE_ANALYTICS_SOLO_BASE_URL"); v != "" {
 		cfg.BaseURL = v
 	}
-	if v := os.Getenv("GOOGLE_ANALYTICS_AUTHORIZATION_URL"); v != "" {
+	if v := os.Getenv("GOOGLE_ANALYTICS_SOLO_AUTHORIZATION_URL"); v != "" {
 		cfg.AuthorizationURL = v
 	}
-	if v := os.Getenv("GOOGLE_ANALYTICS_TOKEN_URL"); v != "" {
+	if v := os.Getenv("GOOGLE_ANALYTICS_SOLO_TOKEN_URL"); v != "" {
 		cfg.TokenURL = v
 	}
 
@@ -216,7 +216,7 @@ func Load(configPath string) (*Config, error) {
 		cfg.TemplateVars = map[string]string{}
 	}
 	verifyMode := os.Getenv("PRINTING_PRESS_VERIFY") == "1"
-	if v := strings.TrimSpace(os.Getenv("GOOGLE_ANALYTICS_PARENT")); v != "" {
+	if v := strings.TrimSpace(os.Getenv("GOOGLE_ANALYTICS_SOLO_PARENT")); v != "" {
 		cfg.TemplateVars["parent"] = v
 	} else if verifyMode {
 		cfg.TemplateVars["parent"] = "parent_placeholder"
@@ -228,7 +228,7 @@ func resolveConfigPath(configPath string) (string, bool, error) {
 	if strings.TrimSpace(configPath) != "" {
 		return configPath, true, nil
 	}
-	if path := os.Getenv("GOOGLE_ANALYTICS_CONFIG"); path != "" {
+	if path := os.Getenv("GOOGLE_ANALYTICS_SOLO_CONFIG"); path != "" {
 		return path, true, nil
 	}
 	dir, err := cliutil.ConfigDir()

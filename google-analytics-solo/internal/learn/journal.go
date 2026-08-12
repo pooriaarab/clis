@@ -45,9 +45,9 @@ const (
 // disable shared with the teach/recall loop; NO_CAPTURE disables
 // journaling and derivation only (recall still surfaces candidates).
 const (
-	journalSessionEnvVar   = "GOOGLE_ANALYTICS_LEARN_SESSION"
-	journalNoLearnEnvVar   = "GOOGLE_ANALYTICS_NO_LEARN"
-	journalNoCaptureEnvVar = "GOOGLE_ANALYTICS_LEARN_NO_CAPTURE"
+	journalSessionEnvVar   = "GOOGLE_ANALYTICS_SOLO_LEARN_SESSION"
+	journalNoLearnEnvVar   = "GOOGLE_ANALYTICS_SOLO_NO_LEARN"
+	journalNoCaptureEnvVar = "GOOGLE_ANALYTICS_SOLO_LEARN_NO_CAPTURE"
 )
 
 // Argv value classes. Flag values are classified, never serialized;

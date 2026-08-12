@@ -28,14 +28,14 @@ func withJournalHome(t *testing.T) string {
 	t.Helper()
 	dir := t.TempDir()
 	t.Setenv("HOME", dir)
-	t.Setenv("GOOGLE_ANALYTICS_STATE_DIR", "")
-	t.Setenv("GOOGLE_ANALYTICS_HOME", "")
+	t.Setenv("GOOGLE_ANALYTICS_SOLO_STATE_DIR", "")
+	t.Setenv("GOOGLE_ANALYTICS_SOLO_HOME", "")
 	t.Setenv("XDG_STATE_HOME", "")
 	t.Setenv("PRINTING_PRESS_VERIFY", "")
 	t.Setenv("PRINTING_PRESS_DOGFOOD", "")
-	t.Setenv("GOOGLE_ANALYTICS_NO_LEARN", "")
-	t.Setenv("GOOGLE_ANALYTICS_LEARN_NO_CAPTURE", "")
-	t.Setenv("GOOGLE_ANALYTICS_LEARN_SESSION", "")
+	t.Setenv("GOOGLE_ANALYTICS_SOLO_NO_LEARN", "")
+	t.Setenv("GOOGLE_ANALYTICS_SOLO_LEARN_NO_CAPTURE", "")
+	t.Setenv("GOOGLE_ANALYTICS_SOLO_LEARN_SESSION", "")
 	return dir
 }
 
@@ -138,7 +138,7 @@ func TestJournal_SuccessAppendsOneEntry(t *testing.T) {
 
 func TestJournal_SessionKeyFromEnv(t *testing.T) {
 	withJournalHome(t)
-	t.Setenv("GOOGLE_ANALYTICS_LEARN_SESSION", "session-abc123")
+	t.Setenv("GOOGLE_ANALYTICS_SOLO_LEARN_SESSION", "session-abc123")
 	if err := runCLI(t, "version"); err != nil {
 		t.Fatalf("version: %v", err)
 	}
@@ -219,8 +219,8 @@ func TestJournal_DisableSwitchesWriteNothing(t *testing.T) {
 	}{
 		{name: "verify env", env: map[string]string{"PRINTING_PRESS_VERIFY": "1"}},
 		{name: "dogfood env", env: map[string]string{"PRINTING_PRESS_DOGFOOD": "1"}},
-		{name: "master no-learn env", env: map[string]string{"GOOGLE_ANALYTICS_NO_LEARN": "1"}},
-		{name: "capture-only env", env: map[string]string{"GOOGLE_ANALYTICS_LEARN_NO_CAPTURE": "1"}},
+		{name: "master no-learn env", env: map[string]string{"GOOGLE_ANALYTICS_SOLO_NO_LEARN": "1"}},
+		{name: "capture-only env", env: map[string]string{"GOOGLE_ANALYTICS_SOLO_LEARN_NO_CAPTURE": "1"}},
 		{name: "no-learn flag", args: []string{"--no-learn"}},
 	}
 	for _, tc := range cases {
