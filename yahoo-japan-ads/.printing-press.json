@@ -1,0 +1,14 @@
+{
+  "schema_version": 2,
+  "generated_at": "2026-08-11T00:00:00Z",
+  "printing_press_version": "4.29.0",
+  "api_name": "yahoo-japan-ads",
+  "display_name": "Yahoo! JAPAN Ads",
+  "cli_name": "yahoo-japan-ads-pp-cli",
+  "spec_source": "official",
+  "spec_urls": [
+    "Yahoo! JAPAN Ads publishes OAuth and versioned API guides, but each service has separate SOAP or JSON contracts. Keep endpoint coverage TODO until generated per service."
+  ],
+  "auth_type": "token",
+  "mode": "stub"
+}

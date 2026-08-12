@@ -26,6 +26,15 @@ Each CLI is generated from the platform's real API spec via [cli-printing-press]
 | [`trade-desk/`](trade-desk/README.md) | Auth-only The Trade Desk stub pending partner access | Token TODO |
 | [`stackadapt/`](stackadapt/README.md) | Auth-only StackAdapt stub pending a public advertiser API reference | Token TODO |
 | [`nextdoor/`](nextdoor/README.md) | Auth-only Nextdoor Ads stub pending partner access | Token TODO |
+| [`yandex-direct/`](yandex-direct/README.md) | Yandex Direct v5 report submission against the documented JSON endpoint | OAuth 2.0 access token |
+| [`vk-ads/`](vk-ads/README.md) | Auth-only VK Ads stub pending a stable public API contract | Token TODO |
+| [`tencent-ads/`](tencent-ads/README.md) | Auth-only Tencent Ads stub pending regional account access | Token TODO |
+| [`baidu-ads/`](baidu-ads/README.md) | Auth-only Baidu Ads stub pending partner endpoint access | OAuth 2.0 TODO |
+| [`naver-ads/`](naver-ads/README.md) | Auth-only Naver Ads stub pending request-signing coverage | API license and secret TODO |
+| [`kakao-ads/`](kakao-ads/README.md) | Kakao Moment campaign report command with a documented business token | Business access token |
+| [`line-ads/`](line-ads/README.md) | Auth-only LINE Ads stub pending the documented request signer | Access key and secret TODO |
+| [`yahoo-japan-ads/`](yahoo-japan-ads/README.md) | Auth-only Yahoo! JAPAN Ads stub pending service-specific endpoint generation | OAuth 2.0 TODO |
+| [`mercadolibre-ads/`](mercadolibre-ads/README.md) | Auth-only Mercado Ads stub pending product access | OAuth 2.0 TODO |
 
 Each subdirectory's README has the exact setup steps for that platform: where to register a developer app, which environment variables the CLI needs, and how to get your first real credential.
 

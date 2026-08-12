@@ -1,0 +1,14 @@
+{
+  "schema_version": 2,
+  "generated_at": "2026-08-11T00:00:00Z",
+  "printing_press_version": "4.29.0",
+  "api_name": "vk-ads",
+  "display_name": "VK Ads",
+  "cli_name": "vk-ads-pp-cli",
+  "spec_source": "official",
+  "spec_urls": [
+    "The current official public docs do not expose a stable advertising API contract for endpoint generation."
+  ],
+  "auth_type": "token",
+  "mode": "stub"
+}

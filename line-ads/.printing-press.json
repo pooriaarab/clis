@@ -1,0 +1,14 @@
+{
+  "schema_version": 2,
+  "generated_at": "2026-08-11T00:00:00Z",
+  "printing_press_version": "4.29.0",
+  "api_name": "line-ads",
+  "display_name": "LINE Ads",
+  "cli_name": "line-ads-pp-cli",
+  "spec_source": "official",
+  "spec_urls": [
+    "LINE Ads uses request signatures with an access key and secret. This print avoids a partial signer and keeps campaign, audience, and reporting operations TODO."
+  ],
+  "auth_type": "token",
+  "mode": "stub"
+}

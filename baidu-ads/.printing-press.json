@@ -1,0 +1,14 @@
+{
+  "schema_version": 2,
+  "generated_at": "2026-08-11T00:00:00Z",
+  "printing_press_version": "4.29.0",
+  "api_name": "baidu-ads",
+  "display_name": "Baidu Ads",
+  "cli_name": "baidu-ads-pp-cli",
+  "spec_source": "official",
+  "spec_urls": [
+    "Baidu's official developer center documents OAuth 2.0 and advertising product areas, but endpoint details require partner onboarding. Do not invent paths."
+  ],
+  "auth_type": "token",
+  "mode": "stub"
+}
