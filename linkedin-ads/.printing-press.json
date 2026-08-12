@@ -1,0 +1,16 @@
+{
+  "schema_version": 2,
+  "generated_at": "2026-08-11T00:00:00Z",
+  "printing_press_version": "4.29.0",
+  "api_name": "linkedin-ads",
+  "display_name": "LinkedIn Ads",
+  "cli_name": "linkedin-ads-pp-cli",
+  "spec_source": "official",
+  "spec_urls": [
+    "https://learn.microsoft.com/en-us/linkedin/marketing/integrations/marketing-integrations-overview?view=li-lms-2026-03",
+    "https://learn.microsoft.com/en-us/linkedin/shared/authentication/authentication",
+    "https://learn.microsoft.com/en-us/linkedin/marketing/integrations/ads-reporting/ads-reporting?view=li-lms-2026-04"
+  ],
+  "auth_type": "token",
+  "mode": "stub"
+}

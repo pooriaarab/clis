@@ -1,0 +1,16 @@
+{
+  "schema_version": 2,
+  "generated_at": "2026-08-11T00:00:00Z",
+  "printing_press_version": "4.29.0",
+  "api_name": "tiktok-ads",
+  "display_name": "TikTok Ads",
+  "cli_name": "tiktok-ads-pp-cli",
+  "spec_source": "official",
+  "spec_urls": [
+    "https://developers.tiktok.com/doc/login-kit-overview",
+    "https://developers.tiktok.com/doc/marketing-api-overview",
+    "https://developers.tiktok.com/doc/marketing-api-authentication"
+  ],
+  "auth_type": "token",
+  "mode": "stub"
+}

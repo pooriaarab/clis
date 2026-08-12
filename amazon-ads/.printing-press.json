@@ -1,0 +1,16 @@
+{
+  "schema_version": 2,
+  "generated_at": "2026-08-11T00:00:00Z",
+  "printing_press_version": "4.29.0",
+  "api_name": "amazon-ads",
+  "display_name": "Amazon Ads",
+  "cli_name": "amazon-ads-pp-cli",
+  "spec_source": "official",
+  "spec_urls": [
+    "https://advertising.amazon.com/API/docs/en-us",
+    "https://advertising.amazon.com/resources/ad-policy/api",
+    "https://developer.amazon.com/docs/app-submission-api/auth.html"
+  ],
+  "auth_type": "token",
+  "mode": "stub"
+}

@@ -1,0 +1,16 @@
+{
+  "schema_version": 2,
+  "generated_at": "2026-08-11T00:00:00Z",
+  "printing_press_version": "4.29.0",
+  "api_name": "apple-search-ads",
+  "display_name": "Apple Search Ads",
+  "cli_name": "apple-search-ads-pp-cli",
+  "spec_source": "official",
+  "spec_urls": [
+    "https://developer.apple.com/documentation/apple_ads/implementing-oauth-for-the-apple-search-ads-api",
+    "https://developer.apple.com/documentation/apple_ads/get-a-campaign?changes=l_6",
+    "https://developer.apple.com/documentation/apple_ads/get-campaign-level-reports?changes=_3"
+  ],
+  "auth_type": "token",
+  "mode": "api"
+}

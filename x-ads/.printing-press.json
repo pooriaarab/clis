@@ -1,0 +1,16 @@
+{
+  "schema_version": 2,
+  "generated_at": "2026-08-11T00:00:00Z",
+  "printing_press_version": "4.29.0",
+  "api_name": "x-ads",
+  "display_name": "X Ads",
+  "cli_name": "x-ads-pp-cli",
+  "spec_source": "official",
+  "spec_urls": [
+    "https://docs.x.com/x-ads-api/fundamentals/making-authenticated-requests",
+    "https://docs.x.com/x-ads-api/campaign-management",
+    "https://docs.x.com/x-ads-api/introduction"
+  ],
+  "auth_type": "token",
+  "mode": "stub"
+}
