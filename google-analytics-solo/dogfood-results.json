@@ -1,0 +1,145 @@
+{
+  "dir": "\u003ccli-dir\u003e/google-analytics-solo-pp-cli",
+  "spec_path": "\u003ccli-dir\u003e/spec.json",
+  "spec_source": "bundled",
+  "verdict": "FAIL",
+  "path_check": {
+    "tested": 0,
+    "valid": 0,
+    "valid_pct": 0
+  },
+  "auth_check": {
+    "spec_scheme": "",
+    "generated_format": "Bearer ",
+    "match": true,
+    "detail": "no bot/bearer/basic scheme detected"
+  },
+  "browser_session_check": {
+    "required": false,
+    "pass": true,
+    "detail": "browser-session auth not required"
+  },
+  "oauth_scope_coverage_check": {
+    "checked": 0,
+    "covered": 0,
+    "skipped": true,
+    "detail": "no OAuth-scoped endpoints in spec"
+  },
+  "dead_flags": {
+    "total": 23,
+    "dead": 0
+  },
+  "dead_functions": {
+    "total": 78,
+    "dead": 1,
+    "items": [
+      "hasChangedLocalFlags"
+    ]
+  },
+  "pipeline_check": {
+    "sync_calls_domain": true,
+    "search_calls_domain": false,
+    "domain_tables": 4,
+    "sync_file_emitted": true,
+    "sync_resources_present": true,
+    "detail": "sync uses domain-specific Upsert methods; search uses generic Search only; 4 domain tables found"
+  },
+  "example_check": {
+    "tested": 10,
+    "with_examples": 10,
+    "valid_examples": 10,
+    "detail": "10/10 commands have examples"
+  },
+  "wiring_check": {
+    "command_tree": {
+      "defined": 144,
+      "registered": 144
+    },
+    "config_consistency": {
+      "consistent": true
+    },
+    "workflow_completeness": {
+      "skipped": true,
+      "total_steps": 0,
+      "mapped_steps": 0,
+      "detail": "no workflow_verify.yaml found"
+    }
+  },
+  "novel_features_check": {
+    "planned": 6,
+    "found": 6
+  },
+  "mcp_surface_parity": {
+    "state": "runtime_walking",
+    "pass": true,
+    "detail": "MCP surface mirrors the Cobra tree at runtime"
+  },
+  "reimplementation_check": {
+    "checked": 6,
+    "exempted_via_store": 4,
+    "suspicious": [
+      {
+        "command": "properties add",
+        "file": "ga_google.go",
+        "reason": "hand-rolled response: no API client call, no store access"
+      }
+    ],
+    "missing_data_source_strategy": [
+      {
+        "command": "report",
+        "file": "report.go",
+        "reason": "missing // pp:data-source \u003cauto|local|live|computed\u003e annotation"
+      },
+      {
+        "command": "compare",
+        "file": "compare.go",
+        "reason": "missing // pp:data-source \u003cauto|local|live|computed\u003e annotation"
+      },
+      {
+        "command": "trend",
+        "file": "trend.go",
+        "reason": "missing // pp:data-source \u003cauto|local|live|computed\u003e annotation"
+      },
+      {
+        "command": "report",
+        "file": "report.go",
+        "reason": "missing // pp:data-source \u003cauto|local|live|computed\u003e annotation"
+      },
+      {
+        "command": "properties add",
+        "file": "ga_google.go",
+        "reason": "missing // pp:data-source \u003cauto|local|live|computed\u003e annotation"
+      },
+      {
+        "command": "metadata search",
+        "file": "metadata_search.go",
+        "reason": "missing // pp:data-source \u003cauto|local|live|computed\u003e annotation"
+      }
+    ]
+  },
+  "description_drift_check": {
+    "expected": "Flag-driven GA4 reports, one-command fan-out across every property, and a local cache for offline trends — none of which the raw Data API gives you."
+  },
+  "source_client_check": {
+    "checked": 0,
+    "skipped": true
+  },
+  "print_json_filtered_check": {
+    "checked": 122
+  },
+  "test_presence": {
+    "checked": 1
+  },
+  "naming_check": {
+    "checked": 122
+  },
+  "sync_param_drop_check": {
+    "checked": 0,
+    "skipped": true
+  },
+  "issues": [
+    "1 dead helper functions found",
+    "1/6 novel features look reimplemented: properties add (ga_google.go) — hand-rolled response: no API client call, no store access",
+    "6/6 novel features missing data-source strategy: report (report.go) — missing // pp:data-source \u003cauto|local|live|computed\u003e annotation; compare (compare.go) — missing // pp:data-source \u003cauto|local|live|computed\u003e annotation; trend (trend.go) — missing // pp:data-source \u003cauto|local|live|computed\u003e annotation; report (report.go) — missing // pp:data-source \u003cauto|local|live|computed\u003e annotation; properties add (ga_google.go) — missing // pp:data-source \u003cauto|local|live|computed\u003e annotation; metadata search (metadata_search.go) — missing // pp:data-source \u003cauto|local|live|computed\u003e annotation"
+  ]
+}
