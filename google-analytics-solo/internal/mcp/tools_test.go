@@ -20,7 +20,7 @@ import (
 func TestMCPPathResolutionMatchesCLIResolverWithHomeEnv(t *testing.T) {
 	resetMCPPathEnv(t)
 	root := filepath.Join(t.TempDir(), "shared-home")
-	t.Setenv("GOOGLE_ANALYTICS_HOME", root)
+	t.Setenv("GOOGLE_ANALYTICS_SOLO_HOME", root)
 
 	cfg, err := newMCPConfig()
 	if err != nil {
@@ -72,12 +72,12 @@ func resetMCPPathEnv(t *testing.T) string {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 	for _, name := range []string{
-		"GOOGLE_ANALYTICS_CONFIG",
-		"GOOGLE_ANALYTICS_CONFIG_DIR",
-		"GOOGLE_ANALYTICS_DATA_DIR",
-		"GOOGLE_ANALYTICS_STATE_DIR",
-		"GOOGLE_ANALYTICS_CACHE_DIR",
-		"GOOGLE_ANALYTICS_HOME",
+		"GOOGLE_ANALYTICS_SOLO_CONFIG",
+		"GOOGLE_ANALYTICS_SOLO_CONFIG_DIR",
+		"GOOGLE_ANALYTICS_SOLO_DATA_DIR",
+		"GOOGLE_ANALYTICS_SOLO_STATE_DIR",
+		"GOOGLE_ANALYTICS_SOLO_CACHE_DIR",
+		"GOOGLE_ANALYTICS_SOLO_HOME",
 		"XDG_CONFIG_HOME",
 		"XDG_DATA_HOME",
 		"XDG_STATE_HOME",
@@ -94,7 +94,7 @@ func resetMCPPathEnv(t *testing.T) string {
 }
 
 func TestMCPRegisterToolsPreservesTypedSpecialTools(t *testing.T) {
-	s := server.NewMCPServer("google-analytics", "test")
+	s := server.NewMCPServer("google-analytics-solo", "test")
 	RegisterTools(s)
 
 	tools := s.ListTools()

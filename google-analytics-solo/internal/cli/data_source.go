@@ -15,6 +15,7 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"time"
 
 	"google-analytics-solo-pp-cli/internal/client"
 	"google-analytics-solo-pp-cli/internal/store"
@@ -664,3 +665,4 @@ func resolveLocal(ctx context.Context, flags *rootFlags, hintWriter io.Writer, r
 }
 
 // Ensure time import is used (compilation guard).
+var _ = time.Now

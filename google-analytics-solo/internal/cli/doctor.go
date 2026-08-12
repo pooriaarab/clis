@@ -177,10 +177,8 @@ func newDoctorCmd(flags *rootFlags) *cobra.Command {
 			// Check auth
 			authConfigured := false
 			if cfg != nil {
-				// GA4 auth is a dynamically-minted Google token (ADC / service
-				// account / OAuth refresh), not a static config field. Mint it
-				// here so the check reflects real credential availability; a
-				// stored token in config still works via AuthHeader() below.
+				// GA4 auth mints a dynamic Google token; reflect real credential
+				// availability. Hand-edit to a generated file; re-apply after regen.
 				if !cliutil.IsVerifyEnv() {
 					mctx, mcancel := context.WithTimeout(context.Background(), 15*time.Second)
 					if err := cfg.EnsureGoogleToken(mctx); err == nil {

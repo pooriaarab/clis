@@ -30,8 +30,8 @@ func isolateCredsHome(t *testing.T) {
 	t.Helper()
 	t.Setenv("HOME", t.TempDir())
 	for _, name := range []string{
-		"GOOGLE_ANALYTICS_DATA_DIR",
-		"GOOGLE_ANALYTICS_HOME",
+		"GOOGLE_ANALYTICS_SOLO_DATA_DIR",
+		"GOOGLE_ANALYTICS_SOLO_HOME",
 		"XDG_DATA_HOME",
 	} {
 		t.Setenv(name, "")

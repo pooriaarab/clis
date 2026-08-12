@@ -831,7 +831,7 @@ func handleContext(_ context.Context, _ mcplib.CallToolRequest) (*mcplib.CallToo
 		paths["cache_dir"] = dir
 	}
 	ctx := map[string]any{
-		"api":         "google-analytics",
+		"api":         "google-analytics-solo",
 		"description": "Flag-driven GA4 reports, one-command fan-out across every property, and a local cache for offline trends — none of which the raw Data API gives you.",
 		"archetype":   "crm",
 		"tool_count":  67,

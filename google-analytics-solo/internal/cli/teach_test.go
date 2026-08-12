@@ -48,8 +48,8 @@ func withTempLearnHome(t *testing.T) string {
 	dir := t.TempDir()
 	t.Setenv("HOME", dir)
 	t.Setenv(noLearnEnvVar, "")
-	t.Setenv("GOOGLE_ANALYTICS_STATE_DIR", "")
-	t.Setenv("GOOGLE_ANALYTICS_HOME", "")
+	t.Setenv("GOOGLE_ANALYTICS_SOLO_STATE_DIR", "")
+	t.Setenv("GOOGLE_ANALYTICS_SOLO_HOME", "")
 	t.Setenv("XDG_STATE_HOME", "")
 	return dir
 }

@@ -36,7 +36,7 @@ type rootFlags struct {
 	yes           bool
 	agent         bool
 	// noLearn disables both teach (write) and recall (read) for this
-	// invocation. Mirrors the GOOGLE_ANALYTICS_NO_LEARN env var.
+	// invocation. Mirrors the GOOGLE_ANALYTICS_SOLO_NO_LEARN env var.
 	noLearn bool
 	// allowPartialFailure downgrades a detected response-body partial-failure
 	// (e.g. Google Ads `partialFailureError`) from a non-zero exit to a
@@ -192,8 +192,8 @@ func isCobraUsageError(err error) bool {
 func newRootCmd(flags *rootFlags) *cobra.Command {
 	rootCmd := &cobra.Command{
 		Use:   "google-analytics-solo-pp-cli",
-		Short: `Google Analytics CLI — Flag-driven GA4 reports, one-command fan-out across every property, and a local cache for offline trends — none of…`,
-		Long: `Google Analytics CLI — Flag-driven GA4 reports, one-command fan-out across every property, and a local cache for offline trends — none of which the raw Data API gives you.
+		Short: `Google Analytics Solo CLI — Flag-driven GA4 reports, one-command fan-out across every property, and a local cache for offline trends — none of…`,
+		Long: `Google Analytics Solo CLI — Flag-driven GA4 reports, one-command fan-out across every property, and a local cache for offline trends — none of which the raw Data API gives you.
 
 Highlights (not in the official API docs):
   • report   Run one report against every registered property at once and get per-property results.

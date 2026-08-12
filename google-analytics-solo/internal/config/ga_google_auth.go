@@ -22,10 +22,17 @@ import (
 	"golang.org/x/oauth2/google"
 )
 
-// GAScope is the read-only Analytics scope. Read-only by design: the CLI's
-// mutating Admin commands still run through this token, but the scope keeps a
-// leaked token from being able to delete data via other tools.
-const GAScope = "https://www.googleapis.com/auth/analytics.readonly"
+// GAScopes are the Analytics scopes the CLI requests. It covers full read +
+// write: analytics.edit (Admin config writes), analytics.manage.users (access
+// bindings), and analytics.readonly (Data API + Admin reads). Write operations
+// are still gated at the command layer behind --confirm; the scope only makes
+// them possible when the caller opts in. Set GOOGLE_ANALYTICS_TOKEN to override
+// with a narrower token if you want a read-only deployment.
+var GAScopes = []string{
+	"https://www.googleapis.com/auth/analytics.edit",
+	"https://www.googleapis.com/auth/analytics.manage.users",
+	"https://www.googleapis.com/auth/analytics.readonly",
+}
 
 // EnsureGoogleToken mints a Google access token into c.AccessToken when one is
 // needed. It is a no-op when an explicit token override is set or the current
@@ -49,11 +56,11 @@ func (c *Config) EnsureGoogleToken(ctx context.Context) error {
 			ClientID:     c.ClientID,
 			ClientSecret: c.ClientSecret,
 			Endpoint:     google.Endpoint,
-			Scopes:       []string{GAScope},
+			Scopes:       GAScopes,
 		}
 		ts = oc.TokenSource(ctx, &oauth2.Token{RefreshToken: c.RefreshToken})
 	} else {
-		creds, err := google.FindDefaultCredentials(ctx, GAScope)
+		creds, err := google.FindDefaultCredentials(ctx, GAScopes...)
 		if err != nil {
 			return fmt.Errorf("no Google credentials found: run 'gcloud auth application-default login', "+
 				"or set GOOGLE_APPLICATION_CREDENTIALS to a service-account key with GA4 Viewer, "+

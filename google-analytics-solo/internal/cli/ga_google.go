@@ -64,6 +64,7 @@ func init() {
 			"Actually perform mutating operations (Admin writes/deletes, mp send). Without it, mutations preview only.")
 		root.AddCommand(newAliasCmd(flags))
 		root.AddCommand(newMPCmd(flags))
+		root.AddCommand(newRawCmd(flags))
 		applyConfirmGate(root, flags)
 	})
 }
