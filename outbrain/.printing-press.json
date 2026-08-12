@@ -1,0 +1,14 @@
+{
+  "schema_version": 2,
+  "generated_at": "2026-08-11T00:00:00Z",
+  "printing_press_version": "4.29.0",
+  "api_name": "outbrain",
+  "display_name": "Outbrain Amplify",
+  "cli_name": "outbrain-pp-cli",
+  "spec_source": "official",
+  "spec_urls": [
+    "Outbrain's official public page confirms campaign management and reporting, but the current public endpoint and auth reference is not complete enough for safe endpoint generation."
+  ],
+  "auth_type": "token",
+  "mode": "stub"
+}

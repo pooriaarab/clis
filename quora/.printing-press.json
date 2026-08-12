@@ -1,0 +1,14 @@
+{
+  "schema_version": 2,
+  "generated_at": "2026-08-11T00:00:00Z",
+  "printing_press_version": "4.29.0",
+  "api_name": "quora",
+  "display_name": "Quora Ads",
+  "cli_name": "quora-pp-cli",
+  "spec_source": "official",
+  "spec_urls": [
+    "No current public advertiser API reference was found. Keep auth-only and do not scrape the Ads Manager."
+  ],
+  "auth_type": "token",
+  "mode": "stub"
+}

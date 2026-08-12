@@ -1,0 +1,14 @@
+{
+  "schema_version": 2,
+  "generated_at": "2026-08-11T00:00:00Z",
+  "printing_press_version": "4.29.0",
+  "api_name": "criteo",
+  "display_name": "Criteo Marketing Solutions",
+  "cli_name": "criteo-pp-cli",
+  "spec_source": "official",
+  "spec_urls": [
+    "Criteo exposes versioned APIs with permission domains and multiple product surfaces. This print keeps the auth stub until the exact Marketing Solutions resource set is selected."
+  ],
+  "auth_type": "token",
+  "mode": "stub"
+}
