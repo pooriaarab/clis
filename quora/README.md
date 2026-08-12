@@ -30,8 +30,9 @@ Use --help for command details. JSON output is the default.
 
 ## API coverage
 
-undefined
+No current public advertiser API reference was found. Keep auth-only and do not scrape the Ads Manager.
 
 ## Official references checked 2026-08-11
 
-- No current public advertiser API reference was found. Keep auth-only and do not scrape the Ads Manager.
+- https://www.quora.com/ads
+- https://business.quora.com/

@@ -5,5 +5,4 @@ Generated shape: CLI Printing Press style with cmd, internal/cli, internal/clien
 
 The implementation uses only endpoint paths listed in the official references in README.md. It does not infer missing scopes, resource names, request bodies, or write operations.
 
-TODO: undefined
-
+TODO: Outbrain's official public page confirms campaign management and reporting, but the current public endpoint and auth reference is not complete enough for safe endpoint generation.

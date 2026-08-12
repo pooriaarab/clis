@@ -30,8 +30,9 @@ Use --help for command details. JSON output is the default.
 
 ## API coverage
 
-undefined
+StackAdapt does not publish a generally available advertiser API reference. Keep this as an auth placeholder.
 
 ## Official references checked 2026-08-11
 
-- StackAdapt does not publish a generally available advertiser API reference. Keep this as an auth placeholder.
+- https://www.stackadapt.com/
+- https://www.stackadapt.com/contact

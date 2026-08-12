@@ -30,8 +30,9 @@ Use --help for command details. JSON output is the default.
 
 ## API coverage
 
-undefined
+Nextdoor advertiser API access is partner or account gated. Do not invent campaign or reporting paths.
 
 ## Official references checked 2026-08-11
 
-- Nextdoor advertiser API access is partner or account gated. Do not invent campaign or reporting paths.
+- https://business.nextdoor.com/
+- https://business.nextdoor.com/en-us/advertise

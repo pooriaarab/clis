@@ -21,7 +21,7 @@ type spec struct {
 
 var platform = spec{
 	Name: "quora", Display: "Quora Ads", Env: "QUORA_ADS", BaseURL: "https://www.quora.com", Mode: "stub",
-	Accounts: "", Campaigns: "", CampaignCreate: "", Audiences: "", AudienceCreate: "", Report: "https://www.quora.com/ads|https://business.quora.com/", Todo: "undefined",
+	Accounts: "", Campaigns: "", CampaignCreate: "", Audiences: "", AudienceCreate: "", Report: "", Todo: "No current public advertiser API reference was found. Keep auth-only and do not scrape the Ads Manager.",
 }
 
 func Execute() error { return root().Execute() }

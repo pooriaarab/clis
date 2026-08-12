@@ -21,7 +21,7 @@ type spec struct {
 
 var platform = spec{
 	Name: "stackadapt", Display: "StackAdapt", Env: "STACKADAPT", BaseURL: "https://api.stackadapt.com", Mode: "stub",
-	Accounts: "", Campaigns: "", CampaignCreate: "", Audiences: "", AudienceCreate: "", Report: "https://www.stackadapt.com/|https://www.stackadapt.com/contact", Todo: "undefined",
+	Accounts: "", Campaigns: "", CampaignCreate: "", Audiences: "", AudienceCreate: "", Report: "", Todo: "StackAdapt does not publish a generally available advertiser API reference. Keep this as an auth placeholder.",
 }
 
 func Execute() error { return root().Execute() }

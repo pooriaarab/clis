@@ -21,7 +21,7 @@ type spec struct {
 
 var platform = spec{
 	Name: "criteo", Display: "Criteo Marketing Solutions", Env: "CRITEO", BaseURL: "https://api.criteo.com", Mode: "stub",
-	Accounts: "", Campaigns: "", CampaignCreate: "", Audiences: "", AudienceCreate: "", Report: "https://developers.criteo.com/marketing-solutions/v2025.07/docs/audiences|https://developers.criteo.com/retail-media/docs/create-your-app|https://developers.criteo.com/marketing-solutions/v2025.01/docs/criteo-api-swagger", Todo: "undefined",
+	Accounts: "", Campaigns: "", CampaignCreate: "", Audiences: "", AudienceCreate: "", Report: "", Todo: "Criteo exposes versioned APIs with permission domains and multiple product surfaces. This print keeps the auth stub until the exact Marketing Solutions resource set is selected.",
 }
 
 func Execute() error { return root().Execute() }

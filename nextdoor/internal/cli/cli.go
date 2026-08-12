@@ -21,7 +21,7 @@ type spec struct {
 
 var platform = spec{
 	Name: "nextdoor", Display: "Nextdoor Ads", Env: "NEXTDOOR_ADS", BaseURL: "https://api.nextdoor.com", Mode: "stub",
-	Accounts: "", Campaigns: "", CampaignCreate: "", Audiences: "", AudienceCreate: "", Report: "https://business.nextdoor.com/|https://business.nextdoor.com/en-us/advertise", Todo: "undefined",
+	Accounts: "", Campaigns: "", CampaignCreate: "", Audiences: "", AudienceCreate: "", Report: "", Todo: "Nextdoor advertiser API access is partner or account gated. Do not invent campaign or reporting paths.",
 }
 
 func Execute() error { return root().Execute() }

@@ -5,5 +5,4 @@ Generated shape: CLI Printing Press style with cmd, internal/cli, internal/clien
 
 The implementation uses only endpoint paths listed in the official references in README.md. It does not infer missing scopes, resource names, request bodies, or write operations.
 
-TODO: undefined
-
+TODO: The Trade Desk APIs are partner-gated. Add verified account, campaign, audience, and reporting resources after partner access.

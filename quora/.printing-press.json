@@ -7,7 +7,8 @@
   "cli_name": "quora-pp-cli",
   "spec_source": "official",
   "spec_urls": [
-    "No current public advertiser API reference was found. Keep auth-only and do not scrape the Ads Manager."
+    "https://www.quora.com/ads",
+    "https://business.quora.com/"
   ],
   "auth_type": "token",
   "mode": "stub"

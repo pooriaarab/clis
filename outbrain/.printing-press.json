@@ -7,7 +7,8 @@
   "cli_name": "outbrain-pp-cli",
   "spec_source": "official",
   "spec_urls": [
-    "Outbrain's official public page confirms campaign management and reporting, but the current public endpoint and auth reference is not complete enough for safe endpoint generation."
+    "https://developer.outbrain.com/home-page/amplify-api/",
+    "https://developer.outbrain.com/"
   ],
   "auth_type": "token",
   "mode": "stub"

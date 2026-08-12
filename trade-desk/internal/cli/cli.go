@@ -21,7 +21,7 @@ type spec struct {
 
 var platform = spec{
 	Name: "trade-desk", Display: "The Trade Desk", Env: "TRADE_DESK", BaseURL: "https://api.thetradedesk.com", Mode: "stub",
-	Accounts: "", Campaigns: "", CampaignCreate: "", Audiences: "", AudienceCreate: "", Report: "https://partner.thetradedesk.com/|https://www.thetradedesk.com/us/", Todo: "undefined",
+	Accounts: "", Campaigns: "", CampaignCreate: "", Audiences: "", AudienceCreate: "", Report: "", Todo: "The Trade Desk APIs are partner-gated. Add verified account, campaign, audience, and reporting resources after partner access.",
 }
 
 func Execute() error { return root().Execute() }

@@ -30,8 +30,9 @@ Use --help for command details. JSON output is the default.
 
 ## API coverage
 
-undefined
+Outbrain's official public page confirms campaign management and reporting, but the current public endpoint and auth reference is not complete enough for safe endpoint generation.
 
 ## Official references checked 2026-08-11
 
-- Outbrain's official public page confirms campaign management and reporting, but the current public endpoint and auth reference is not complete enough for safe endpoint generation.
+- https://developer.outbrain.com/home-page/amplify-api/
+- https://developer.outbrain.com/

@@ -5,5 +5,4 @@ Generated shape: CLI Printing Press style with cmd, internal/cli, internal/clien
 
 The implementation uses only endpoint paths listed in the official references in README.md. It does not infer missing scopes, resource names, request bodies, or write operations.
 
-TODO: undefined
-
+TODO: Criteo exposes versioned APIs with permission domains and multiple product surfaces. This print keeps the auth stub until the exact Marketing Solutions resource set is selected.

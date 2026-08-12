@@ -21,7 +21,7 @@ type spec struct {
 
 var platform = spec{
 	Name: "outbrain", Display: "Outbrain Amplify", Env: "OUTBRAIN", BaseURL: "https://api.outbrain.com", Mode: "stub",
-	Accounts: "", Campaigns: "", CampaignCreate: "", Audiences: "", AudienceCreate: "", Report: "https://developer.outbrain.com/home-page/amplify-api/|https://developer.outbrain.com/", Todo: "undefined",
+	Accounts: "", Campaigns: "", CampaignCreate: "", Audiences: "", AudienceCreate: "", Report: "", Todo: "Outbrain's official public page confirms campaign management and reporting, but the current public endpoint and auth reference is not complete enough for safe endpoint generation.",
 }
 
 func Execute() error { return root().Execute() }

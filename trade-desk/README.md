@@ -30,8 +30,9 @@ Use --help for command details. JSON output is the default.
 
 ## API coverage
 
-undefined
+The Trade Desk APIs are partner-gated. Add verified account, campaign, audience, and reporting resources after partner access.
 
 ## Official references checked 2026-08-11
 
-- The Trade Desk APIs are partner-gated. Add verified account, campaign, audience, and reporting resources after partner access.
+- https://partner.thetradedesk.com/
+- https://www.thetradedesk.com/us/

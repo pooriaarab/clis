@@ -30,8 +30,10 @@ Use --help for command details. JSON output is the default.
 
 ## API coverage
 
-undefined
+Criteo exposes versioned APIs with permission domains and multiple product surfaces. This print keeps the auth stub until the exact Marketing Solutions resource set is selected.
 
 ## Official references checked 2026-08-11
 
-- Criteo exposes versioned APIs with permission domains and multiple product surfaces. This print keeps the auth stub until the exact Marketing Solutions resource set is selected.
+- https://developers.criteo.com/marketing-solutions/v2025.07/docs/audiences
+- https://developers.criteo.com/retail-media/docs/create-your-app
+- https://developers.criteo.com/marketing-solutions/v2025.01/docs/criteo-api-swagger
