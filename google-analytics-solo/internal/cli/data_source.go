@@ -96,9 +96,9 @@ func openStoreForRead(ctx context.Context, cliName string) (*store.Store, error)
 // localProvenance builds a DataProvenance for local data reads.
 func localProvenance(db *store.Store, resourceType, reason string) DataProvenance {
 	prov := DataProvenance{
-		Source:		"local",
-		Reason:		reason,
-		ResourceType:	resourceType,
+		Source:       "local",
+		Reason:       reason,
+		ResourceType: resourceType,
 	}
 	_, lastSynced, _, err := db.GetSyncState(resourceType)
 	if err == nil && !lastSynced.IsZero() {
@@ -184,7 +184,7 @@ func resolveReadWithStrategyResponsePathAndJSONGuard(ctx context.Context, c *cli
 		data = applyResponsePath(data, responsePath)
 		return data, attachFreshness(DataProvenance{Source: "live"}, flags), nil
 
-	default:	// "auto"
+	default: // "auto"
 		data, err := c.GetWithHeaders(ctx, path, params, headers)
 		if err == nil {
 			if guardLiveJSON {
@@ -264,7 +264,7 @@ func resolvePaginatedReadWithStrategyAndJSONGuard(ctx context.Context, c *client
 		}
 		return data, attachFreshness(DataProvenance{Source: "live"}, flags), nil
 
-	default:	// "auto"
+	default: // "auto"
 		if !guardLiveJSON && fetchAll {
 			return nil, DataProvenance{}, fmt.Errorf("--all is not supported for live HTML responses; omit --all or use --data-source local")
 		}
@@ -298,31 +298,31 @@ func resolvePaginatedReadWithStrategyAndJSONGuard(ctx context.Context, c *client
 // wrapper-named fields happens to be an empty array.
 var listEnvelopeMetadataKeys = map[string]bool{
 	// list wrappers themselves — must stay in sync with pageItemKeys
-	"results":	true, "data": true, "items": true,
-	"records":	true, "nodes": true, "entries": true, "features": true,
-	"Results":	true, "Data": true, "Items": true,
-	"Records":	true, "Nodes": true, "Entries": true, "Features": true,
+	"results": true, "data": true, "items": true,
+	"records": true, "nodes": true, "entries": true, "features": true,
+	"Results": true, "Data": true, "Items": true,
+	"Records": true, "Nodes": true, "Entries": true, "Features": true,
 	// pagination cursors / tokens
-	"next_cursor":	true, "nextCursor": true,
-	"next_page_token":	true, "nextPageToken": true,
-	"page_token":	true, "pageToken": true,
-	"end_cursor":	true, "endCursor": true,
-	"start_cursor":	true, "startCursor": true,
-	"cursor":	true, "after": true, "before": true,
+	"next_cursor": true, "nextCursor": true,
+	"next_page_token": true, "nextPageToken": true,
+	"page_token": true, "pageToken": true,
+	"end_cursor": true, "endCursor": true,
+	"start_cursor": true, "startCursor": true,
+	"cursor": true, "after": true, "before": true,
 	// has-more flags and page numbers
-	"has_more":	true, "hasMore": true, "has_next": true, "hasNext": true,
-	"next_page":	true, "previous_page": true,
-	"page":	true, "page_size": true, "per_page": true,
+	"has_more": true, "hasMore": true, "has_next": true, "hasNext": true,
+	"next_page": true, "previous_page": true,
+	"page": true, "page_size": true, "per_page": true,
 	// counts / totals
-	"total":	true, "count": true, "size": true, "total_count": true, "totalCount": true,
+	"total": true, "count": true, "size": true, "total_count": true, "totalCount": true,
 	// JSend / common status envelopes
-	"success":	true, "status": true, "message": true, "error": true,
-	"errors":	true, "Errors": true, "warnings": true, "Warnings": true,
+	"success": true, "status": true, "message": true, "error": true,
+	"errors": true, "Errors": true, "warnings": true, "Warnings": true,
 	// wrapper objects
-	"links":	true, "meta": true, "pagination": true,
-	"response_metadata":	true, "paging": true,
+	"links": true, "meta": true, "pagination": true,
+	"response_metadata": true, "paging": true,
 	// links shape
-	"next":	true, "prev": true, "previous": true, "first": true, "last": true,
+	"next": true, "prev": true, "previous": true, "first": true, "last": true,
 }
 
 var writeThroughListWrapperKeys = []string{
@@ -573,8 +573,8 @@ func mutationResponseItemsFromPayload(resourceType string, data json.RawMessage)
 
 func mutationResponsePayload(data json.RawMessage) json.RawMessage {
 	var envelope struct {
-		Status	string		`json:"status"`
-		Data	json.RawMessage	`json:"data"`
+		Status string          `json:"status"`
+		Data   json.RawMessage `json:"data"`
 	}
 	if err := json.Unmarshal(data, &envelope); err != nil || envelope.Status == "" || envelope.Data == nil {
 		return data
@@ -624,7 +624,7 @@ func resolveLocal(ctx context.Context, flags *rootFlags, hintWriter io.Writer, r
 	}
 
 	if isList {
-		raw, err := db.List(resourceType, 0)	// 0 = no limit, return all synced data
+		raw, err := db.List(resourceType, 0) // 0 = no limit, return all synced data
 		if err != nil {
 			return nil, DataProvenance{}, fmt.Errorf("querying local store: %w", err)
 		}

@@ -1,0 +1,15 @@
+{
+  "timestamp": "2026-08-12T05:58:07.926889Z",
+  "cli_dir": "\u003ccli-dir\u003e/google-analytics-solo-pp-cli",
+  "findings": [
+    {
+      "kind": "thin-short",
+      "command": "list",
+      "file": "teach.go",
+      "line": 692,
+      "evidence": "List recorded learnings",
+      "status": "accepted",
+      "note": "DO-NOT-EDIT generated learn-loop file; Short is brief but precise (verb + object), command is mcp:read-only with worked examples. Needs generator-template fix, not a hand-edit."
+    }
+  ]
+}

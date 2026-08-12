@@ -1,5 +1,7 @@
 // Copyright 2026 Pooria Arab and contributors. Licensed under Apache-2.0. See LICENSE.
 // Hand-authored novel command. generate --force preserves implemented bodies.
+//
+// pp:data-source local — reads cached report runs from the local store only.
 
 package cli
 
