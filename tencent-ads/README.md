@@ -34,5 +34,5 @@ Tencent advertising access and current API details are regional and account-gate
 
 ## Official references checked 2026-08-11
 
-+- https://developers.e.qq.com/
+- https://developers.e.qq.com/
 - https://e.qq.com/ads/

@@ -7,7 +7,7 @@
   "cli_name": "yahoo-japan-ads-pp-cli",
   "spec_source": "official",
   "spec_urls": [
-+    "https://ads-developers.yahoo.co.jp/en/ads-api/about/about.html",
+    "https://ads-developers.yahoo.co.jp/en/ads-api/about/about.html",
     "https://ads-developers.yahoo.co.jp/en/ads-api/developers-guide/yda-v19.html",
     "https://ads-developers.yahoo.co.jp/ja/ads-api/startup-guide/api-call.html"
   ],

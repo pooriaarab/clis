@@ -34,5 +34,5 @@ Mercado Ads access is account and product gated. The public developer portal doe
 
 ## Official references checked 2026-08-11
 
-+- https://developers.mercadolibre.com/
+- https://developers.mercadolibre.com/
 - https://developers.mercadolibre.com/en/authentication-and-authorization

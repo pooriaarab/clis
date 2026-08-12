@@ -34,5 +34,5 @@ LINE Ads uses request signatures with an access key and secret. This print avoid
 
 ## Official references checked 2026-08-11
 
-+- https://developers.line.biz/en/docs/line-ads-api/
+- https://developers.line.biz/en/docs/line-ads-api/
 - https://ads.line.me/public-docs/pages/v3/3.11.4/certificated-ad-tech-general-partner/

@@ -34,5 +34,5 @@ Baidu's official developer center documents OAuth 2.0 and advertising product ar
 
 ## Official references checked 2026-08-11
 
-+- https://dev2.baidu.com/content
+- https://dev2.baidu.com/content
 - https://openapi.baidu.com/ms/oauth

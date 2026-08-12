@@ -7,7 +7,7 @@
   "cli_name": "baidu-ads-pp-cli",
   "spec_source": "official",
   "spec_urls": [
-+    "https://dev2.baidu.com/content",
+    "https://dev2.baidu.com/content",
     "https://openapi.baidu.com/ms/oauth"
   ],
   "auth_type": "token",

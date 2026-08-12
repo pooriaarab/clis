@@ -34,5 +34,5 @@ The current official public docs do not expose a stable advertising API contract
 
 ## Official references checked 2026-08-11
 
-+- https://ads.vk.com/
+- https://ads.vk.com/
 - https://dev.vk.com/

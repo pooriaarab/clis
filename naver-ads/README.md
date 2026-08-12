@@ -34,5 +34,5 @@ Naver Search Ads uses an API license, secret key, customer ID, and request signi
 
 ## Official references checked 2026-08-11
 
-+- https://naver.github.io/searchad-apidoc/
+- https://naver.github.io/searchad-apidoc/
 - https://ads.naver.com/help/faq/302?t=1769857366078

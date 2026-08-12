@@ -7,7 +7,7 @@
   "cli_name": "vk-ads-pp-cli",
   "spec_source": "official",
   "spec_urls": [
-+    "https://ads.vk.com/",
+    "https://ads.vk.com/",
     "https://dev.vk.com/"
   ],
   "auth_type": "token",

@@ -7,7 +7,7 @@
   "cli_name": "mercadolibre-ads-pp-cli",
   "spec_source": "official",
   "spec_urls": [
-+    "https://developers.mercadolibre.com/",
+    "https://developers.mercadolibre.com/",
     "https://developers.mercadolibre.com/en/authentication-and-authorization"
   ],
   "auth_type": "token",
