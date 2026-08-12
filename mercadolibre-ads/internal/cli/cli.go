@@ -21,7 +21,7 @@ type spec struct {
 
 var platform = spec{
 	Name: "mercadolibre-ads", Display: "Mercado Ads", Env: "MERCADOLIBRE_ADS", BaseURL: "https://api.mercadolibre.com", Mode: "stub",
-	Accounts: "", Campaigns: "", CampaignCreate: "", Audiences: "", AudienceCreate: "", Report: "https://developers.mercadolibre.com/|https://developers.mercadolibre.com/en/authentication-and-authorization", Todo: "undefined",
+	Accounts: "", Campaigns: "", CampaignCreate: "", Audiences: "", AudienceCreate: "", Report: "", Todo: "Mercado Ads access is account and product gated. The public developer portal does not provide enough current Ads endpoint detail for safe generation.",
 }
 
 func Execute() error { return root().Execute() }

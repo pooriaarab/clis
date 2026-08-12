@@ -7,7 +7,8 @@
   "cli_name": "baidu-ads-pp-cli",
   "spec_source": "official",
   "spec_urls": [
-    "Baidu's official developer center documents OAuth 2.0 and advertising product areas, but endpoint details require partner onboarding. Do not invent paths."
++    "https://dev2.baidu.com/content",
+    "https://openapi.baidu.com/ms/oauth"
   ],
   "auth_type": "token",
   "mode": "stub"

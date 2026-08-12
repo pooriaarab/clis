@@ -30,8 +30,9 @@ Use --help for command details. JSON output is the default.
 
 ## API coverage
 
-undefined
+The current official public docs do not expose a stable advertising API contract for endpoint generation.
 
 ## Official references checked 2026-08-11
 
-- The current official public docs do not expose a stable advertising API contract for endpoint generation.
++- https://ads.vk.com/
+- https://dev.vk.com/

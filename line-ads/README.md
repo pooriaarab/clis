@@ -30,8 +30,9 @@ Use --help for command details. JSON output is the default.
 
 ## API coverage
 
-undefined
+LINE Ads uses request signatures with an access key and secret. This print avoids a partial signer and keeps campaign, audience, and reporting operations TODO.
 
 ## Official references checked 2026-08-11
 
-- LINE Ads uses request signatures with an access key and secret. This print avoids a partial signer and keeps campaign, audience, and reporting operations TODO.
++- https://developers.line.biz/en/docs/line-ads-api/
+- https://ads.line.me/public-docs/pages/v3/3.11.4/certificated-ad-tech-general-partner/

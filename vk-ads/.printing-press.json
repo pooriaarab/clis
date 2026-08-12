@@ -7,7 +7,8 @@
   "cli_name": "vk-ads-pp-cli",
   "spec_source": "official",
   "spec_urls": [
-    "The current official public docs do not expose a stable advertising API contract for endpoint generation."
++    "https://ads.vk.com/",
+    "https://dev.vk.com/"
   ],
   "auth_type": "token",
   "mode": "stub"

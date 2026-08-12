@@ -7,7 +7,8 @@
   "cli_name": "mercadolibre-ads-pp-cli",
   "spec_source": "official",
   "spec_urls": [
-    "Mercado Ads access is account and product gated. The public developer portal does not provide enough current Ads endpoint detail for safe generation."
++    "https://developers.mercadolibre.com/",
+    "https://developers.mercadolibre.com/en/authentication-and-authorization"
   ],
   "auth_type": "token",
   "mode": "stub"

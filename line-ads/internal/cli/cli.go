@@ -21,7 +21,7 @@ type spec struct {
 
 var platform = spec{
 	Name: "line-ads", Display: "LINE Ads", Env: "LINE_ADS", BaseURL: "https://ads.line.me", Mode: "stub",
-	Accounts: "", Campaigns: "", CampaignCreate: "", Audiences: "", AudienceCreate: "", Report: "https://developers.line.biz/en/docs/line-ads-api/|https://ads.line.me/public-docs/pages/v3/3.11.4/certificated-ad-tech-general-partner/", Todo: "undefined",
+	Accounts: "", Campaigns: "", CampaignCreate: "", Audiences: "", AudienceCreate: "", Report: "", Todo: "LINE Ads uses request signatures with an access key and secret. This print avoids a partial signer and keeps campaign, audience, and reporting operations TODO.",
 }
 
 func Execute() error { return root().Execute() }

@@ -30,8 +30,9 @@ Use --help for command details. JSON output is the default.
 
 ## API coverage
 
-undefined
+Tencent advertising access and current API details are regional and account-gated. Keep endpoint coverage TODO.
 
 ## Official references checked 2026-08-11
 
-- Tencent advertising access and current API details are regional and account-gated. Keep endpoint coverage TODO.
++- https://developers.e.qq.com/
+- https://e.qq.com/ads/

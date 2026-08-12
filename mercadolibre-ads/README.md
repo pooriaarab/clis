@@ -30,8 +30,9 @@ Use --help for command details. JSON output is the default.
 
 ## API coverage
 
-undefined
+Mercado Ads access is account and product gated. The public developer portal does not provide enough current Ads endpoint detail for safe generation.
 
 ## Official references checked 2026-08-11
 
-- Mercado Ads access is account and product gated. The public developer portal does not provide enough current Ads endpoint detail for safe generation.
++- https://developers.mercadolibre.com/
+- https://developers.mercadolibre.com/en/authentication-and-authorization

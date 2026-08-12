@@ -21,7 +21,7 @@ type spec struct {
 
 var platform = spec{
 	Name: "baidu-ads", Display: "Baidu Ads", Env: "BAIDU_ADS", BaseURL: "https://api.baidu.com", Mode: "stub",
-	Accounts: "", Campaigns: "", CampaignCreate: "", Audiences: "", AudienceCreate: "", Report: "https://dev2.baidu.com/content|https://openapi.baidu.com/ms/oauth", Todo: "undefined",
+	Accounts: "", Campaigns: "", CampaignCreate: "", Audiences: "", AudienceCreate: "", Report: "", Todo: "Baidu's official developer center documents OAuth 2.0 and advertising product areas, but endpoint details require partner onboarding. Do not invent paths.",
 }
 
 func Execute() error { return root().Execute() }

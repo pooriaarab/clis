@@ -7,7 +7,8 @@
   "cli_name": "tencent-ads-pp-cli",
   "spec_source": "official",
   "spec_urls": [
-    "Tencent advertising access and current API details are regional and account-gated. Keep endpoint coverage TODO."
++    "https://developers.e.qq.com/",
+    "https://e.qq.com/ads/"
   ],
   "auth_type": "token",
   "mode": "stub"

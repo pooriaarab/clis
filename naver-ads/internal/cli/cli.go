@@ -21,7 +21,7 @@ type spec struct {
 
 var platform = spec{
 	Name: "naver-ads", Display: "Naver Ads", Env: "NAVER_ADS", BaseURL: "https://api.searchad.naver.com", Mode: "stub",
-	Accounts: "", Campaigns: "", CampaignCreate: "", Audiences: "", AudienceCreate: "", Report: "https://naver.github.io/searchad-apidoc/|https://ads.naver.com/help/faq/302?t=1769857366078", Todo: "undefined",
+	Accounts: "", Campaigns: "", CampaignCreate: "", Audiences: "", AudienceCreate: "", Report: "", Todo: "Naver Search Ads uses an API license, secret key, customer ID, and request signing. This print keeps auth-only until the signer and current method set are generated from the official reference.",
 }
 
 func Execute() error { return root().Execute() }

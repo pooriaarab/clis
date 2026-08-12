@@ -7,7 +7,8 @@
   "cli_name": "line-ads-pp-cli",
   "spec_source": "official",
   "spec_urls": [
-    "LINE Ads uses request signatures with an access key and secret. This print avoids a partial signer and keeps campaign, audience, and reporting operations TODO."
++    "https://developers.line.biz/en/docs/line-ads-api/",
+    "https://ads.line.me/public-docs/pages/v3/3.11.4/certificated-ad-tech-general-partner/"
   ],
   "auth_type": "token",
   "mode": "stub"

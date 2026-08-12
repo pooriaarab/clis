@@ -30,8 +30,9 @@ Use --help for command details. JSON output is the default.
 
 ## API coverage
 
-undefined
+Baidu's official developer center documents OAuth 2.0 and advertising product areas, but endpoint details require partner onboarding. Do not invent paths.
 
 ## Official references checked 2026-08-11
 
-- Baidu's official developer center documents OAuth 2.0 and advertising product areas, but endpoint details require partner onboarding. Do not invent paths.
++- https://dev2.baidu.com/content
+- https://openapi.baidu.com/ms/oauth

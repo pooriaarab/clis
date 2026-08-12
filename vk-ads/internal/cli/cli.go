@@ -21,7 +21,7 @@ type spec struct {
 
 var platform = spec{
 	Name: "vk-ads", Display: "VK Ads", Env: "VK_ADS", BaseURL: "https://ads.vk.com", Mode: "stub",
-	Accounts: "", Campaigns: "", CampaignCreate: "", Audiences: "", AudienceCreate: "", Report: "https://ads.vk.com/|https://dev.vk.com/", Todo: "undefined",
+	Accounts: "", Campaigns: "", CampaignCreate: "", Audiences: "", AudienceCreate: "", Report: "", Todo: "The current official public docs do not expose a stable advertising API contract for endpoint generation.",
 }
 
 func Execute() error { return root().Execute() }

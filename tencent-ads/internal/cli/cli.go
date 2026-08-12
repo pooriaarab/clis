@@ -21,7 +21,7 @@ type spec struct {
 
 var platform = spec{
 	Name: "tencent-ads", Display: "Tencent Ads", Env: "TENCENT_ADS", BaseURL: "https://api.e.qq.com", Mode: "stub",
-	Accounts: "", Campaigns: "", CampaignCreate: "", Audiences: "", AudienceCreate: "", Report: "https://developers.e.qq.com/|https://e.qq.com/ads/", Todo: "undefined",
+	Accounts: "", Campaigns: "", CampaignCreate: "", Audiences: "", AudienceCreate: "", Report: "", Todo: "Tencent advertising access and current API details are regional and account-gated. Keep endpoint coverage TODO.",
 }
 
 func Execute() error { return root().Execute() }

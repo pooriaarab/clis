@@ -30,8 +30,10 @@ Use --help for command details. JSON output is the default.
 
 ## API coverage
 
-undefined
+Yahoo! JAPAN Ads publishes OAuth and versioned API guides, but each service has separate SOAP or JSON contracts. Keep endpoint coverage TODO until generated per service.
 
 ## Official references checked 2026-08-11
 
-- Yahoo! JAPAN Ads publishes OAuth and versioned API guides, but each service has separate SOAP or JSON contracts. Keep endpoint coverage TODO until generated per service.
++- https://ads-developers.yahoo.co.jp/en/ads-api/about/about.html
+- https://ads-developers.yahoo.co.jp/en/ads-api/developers-guide/yda-v19.html
+- https://ads-developers.yahoo.co.jp/ja/ads-api/startup-guide/api-call.html

@@ -30,8 +30,9 @@ Use --help for command details. JSON output is the default.
 
 ## API coverage
 
-undefined
+Naver Search Ads uses an API license, secret key, customer ID, and request signing. This print keeps auth-only until the signer and current method set are generated from the official reference.
 
 ## Official references checked 2026-08-11
 
-- Naver Search Ads uses an API license, secret key, customer ID, and request signing. This print keeps auth-only until the signer and current method set are generated from the official reference.
++- https://naver.github.io/searchad-apidoc/
+- https://ads.naver.com/help/faq/302?t=1769857366078
