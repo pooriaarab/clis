@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026.8.1 - 2026-08-12
+
+- Add `raw <METHOD> <PATH>` escape hatch reaching any GA4 Admin/Data endpoint; mutations gated by `--confirm`, empty POST/PATCH/PUT bodies default to `{}` so custom methods like `:archive` route correctly.
+- Broaden the minted token to `analytics.readonly` + `analytics.edit` so Admin config writes work with an Editor+ role on the property.
+- Replace the `cohort` proxy with GA4's real `cohortSpec` retention report (`--granularity`, `--periods`, `--end`).
+
 ## 2026.7.1 - 2026-07-08
 
 - fix(catalog): require Go 1.26.5 across published modules (#1467).

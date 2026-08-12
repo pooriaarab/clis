@@ -101,6 +101,25 @@ func (c *Client) DataStreams(ctx context.Context, property string) (DataStreamsR
 	return out, st, err
 }
 
+// Raw calls any GA4 endpoint with an arbitrary method/URL/body — the 100% API
+// escape hatch. target must be a full URL; body may be nil for GET/DELETE.
+func (c *Client) Raw(ctx context.Context, method, target string, body []byte) (json.RawMessage, int, error) {
+	var reader io.Reader
+	if len(body) > 0 {
+		reader = bytes.NewReader(body)
+	}
+	req, err := http.NewRequestWithContext(ctx, strings.ToUpper(method), target, reader)
+	if err != nil {
+		return nil, 0, err
+	}
+	if len(body) > 0 {
+		req.Header.Set("Content-Type", "application/json")
+	}
+	var out json.RawMessage
+	st, err := c.do(req, &out)
+	return out, st, err
+}
+
 func (c *Client) dataURL(property, method string) string {
 	return fmt.Sprintf("%s/properties/%s:%s", c.DataBase, url.PathEscape(property), method)
 }

@@ -4,10 +4,70 @@ import (
 	"encoding/json"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/pooriaarab/clis/google-analytics/internal/ga4"
 	"github.com/spf13/cobra"
 )
+
+const cohortMaxPeriods = 12
+
+// cohortRequest builds a real GA4 cohortSpec runReport that mirrors the UI
+// Cohort exploration: `periods` acquisition cohorts by firstSessionDate (cohort_0
+// is the most recent bucket ending at `end`), each tracked over the same
+// retention axis. Granularity is daily|weekly|monthly; `end` is YYYY-MM-DD and
+// falls back to today (UTC) when empty/unparseable. Buckets align to the
+// granularity so cohorts[].dateRange stays valid against cohortsRange.
+func cohortRequest(granularity string, periods int, end string) ga4.RunReportRequest {
+	if periods <= 0 {
+		periods = 6
+	}
+	if periods > cohortMaxPeriods {
+		periods = cohortMaxPeriods
+	}
+	endT, err := time.Parse("2006-01-02", strings.TrimSpace(end))
+	if err != nil {
+		endT = time.Now().UTC()
+	}
+	var apiGran, nthDim string
+	cohorts := make([]ga4.Cohort, 0, periods)
+	switch strings.ToLower(strings.TrimSpace(granularity)) {
+	case "daily", "day":
+		apiGran, nthDim = "DAILY", "cohortNthDay"
+		for i := 0; i < periods; i++ {
+			d := endT.AddDate(0, 0, -i).Format("2006-01-02")
+			cohorts = append(cohorts, cohortAt(i, d, d))
+		}
+	case "monthly", "month":
+		apiGran, nthDim = "MONTHLY", "cohortNthMonth"
+		for i := 0; i < periods; i++ {
+			m := endT.AddDate(0, -i, 0)
+			first := time.Date(m.Year(), m.Month(), 1, 0, 0, 0, 0, time.UTC)
+			last := first.AddDate(0, 1, -1)
+			cohorts = append(cohorts, cohortAt(i, first.Format("2006-01-02"), last.Format("2006-01-02")))
+		}
+	default: // weekly
+		apiGran, nthDim = "WEEKLY", "cohortNthWeek"
+		for i := 0; i < periods; i++ {
+			endW := endT.AddDate(0, 0, -i*7)
+			startW := endW.AddDate(0, 0, -6)
+			cohorts = append(cohorts, cohortAt(i, startW.Format("2006-01-02"), endW.Format("2006-01-02")))
+		}
+	}
+	return ga4.RunReportRequest{
+		Dimensions: []ga4.Dimension{{Name: "cohort"}, {Name: nthDim}},
+		Metrics:    []ga4.Metric{{Name: "cohortActiveUsers"}},
+		CohortSpec: &ga4.CohortSpec{
+			Cohorts:      cohorts,
+			CohortsRange: ga4.CohortsRange{Granularity: apiGran, StartOffset: 0, EndOffset: periods - 1},
+		},
+	}
+}
+func cohortAt(i int, start, end string) ga4.Cohort {
+	// GA4 rejects names beginning with "cohort_"; the acquisition start date is
+	// unique per bucket and self-describing when it surfaces as the cohort dim.
+	return ga4.Cohort{Name: start, Dimension: "firstSessionDate", DateRange: ga4.DateRange{StartDate: start, EndDate: end}}
+}
 
 func reportFlags(c *cobra.Command, metrics, dims, start, end *string, limit *int) {
 	c.Flags().StringVar(metrics, "metrics", "sessions,totalUsers,conversions,totalRevenue", "Comma-separated metrics")

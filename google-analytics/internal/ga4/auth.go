@@ -36,7 +36,7 @@ func MintToken(key ServiceAccountKey) (string, error) {
 	}
 	now := time.Now().Unix()
 	header := b64json(map[string]string{"alg": "RS256", "typ": "JWT"})
-	claims := b64json(map[string]any{"iss": key.ClientEmail, "scope": AnalyticsReadonlyScope, "aud": key.TokenURI, "iat": now, "exp": now + 3600})
+	claims := b64json(map[string]any{"iss": key.ClientEmail, "scope": RequestedScopes, "aud": key.TokenURI, "iat": now, "exp": now + 3600})
 	unsigned := header + "." + claims
 	h := sha256.Sum256([]byte(unsigned))
 	sig, err := rsa.SignPKCS1v15(rand.Reader, pk, crypto.SHA256, h[:])

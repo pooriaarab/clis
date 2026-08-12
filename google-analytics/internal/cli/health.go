@@ -23,7 +23,7 @@ func newDoctorCmd(flags *rootFlags) *cobra.Command {
 }
 func runHealth(cmd *cobra.Command, flags *rootFlags, props string) error {
 	cl, key, err := flags.newClient()
-	res := map[string]any{"credential_path": credentialPath(flags), "scope": ga4.AnalyticsReadonlyScope}
+	res := map[string]any{"credential_path": credentialPath(flags), "scope": ga4.RequestedScopes}
 	if key.ClientEmail != "" {
 		res["service_account"] = key.ClientEmail
 		res["project_id"] = key.ProjectID
