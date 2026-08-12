@@ -385,7 +385,9 @@ func newAliasDiscoverCmd(flags *rootFlags) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			raw, err := c.Get(ctx, "/v1alpha/accountSummaries", map[string]string{"pageSize": "200"})
+			// accountSummaries is an Admin API endpoint on a different host than
+			// the client's default (Data API) base_url, so use the absolute URL.
+			raw, err := c.Get(ctx, "https://analyticsadmin.googleapis.com/v1alpha/accountSummaries", map[string]string{"pageSize": "200"})
 			if err != nil {
 				return fmt.Errorf("listing account summaries: %w", err)
 			}
