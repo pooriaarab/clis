@@ -1,0 +1,2720 @@
+{
+  "api_name": "google-analytics-solo",
+  "base_url": "https://analyticsdata.googleapis.com",
+  "description": "Flag-driven GA4 reports, one-command fan-out across every property, and a local cache for offline trends — none of which the raw Data API gives you.",
+  "mcp_ready": "full",
+  "http_transport": "standard",
+  "mcp": {
+    "endpoint_tools": "hidden",
+    "orchestration": "code"
+  },
+  "auth": {
+    "type": "bearer_token",
+    "header": "Authorization",
+    "env_vars": [
+      "GOOGLE_APPLICATION_CREDENTIALS",
+      "GOOGLE_ANALYTICS_DATA_OAUTH2C"
+    ],
+    "env_var_specs": [
+      {
+        "name": "GOOGLE_APPLICATION_CREDENTIALS",
+        "kind": "per_call",
+        "required": false,
+        "sensitive": true
+      },
+      {
+        "name": "GOOGLE_ANALYTICS_DATA_OAUTH2C",
+        "kind": "per_call",
+        "required": false,
+        "sensitive": true
+      }
+    ]
+  },
+  "required_headers": [],
+  "tools": [
+    {
+      "name": "account-summaries_list",
+      "description": "Returns summaries of all accounts accessible by the caller. Optional: pageSize, pageToken.",
+      "method": "GET",
+      "path": "/v1alpha/accountSummaries",
+      "params": [
+        {
+          "name": "pageSize",
+          "type": "int",
+          "location": "query",
+          "description": "The maximum number of AccountSummary resources to return. The service may return fewer than this value, even if there are additional pages. If unspecified, at most 50 resources will be returned. The maximum value is 200; (higher values will be coerced to the maximum)"
+        },
+        {
+          "name": "pageToken",
+          "type": "string",
+          "location": "query",
+          "description": "A page token, received from a previous `ListAccountSummaries` call. Provide this to retrieve the subsequent page. When paginating, all other parameters provided to `ListAccountSummaries` must match the call that provided the page token."
+        }
+      ]
+    },
+    {
+      "name": "accounts_list",
+      "description": "Returns all accounts accessible by the caller. Note that these accounts might not currently have GA4 properties. Soft-deleted (ie: 'trashed') accounts are excluded by default. Returns an empty list if no relevant accounts are found. Optional: pageSize, pageToken, showDeleted.",
+      "method": "GET",
+      "path": "/v1alpha/accounts",
+      "params": [
+        {
+          "name": "pageSize",
+          "type": "int",
+          "location": "query",
+          "description": "The maximum number of resources to return."
+        },
+        {
+          "name": "pageToken",
+          "type": "string",
+          "location": "query",
+          "description": "A page token, received from a previous `ListAccounts` call. Provide this to retrieve the subsequent page. When paginating, all other parameters provided to `ListAccounts` must match the call that provided the page token."
+        },
+        {
+          "name": "showDeleted",
+          "type": "bool",
+          "location": "query",
+          "description": "Whether to include soft-deleted (ie: 'trashed') Accounts in the results. Accounts can be inspected to determine whether they are deleted or not."
+        }
+      ]
+    },
+    {
+      "name": "accounts_search-change-history-events",
+      "description": "Searches through all changes to an account or its children given the specified set of filters. Required: account. Optional: action, actorEmail, earliestChangeTime (plus 5 more). Returns array of GoogleAnalyticsAdminV1alphaChangeHistoryEvent.",
+      "method": "POST",
+      "path": "/v1alpha/{account}:searchChangeHistoryEvents",
+      "params": [
+        {
+          "name": "account",
+          "type": "string",
+          "location": "path",
+          "description": "Required. The account resource for which to return change history resources.",
+          "required": true
+        },
+        {
+          "name": "action",
+          "type": "string_csv_array",
+          "location": "body",
+          "description": "Optional. If set, only return changes that match one or more of these types of actions."
+        },
+        {
+          "name": "actorEmail",
+          "type": "string_csv_array",
+          "location": "body",
+          "description": "Optional. If set, only return changes if they are made by a user in this list."
+        },
+        {
+          "name": "earliestChangeTime",
+          "type": "string",
+          "location": "body",
+          "description": "Optional. If set, only return changes made after this time (inclusive)."
+        },
+        {
+          "name": "latestChangeTime",
+          "type": "string",
+          "location": "body",
+          "description": "Optional. If set, only return changes made before this time (inclusive)."
+        },
+        {
+          "name": "pageSize",
+          "type": "int",
+          "location": "body",
+          "description": "Optional. The maximum number of ChangeHistoryEvent items to return. The service may return fewer than this value, even if there are additional pages. If unspecified, at most 50 items will be returned. The maximum value is 200 (higher values will be coerced to the maximum)."
+        },
+        {
+          "name": "pageToken",
+          "type": "string",
+          "location": "body",
+          "description": "Optional. A page token, received from a previous `SearchChangeHistoryEvents` call. Provide this to retrieve the subsequent page. When paginating, all other parameters provided to `SearchChangeHistoryEvents` must match the call that provided the page token."
+        },
+        {
+          "name": "property",
+          "type": "string",
+          "location": "body",
+          "description": "Optional. Resource name for a child property. If set, only return changes made to this property or its child resources."
+        },
+        {
+          "name": "resourceType",
+          "type": "string_csv_array",
+          "location": "body",
+          "description": "Optional. If set, only return changes if they are for a resource that matches at least one of these types."
+        }
+      ]
+    },
+    {
+      "name": "accounts-provision-account-ticket_analyticsadmin",
+      "description": "Requests a ticket for creating an account. Optional: account, redirectUri. Returns the new GoogleAnalyticsAdminV1alphaProvisionAccountTicketResponse.",
+      "method": "POST",
+      "path": "/v1alpha/accounts:provisionAccountTicket",
+      "params": [
+        {
+          "name": "account-create-time",
+          "wire_name": "account.createTime",
+          "type": "string",
+          "location": "body",
+          "description": "Output only. Time when this account was originally created."
+        },
+        {
+          "name": "account-deleted",
+          "wire_name": "account.deleted",
+          "type": "bool",
+          "location": "body",
+          "description": "Output only. Indicates whether this Account is soft-deleted or not. Deleted accounts are excluded from List results unless specifically requested."
+        },
+        {
+          "name": "account-display-name",
+          "wire_name": "account.displayName",
+          "type": "string",
+          "location": "body",
+          "description": "Required. Human-readable display name for this account."
+        },
+        {
+          "name": "account-name",
+          "wire_name": "account.name",
+          "type": "string",
+          "location": "body",
+          "description": "Output only. Resource name of this account. Format: accounts/{account} Example: 'accounts/100'"
+        },
+        {
+          "name": "account-region-code",
+          "wire_name": "account.regionCode",
+          "type": "string",
+          "location": "body",
+          "description": "Country of business. Must be a Unicode CLDR region code."
+        },
+        {
+          "name": "account-update-time",
+          "wire_name": "account.updateTime",
+          "type": "string",
+          "location": "body",
+          "description": "Output only. Time when account payload fields were last updated."
+        },
+        {
+          "name": "redirectUri",
+          "type": "string",
+          "location": "body",
+          "description": "Redirect URI where the user will be sent after accepting Terms of Service. Must be configured in Cloud Console as a Redirect URI."
+        }
+      ]
+    },
+    {
+      "name": "data-streams_measurement-protocol-secrets_create",
+      "description": "Creates a measurement protocol secret. Required: parent. Optional: displayName, name, secretValue. Returns the new GoogleAnalyticsAdminV1alphaMeasurementProtocolSecret.",
+      "method": "POST",
+      "path": "/v1alpha/{parent}/measurementProtocolSecrets",
+      "params": [
+        {
+          "name": "parent",
+          "type": "string",
+          "location": "path",
+          "description": "Required. The parent resource where this secret will be created. Format: properties/{property}/dataStreams/{dataStream}",
+          "required": true
+        },
+        {
+          "name": "displayName",
+          "type": "string",
+          "location": "body",
+          "description": "Required. Human-readable display name for this secret."
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "location": "body",
+          "description": "Output only. Resource name of this secret. This secret may be a child of any type of stream. Format: properties/{property}/dataStreams/{dataStream}/measurementProtocolSecrets/{measurementProtocolSecret}"
+        },
+        {
+          "name": "secretValue",
+          "type": "string",
+          "location": "body",
+          "description": "Output only. The measurement protocol secret value. Pass this value to the api_secret field of the Measurement Protocol API when sending hits to this secret's parent property."
+        }
+      ]
+    },
+    {
+      "name": "data-streams_measurement-protocol-secrets_list",
+      "description": "Returns child MeasurementProtocolSecrets under the specified parent Property. Required: parent. Optional: pageSize, pageToken.",
+      "method": "GET",
+      "path": "/v1alpha/{parent}/measurementProtocolSecrets",
+      "params": [
+        {
+          "name": "parent",
+          "type": "string",
+          "location": "path",
+          "description": "Required. The resource name of the parent stream. Format: properties/{property}/dataStreams/{dataStream}/measurementProtocolSecrets",
+          "required": true
+        },
+        {
+          "name": "pageSize",
+          "type": "int",
+          "location": "query",
+          "description": "The maximum number of resources to return. If unspecified, at most 10 resources will be returned. The maximum value is 10. Higher values will be coerced to the maximum."
+        },
+        {
+          "name": "pageToken",
+          "type": "string",
+          "location": "query",
+          "description": "A page token, received from a previous `ListMeasurementProtocolSecrets` call. Provide this to retrieve the subsequent page. When paginating, all other parameters provided to `ListMeasurementProtocolSecrets` must match the call that provided the page token."
+        }
+      ]
+    },
+    {
+      "name": "google-analytics-admin-properties_acknowledge-user-data-collection",
+      "description": "Acknowledges the terms of user data collection for the specified property. This acknowledgement must be completed (either in the Google Analytics UI or through this API) before MeasurementProtocolSecret resources may be created. Required: property. Optional: acknowledgement. Returns the new GoogleAnalyticsAdminV1alphaAcknowledgeUserDataCollectionResponse.",
+      "method": "POST",
+      "path": "/v1alpha/{property}:acknowledgeUserDataCollection",
+      "params": [
+        {
+          "name": "property",
+          "type": "string",
+          "location": "path",
+          "description": "Required. The property for which to acknowledge user data collection.",
+          "required": true
+        },
+        {
+          "name": "acknowledgement",
+          "type": "string",
+          "location": "body",
+          "description": "Required. An acknowledgement that the caller of this method understands the terms of user data collection. This field must contain the exact value: 'I acknowledge that I have the necessary privacy disclosures and rights from my end users for the collection and processing of their data, including the association of such data with the visitation information Google Analytics collects from my site and/or app property.'"
+        }
+      ]
+    },
+    {
+      "name": "google-analytics-admin-properties_create",
+      "description": "Creates an 'GA4' property with the specified location and attributes. Optional: account, createTime, currencyCode (plus 10 more). Returns the new GoogleAnalyticsAdminV1alphaProperty.",
+      "method": "POST",
+      "path": "/v1alpha/properties",
+      "params": [
+        {
+          "name": "account",
+          "type": "string",
+          "location": "body",
+          "description": "Immutable. The resource name of the parent account Format: accounts/{account_id} Example: 'accounts/123'"
+        },
+        {
+          "name": "createTime",
+          "type": "string",
+          "location": "body",
+          "description": "Output only. Time when the entity was originally created."
+        },
+        {
+          "name": "currencyCode",
+          "type": "string",
+          "location": "body",
+          "description": "The currency type used in reports involving monetary values. Format: https://en.wikipedia.org/wiki/ISO_4217 Examples: 'USD', 'EUR', 'JPY'"
+        },
+        {
+          "name": "deleteTime",
+          "type": "string",
+          "location": "body",
+          "description": "Output only. If set, the time at which this property was trashed. If not set, then this property is not currently in the trash can."
+        },
+        {
+          "name": "displayName",
+          "type": "string",
+          "location": "body",
+          "description": "Required. Human-readable display name for this property. The max allowed display name length is 100 UTF-16 code units."
+        },
+        {
+          "name": "expireTime",
+          "type": "string",
+          "location": "body",
+          "description": "Output only. If set, the time at which this trashed property will be permanently deleted. If not set, then this property is not currently in the trash can and is not slated to be deleted."
+        },
+        {
+          "name": "industryCategory",
+          "type": "string",
+          "location": "body",
+          "description": "Industry associated with this property Example: AUTOMOTIVE, FOOD_AND_DRINK"
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "location": "body",
+          "description": "Output only. Resource name of this property. Format: properties/{property_id} Example: 'properties/1000'"
+        },
+        {
+          "name": "parent",
+          "type": "string",
+          "location": "body",
+          "description": "Immutable. Resource name of this property's logical parent. Note: The Property-Moving UI can be used to change the parent. Format: accounts/{account}, properties/{property} Example: 'accounts/100', 'properties/101'"
+        },
+        {
+          "name": "propertyType",
+          "type": "string",
+          "location": "body",
+          "description": "Immutable. The property type for this Property resource. When creating a property, if the type is 'PROPERTY_TYPE_UNSPECIFIED', then 'ORDINARY_PROPERTY' will be implied. 'SUBPROPERTY' and 'ROLLUP_PROPERTY' types cannot yet be created with the Google Analytics Admin API."
+        },
+        {
+          "name": "serviceLevel",
+          "type": "string",
+          "location": "body",
+          "description": "Output only. The Google Analytics service level that applies to this property."
+        },
+        {
+          "name": "timeZone",
+          "type": "string",
+          "location": "body",
+          "description": "Required. Reporting Time Zone, used as the day boundary for reports, regardless of where the data originates. If the time zone honors DST, Analytics will automatically adjust for the changes. NOTE: Changing the time zone only affects data going forward, and is not applied retroactively. Format: https://www.iana.org/time-zones Example: 'America/Los_Angeles'"
+        },
+        {
+          "name": "updateTime",
+          "type": "string",
+          "location": "body",
+          "description": "Output only. Time when entity payload fields were last updated."
+        }
+      ]
+    },
+    {
+      "name": "google-analytics-admin-properties_list",
+      "description": "Returns child Properties under the specified parent Account. Only 'GA4' properties will be returned. Properties will be excluded if the caller does not have access. Soft-deleted (ie: 'trashed') properties are excluded by default. Returns an empty list if no relevant properties are found. Optional: filter, pageSize, pageToken (plus 1 more).",
+      "method": "GET",
+      "path": "/v1alpha/properties",
+      "params": [
+        {
+          "name": "filter",
+          "type": "string",
+          "location": "query",
+          "description": "Required. An expression for filtering the results of the request. Fields eligible for filtering are: `parent:`(The resource name of the parent account/property) or `ancestor:`(The resource name of the parent account) or `firebase_project:`(The id or number of the linked firebase project). Some examples of filters: ``` | Filter | Description | |-----------------------------|-------------------------------------------| | parent:accounts/123 | The account with account id: 123. | | parent:properties/123 | The property with property id: 123. | | ancestor:accounts/123 | The account with account id: 123. | | firebase_project:project-id | The firebase project with id: project-id. | | firebase_project:123 | The firebase project with number: 123. | ```"
+        },
+        {
+          "name": "pageSize",
+          "type": "int",
+          "location": "query",
+          "description": "The maximum number of resources to return."
+        },
+        {
+          "name": "pageToken",
+          "type": "string",
+          "location": "query",
+          "description": "A page token, received from a previous `ListProperties` call. Provide this to retrieve the subsequent page. When paginating, all other parameters provided to `ListProperties` must match the call that provided the page token."
+        },
+        {
+          "name": "showDeleted",
+          "type": "bool",
+          "location": "query",
+          "description": "Whether to include soft-deleted (ie: 'trashed') Properties in the results. Properties can be inspected to determine whether they are deleted or not."
+        }
+      ]
+    },
+    {
+      "name": "google-analytics-admin-properties_run-access-report",
+      "description": "Returns a customized report of data access records. The report provides records of each time a user reads Google Analytics reporting data. Access records are retained for up to 2 years. Data Access Reports can be requested for a property. The property must be in Google Analytics 360. This method is only available to Administrators. These data access records include GA4 UI Reporting, GA4 UI Explorations, GA4 Data API, and other products like Firebase \u0026 Admob that can retrieve data from Google Analytics through a linkage. These records don't include property configuration changes like adding a stream or changing a property's time zone. For configuration change history, see [searchChangeHistoryEvents](https://developers.google.com/analytics/devguides/config/admin/v1/rest/v1alpha/accounts/searchChangeHistoryEvents). Required: entity. Optional: dateRanges, dimensionFilter, dimensions (plus 7 more).",
+      "method": "POST",
+      "path": "/v1alpha/{entity}:runAccessReport",
+      "params": [
+        {
+          "name": "entity",
+          "type": "string",
+          "location": "path",
+          "description": "The Data Access Report supports requesting at the property level or account level. If requested at the account level, Data Access Reports include all access for all properties under that account. To request at the property level, entity should be for example 'properties/123' if '123' is your GA4 property ID. To request at the account level, entity should be for example 'accounts/1234' if '1234' is your GA4 Account ID.",
+          "required": true
+        },
+        {
+          "name": "dateRanges",
+          "type": "array",
+          "location": "body",
+          "description": "Date ranges of access records to read. If multiple date ranges are requested, each response row will contain a zero based date range index. If two date ranges overlap, the access records for the overlapping days is included in the response rows for both date ranges. Requests are allowed up to 2 date ranges."
+        },
+        {
+          "name": "dimension-filter-access-filter-field-name",
+          "wire_name": "dimensionFilter.accessFilter.fieldName",
+          "type": "string",
+          "location": "body",
+          "description": "The dimension name or metric name."
+        },
+        {
+          "name": "dimension-filter-and-group-expressions",
+          "wire_name": "dimensionFilter.andGroup.expressions",
+          "type": "array",
+          "location": "body",
+          "description": "A list of filter expressions."
+        },
+        {
+          "name": "dimension-filter-not-expression",
+          "wire_name": "dimensionFilter.notExpression",
+          "type": "object",
+          "location": "body",
+          "description": "Expresses dimension or metric filters. The fields in the same expression need to be either all dimensions or all metrics."
+        },
+        {
+          "name": "dimension-filter-or-group-expressions",
+          "wire_name": "dimensionFilter.orGroup.expressions",
+          "type": "array",
+          "location": "body",
+          "description": "A list of filter expressions."
+        },
+        {
+          "name": "dimensions",
+          "type": "array",
+          "location": "body",
+          "description": "The dimensions requested and displayed in the response. Requests are allowed up to 9 dimensions."
+        },
+        {
+          "name": "limit",
+          "type": "string",
+          "location": "body",
+          "description": "The number of rows to return. If unspecified, 10,000 rows are returned. The API returns a maximum of 100,000 rows per request, no matter how many you ask for. `limit` must be positive. The API may return fewer rows than the requested `limit`, if there aren't as many remaining rows as the `limit`. For instance, there are fewer than 300 possible values for the dimension `country`, so when reporting on only `country`, you can't get more than 300 rows, even if you set `limit` to a higher value. To learn more about this pagination parameter, see [Pagination](https://developers.google.com/analytics/devguides/reporting/data/v1/basics#pagination)."
+        },
+        {
+          "name": "metric-filter-access-filter-field-name",
+          "wire_name": "metricFilter.accessFilter.fieldName",
+          "type": "string",
+          "location": "body",
+          "description": "The dimension name or metric name."
+        },
+        {
+          "name": "metric-filter-and-group-expressions",
+          "wire_name": "metricFilter.andGroup.expressions",
+          "type": "array",
+          "location": "body",
+          "description": "A list of filter expressions."
+        },
+        {
+          "name": "metric-filter-not-expression",
+          "wire_name": "metricFilter.notExpression",
+          "type": "object",
+          "location": "body",
+          "description": "Expresses dimension or metric filters. The fields in the same expression need to be either all dimensions or all metrics."
+        },
+        {
+          "name": "metric-filter-or-group-expressions",
+          "wire_name": "metricFilter.orGroup.expressions",
+          "type": "array",
+          "location": "body",
+          "description": "A list of filter expressions."
+        },
+        {
+          "name": "metrics",
+          "type": "array",
+          "location": "body",
+          "description": "The metrics requested and displayed in the response. Requests are allowed up to 10 metrics."
+        },
+        {
+          "name": "offset",
+          "type": "string",
+          "location": "body",
+          "description": "The row count of the start row. The first row is counted as row 0. If offset is unspecified, it is treated as 0. If offset is zero, then this method will return the first page of results with `limit` entries. To learn more about this pagination parameter, see [Pagination](https://developers.google.com/analytics/devguides/reporting/data/v1/basics#pagination)."
+        },
+        {
+          "name": "orderBys",
+          "type": "array",
+          "location": "body",
+          "description": "Specifies how rows are ordered in the response."
+        },
+        {
+          "name": "returnEntityQuota",
+          "type": "bool",
+          "location": "body",
+          "description": "Toggles whether to return the current state of this Analytics Property's quota. Quota is returned in [AccessQuota](#AccessQuota). For account-level requests, this field must be false."
+        },
+        {
+          "name": "timeZone",
+          "type": "string",
+          "location": "body",
+          "description": "This request's time zone if specified. If unspecified, the property's time zone is used. The request's time zone is used to interpret the start \u0026 end dates of the report. Formatted as strings from the IANA Time Zone database (https://www.iana.org/time-zones); for example 'America/New_York' or 'Asia/Tokyo'."
+        }
+      ]
+    },
+    {
+      "name": "google-analytics-admin-properties_access-bindings_batch-create",
+      "description": "Creates information about multiple access bindings to an account or property. This method is transactional. If any AccessBinding cannot be created, none of the AccessBindings will be created. Required: parent. Optional: requests. Returns array of GoogleAnalyticsAdminV1alphaAccessBinding.",
+      "method": "POST",
+      "path": "/v1alpha/{parent}/accessBindings:batchCreate",
+      "params": [
+        {
+          "name": "parent",
+          "type": "string",
+          "location": "path",
+          "description": "Required. The account or property that owns the access bindings. The parent field in the CreateAccessBindingRequest messages must either be empty or match this field. Formats: - accounts/{account} - properties/{property}",
+          "required": true
+        },
+        {
+          "name": "requests",
+          "type": "array",
+          "location": "body",
+          "description": "Required. The requests specifying the access bindings to create. A maximum of 1000 access bindings can be created in a batch."
+        }
+      ]
+    },
+    {
+      "name": "google-analytics-admin-properties_access-bindings_batch-delete",
+      "description": "Deletes information about multiple users' links to an account or property. Required: parent. Optional: requests. Returns the new GoogleProtobufEmpty.",
+      "method": "POST",
+      "path": "/v1alpha/{parent}/accessBindings:batchDelete",
+      "params": [
+        {
+          "name": "parent",
+          "type": "string",
+          "location": "path",
+          "description": "Required. The account or property that owns the access bindings. The parent of all provided values for the 'names' field in DeleteAccessBindingRequest messages must match this field. Formats: - accounts/{account} - properties/{property}",
+          "required": true
+        },
+        {
+          "name": "requests",
+          "type": "array",
+          "location": "body",
+          "description": "Required. The requests specifying the access bindings to delete. A maximum of 1000 access bindings can be deleted in a batch."
+        }
+      ]
+    },
+    {
+      "name": "google-analytics-admin-properties_access-bindings_batch-get",
+      "description": "Gets information about multiple access bindings to an account or property. Required: parent. Optional: names. Returns array of GoogleAnalyticsAdminV1alphaAccessBinding.",
+      "method": "GET",
+      "path": "/v1alpha/{parent}/accessBindings:batchGet",
+      "params": [
+        {
+          "name": "parent",
+          "type": "string",
+          "location": "path",
+          "description": "Required. The account or property that owns the access bindings. The parent of all provided values for the 'names' field must match this field. Formats: - accounts/{account} - properties/{property}",
+          "required": true
+        },
+        {
+          "name": "names",
+          "type": "array",
+          "location": "query",
+          "description": "Required. The names of the access bindings to retrieve. A maximum of 1000 access bindings can be retrieved in a batch. Formats: - accounts/{account}/accessBindings/{accessBinding} - properties/{property}/accessBindings/{accessBinding}"
+        }
+      ]
+    },
+    {
+      "name": "google-analytics-admin-properties_access-bindings_batch-update",
+      "description": "Updates information about multiple access bindings to an account or property. Required: parent. Optional: requests. Returns array of GoogleAnalyticsAdminV1alphaAccessBinding.",
+      "method": "POST",
+      "path": "/v1alpha/{parent}/accessBindings:batchUpdate",
+      "params": [
+        {
+          "name": "parent",
+          "type": "string",
+          "location": "path",
+          "description": "Required. The account or property that owns the access bindings. The parent of all provided AccessBinding in UpdateAccessBindingRequest messages must match this field. Formats: - accounts/{account} - properties/{property}",
+          "required": true
+        },
+        {
+          "name": "requests",
+          "type": "array",
+          "location": "body",
+          "description": "Required. The requests specifying the access bindings to update. A maximum of 1000 access bindings can be updated in a batch."
+        }
+      ]
+    },
+    {
+      "name": "google-analytics-admin-properties_access-bindings_create",
+      "description": "Creates an access binding on an account or property. Required: parent. Optional: name, roles, user. Returns array of string.",
+      "method": "POST",
+      "path": "/v1alpha/{parent}/accessBindings",
+      "params": [
+        {
+          "name": "parent",
+          "type": "string",
+          "location": "path",
+          "description": "Required. Formats: - accounts/{account} - properties/{property}",
+          "required": true
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "location": "body",
+          "description": "Output only. Resource name of this binding. Format: accounts/{account}/accessBindings/{access_binding} or properties/{property}/accessBindings/{access_binding} Example: 'accounts/100/accessBindings/200'"
+        },
+        {
+          "name": "roles",
+          "type": "string_csv_array",
+          "location": "body",
+          "description": "A list of roles for to grant to the parent resource. Valid values: predefinedRoles/viewer predefinedRoles/analyst predefinedRoles/editor predefinedRoles/admin predefinedRoles/no-cost-data predefinedRoles/no-revenue-data For users, if an empty list of roles is set, this AccessBinding will be deleted."
+        },
+        {
+          "name": "user",
+          "type": "string",
+          "location": "body",
+          "description": "If set, the email address of the user to set roles for. Format: 'someuser@gmail.com'"
+        }
+      ]
+    },
+    {
+      "name": "google-analytics-admin-properties_access-bindings_list",
+      "description": "Lists all access bindings on an account or property. Required: parent. Optional: pageSize, pageToken. Returns array of GoogleAnalyticsAdminV1alphaAccessBinding.",
+      "method": "GET",
+      "path": "/v1alpha/{parent}/accessBindings",
+      "params": [
+        {
+          "name": "parent",
+          "type": "string",
+          "location": "path",
+          "description": "Required. Formats: - accounts/{account} - properties/{property}",
+          "required": true
+        },
+        {
+          "name": "pageSize",
+          "type": "int",
+          "location": "query",
+          "description": "The maximum number of access bindings to return. The service may return fewer than this value. If unspecified, at most 200 access bindings will be returned. The maximum value is 500; values above 500 will be coerced to 500."
+        },
+        {
+          "name": "pageToken",
+          "type": "string",
+          "location": "query",
+          "description": "A page token, received from a previous `ListAccessBindings` call. Provide this to retrieve the subsequent page. When paginating, all other parameters provided to `ListAccessBindings` must match the call that provided the page token."
+        }
+      ]
+    },
+    {
+      "name": "google-analytics-admin-properties_audiences_create",
+      "description": "Creates an Audience. Required: parent. Optional: adsPersonalizationEnabled, description, displayName (plus 5 more). Returns array of GoogleAnalyticsAdminV1alphaAudienceFilterClause.",
+      "method": "POST",
+      "path": "/v1alpha/{parent}/audiences",
+      "params": [
+        {
+          "name": "parent",
+          "type": "string",
+          "location": "path",
+          "description": "Required. Example format: properties/1234",
+          "required": true
+        },
+        {
+          "name": "adsPersonalizationEnabled",
+          "type": "bool",
+          "location": "body",
+          "description": "Output only. It is automatically set by GA to false if this is an NPA Audience and is excluded from ads personalization."
+        },
+        {
+          "name": "description",
+          "type": "string",
+          "location": "body",
+          "description": "Required. The description of the Audience."
+        },
+        {
+          "name": "displayName",
+          "type": "string",
+          "location": "body",
+          "description": "Required. The display name of the Audience."
+        },
+        {
+          "name": "event-trigger-event-name",
+          "wire_name": "eventTrigger.eventName",
+          "type": "string",
+          "location": "body",
+          "description": "Required. The event name that will be logged."
+        },
+        {
+          "name": "event-trigger-log-condition",
+          "wire_name": "eventTrigger.logCondition",
+          "type": "string",
+          "location": "body",
+          "description": "Required. When to log the event."
+        },
+        {
+          "name": "exclusionDurationMode",
+          "type": "string",
+          "location": "body",
+          "description": "Immutable. Specifies how long an exclusion lasts for users that meet the exclusion filter. It is applied to all EXCLUDE filter clauses and is ignored when there is no EXCLUDE filter clause in the Audience."
+        },
+        {
+          "name": "filterClauses",
+          "type": "array",
+          "location": "body",
+          "description": "Required. Immutable. Unordered list. Filter clauses that define the Audience. All clauses will be AND’ed together."
+        },
+        {
+          "name": "membershipDurationDays",
+          "type": "int",
+          "location": "body",
+          "description": "Required. Immutable. The duration a user should stay in an Audience. It cannot be set to more than 540 days."
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "location": "body",
+          "description": "Output only. The resource name for this Audience resource. Format: properties/{propertyId}/audiences/{audienceId}"
+        }
+      ]
+    },
+    {
+      "name": "google-analytics-admin-properties_audiences_list",
+      "description": "Lists Audiences on a property. Audiences created before 2020 may not be supported. Default audiences will not show filter definitions. Required: parent. Optional: pageSize, pageToken. Returns array of GoogleAnalyticsAdminV1alphaAudience.",
+      "method": "GET",
+      "path": "/v1alpha/{parent}/audiences",
+      "params": [
+        {
+          "name": "parent",
+          "type": "string",
+          "location": "path",
+          "description": "Required. Example format: properties/1234",
+          "required": true
+        },
+        {
+          "name": "pageSize",
+          "type": "int",
+          "location": "query",
+          "description": "The maximum number of resources to return."
+        },
+        {
+          "name": "pageToken",
+          "type": "string",
+          "location": "query",
+          "description": "A page token, received from a previous `ListAudiences` call. Provide this to retrieve the subsequent page. When paginating, all other parameters provided to `ListAudiences` must match the call that provided the page token."
+        }
+      ]
+    },
+    {
+      "name": "google-analytics-admin-properties_big-query-links_list",
+      "description": "Lists BigQuery Links on a property. Required: parent. Optional: pageSize, pageToken. Returns array of GoogleAnalyticsAdminV1alphaBigQueryLink.",
+      "method": "GET",
+      "path": "/v1alpha/{parent}/bigQueryLinks",
+      "params": [
+        {
+          "name": "parent",
+          "type": "string",
+          "location": "path",
+          "description": "Required. The name of the property to list BigQuery links under. Format: properties/{property_id} Example: properties/1234",
+          "required": true
+        },
+        {
+          "name": "pageSize",
+          "type": "int",
+          "location": "query",
+          "description": "The maximum number of resources to return."
+        },
+        {
+          "name": "pageToken",
+          "type": "string",
+          "location": "query",
+          "description": "A page token, received from a previous `ListBigQueryLinks` call. Provide this to retrieve the subsequent page. When paginating, all other parameters provided to `ListBigQueryLinks` must match the call that provided the page token."
+        }
+      ]
+    },
+    {
+      "name": "google-analytics-admin-properties_channel-groups_create",
+      "description": "Creates a ChannelGroup. Required: parent. Optional: description, displayName, groupingRule (plus 2 more). Returns array of GoogleAnalyticsAdminV1alphaGroupingRule.",
+      "method": "POST",
+      "path": "/v1alpha/{parent}/channelGroups",
+      "params": [
+        {
+          "name": "parent",
+          "type": "string",
+          "location": "path",
+          "description": "Required. The property for which to create a ChannelGroup. Example format: properties/1234",
+          "required": true
+        },
+        {
+          "name": "description",
+          "type": "string",
+          "location": "body",
+          "description": "The description of the Channel Group. Max length of 256 characters."
+        },
+        {
+          "name": "displayName",
+          "type": "string",
+          "location": "body",
+          "description": "Required. The display name of the Channel Group. Max length of 80 characters."
+        },
+        {
+          "name": "groupingRule",
+          "type": "array",
+          "location": "body",
+          "description": "Required. The grouping rules of channels. Maximum number of rules is 25."
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "location": "body",
+          "description": "Output only. The resource name for this Channel Group resource. Format: properties/{property}/channelGroups/{channel_group}"
+        },
+        {
+          "name": "systemDefined",
+          "type": "bool",
+          "location": "body",
+          "description": "Output only. Default Channel Group defined by Google, which cannot be updated."
+        }
+      ]
+    },
+    {
+      "name": "google-analytics-admin-properties_channel-groups_list",
+      "description": "Lists ChannelGroups on a property. Required: parent. Optional: pageSize, pageToken. Returns array of GoogleAnalyticsAdminV1alphaChannelGroup.",
+      "method": "GET",
+      "path": "/v1alpha/{parent}/channelGroups",
+      "params": [
+        {
+          "name": "parent",
+          "type": "string",
+          "location": "path",
+          "description": "Required. The property for which to list ChannelGroups. Example format: properties/1234",
+          "required": true
+        },
+        {
+          "name": "pageSize",
+          "type": "int",
+          "location": "query",
+          "description": "The maximum number of resources to return."
+        },
+        {
+          "name": "pageToken",
+          "type": "string",
+          "location": "query",
+          "description": "A page token, received from a previous `ListChannelGroups` call. Provide this to retrieve the subsequent page. When paginating, all other parameters provided to `ListChannelGroups` must match the call that provided the page token."
+        }
+      ]
+    },
+    {
+      "name": "google-analytics-admin-properties_conversion-events_create",
+      "description": "Creates a conversion event with the specified attributes. Required: parent. Optional: createTime, custom, deletable (plus 2 more). Returns the new GoogleAnalyticsAdminV1alphaConversionEvent.",
+      "method": "POST",
+      "path": "/v1alpha/{parent}/conversionEvents",
+      "params": [
+        {
+          "name": "parent",
+          "type": "string",
+          "location": "path",
+          "description": "Required. The resource name of the parent property where this conversion event will be created. Format: properties/123",
+          "required": true
+        },
+        {
+          "name": "createTime",
+          "type": "string",
+          "location": "body",
+          "description": "Output only. Time when this conversion event was created in the property."
+        },
+        {
+          "name": "custom",
+          "type": "bool",
+          "location": "body",
+          "description": "Output only. If set to true, this conversion event refers to a custom event. If set to false, this conversion event refers to a default event in GA. Default events typically have special meaning in GA. Default events are usually created for you by the GA system, but in some cases can be created by property admins. Custom events count towards the maximum number of custom conversion events that may be created per property."
+        },
+        {
+          "name": "deletable",
+          "type": "bool",
+          "location": "body",
+          "description": "Output only. If set, this event can currently be deleted with DeleteConversionEvent."
+        },
+        {
+          "name": "eventName",
+          "type": "string",
+          "location": "body",
+          "description": "Immutable. The event name for this conversion event. Examples: 'click', 'purchase'"
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "location": "body",
+          "description": "Output only. Resource name of this conversion event. Format: properties/{property}/conversionEvents/{conversion_event}"
+        }
+      ]
+    },
+    {
+      "name": "google-analytics-admin-properties_conversion-events_list",
+      "description": "Returns a list of conversion events in the specified parent property. Returns an empty list if no conversion events are found. Required: parent. Optional: pageSize, pageToken.",
+      "method": "GET",
+      "path": "/v1alpha/{parent}/conversionEvents",
+      "params": [
+        {
+          "name": "parent",
+          "type": "string",
+          "location": "path",
+          "description": "Required. The resource name of the parent property. Example: 'properties/123'",
+          "required": true
+        },
+        {
+          "name": "pageSize",
+          "type": "int",
+          "location": "query",
+          "description": "The maximum number of resources to return. If unspecified, at most 50 resources will be returned. The maximum value is 200; (higher values will be coerced to the maximum)"
+        },
+        {
+          "name": "pageToken",
+          "type": "string",
+          "location": "query",
+          "description": "A page token, received from a previous `ListConversionEvents` call. Provide this to retrieve the subsequent page. When paginating, all other parameters provided to `ListConversionEvents` must match the call that provided the page token."
+        }
+      ]
+    },
+    {
+      "name": "google-analytics-admin-properties_custom-dimensions_create",
+      "description": "Creates a CustomDimension. Required: parent. Optional: description, disallowAdsPersonalization, displayName (plus 3 more). Returns the new GoogleAnalyticsAdminV1alphaCustomDimension.",
+      "method": "POST",
+      "path": "/v1alpha/{parent}/customDimensions",
+      "params": [
+        {
+          "name": "parent",
+          "type": "string",
+          "location": "path",
+          "description": "Required. Example format: properties/1234",
+          "required": true
+        },
+        {
+          "name": "description",
+          "type": "string",
+          "location": "body",
+          "description": "Optional. Description for this custom dimension. Max length of 150 characters."
+        },
+        {
+          "name": "disallowAdsPersonalization",
+          "type": "bool",
+          "location": "body",
+          "description": "Optional. If set to true, sets this dimension as NPA and excludes it from ads personalization. This is currently only supported by user-scoped custom dimensions."
+        },
+        {
+          "name": "displayName",
+          "type": "string",
+          "location": "body",
+          "description": "Required. Display name for this custom dimension as shown in the Analytics UI. Max length of 82 characters, alphanumeric plus space and underscore starting with a letter. Legacy system-generated display names may contain square brackets, but updates to this field will never permit square brackets."
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "location": "body",
+          "description": "Output only. Resource name for this CustomDimension resource. Format: properties/{property}/customDimensions/{customDimension}"
+        },
+        {
+          "name": "parameterName",
+          "type": "string",
+          "location": "body",
+          "description": "Required. Immutable. Tagging parameter name for this custom dimension. If this is a user-scoped dimension, then this is the user property name. If this is an event-scoped dimension, then this is the event parameter name. If this is an item-scoped dimension, then this is the parameter name found in the eCommerce items array. May only contain alphanumeric and underscore characters, starting with a letter. Max length of 24 characters for user-scoped dimensions, 40 characters for event-scoped dimensions."
+        },
+        {
+          "name": "scope",
+          "type": "string",
+          "location": "body",
+          "description": "Required. Immutable. The scope of this dimension."
+        }
+      ]
+    },
+    {
+      "name": "google-analytics-admin-properties_custom-dimensions_list",
+      "description": "Lists CustomDimensions on a property. Required: parent. Optional: pageSize, pageToken. Returns array of GoogleAnalyticsAdminV1alphaCustomDimension.",
+      "method": "GET",
+      "path": "/v1alpha/{parent}/customDimensions",
+      "params": [
+        {
+          "name": "parent",
+          "type": "string",
+          "location": "path",
+          "description": "Required. Example format: properties/1234",
+          "required": true
+        },
+        {
+          "name": "pageSize",
+          "type": "int",
+          "location": "query",
+          "description": "The maximum number of resources to return."
+        },
+        {
+          "name": "pageToken",
+          "type": "string",
+          "location": "query",
+          "description": "A page token, received from a previous `ListCustomDimensions` call. Provide this to retrieve the subsequent page. When paginating, all other parameters provided to `ListCustomDimensions` must match the call that provided the page token."
+        }
+      ]
+    },
+    {
+      "name": "google-analytics-admin-properties_custom-metrics_archive",
+      "description": "Archives a CustomMetric on a property. Required: name. Returns the new GoogleProtobufEmpty.",
+      "method": "POST",
+      "path": "/v1alpha/{name}:archive",
+      "params": [
+        {
+          "name": "name",
+          "type": "string",
+          "location": "path",
+          "description": "Required. The name of the CustomMetric to archive. Example format: properties/1234/customMetrics/5678",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "google-analytics-admin-properties_custom-metrics_create",
+      "description": "Creates a CustomMetric. Required: parent. Optional: description, displayName, measurementUnit (plus 4 more). Returns array of string.",
+      "method": "POST",
+      "path": "/v1alpha/{parent}/customMetrics",
+      "params": [
+        {
+          "name": "parent",
+          "type": "string",
+          "location": "path",
+          "description": "Required. Example format: properties/1234",
+          "required": true
+        },
+        {
+          "name": "description",
+          "type": "string",
+          "location": "body",
+          "description": "Optional. Description for this custom dimension. Max length of 150 characters."
+        },
+        {
+          "name": "displayName",
+          "type": "string",
+          "location": "body",
+          "description": "Required. Display name for this custom metric as shown in the Analytics UI. Max length of 82 characters, alphanumeric plus space and underscore starting with a letter. Legacy system-generated display names may contain square brackets, but updates to this field will never permit square brackets."
+        },
+        {
+          "name": "measurementUnit",
+          "type": "string",
+          "location": "body",
+          "description": "Required. The type for the custom metric's value."
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "location": "body",
+          "description": "Output only. Resource name for this CustomMetric resource. Format: properties/{property}/customMetrics/{customMetric}"
+        },
+        {
+          "name": "parameterName",
+          "type": "string",
+          "location": "body",
+          "description": "Required. Immutable. Tagging name for this custom metric. If this is an event-scoped metric, then this is the event parameter name. May only contain alphanumeric and underscore charactes, starting with a letter. Max length of 40 characters for event-scoped metrics."
+        },
+        {
+          "name": "restrictedMetricType",
+          "type": "string_csv_array",
+          "location": "body",
+          "description": "Optional. Types of restricted data that this metric may contain. Required for metrics with CURRENCY measurement unit. Must be empty for metrics with a non-CURRENCY measurement unit."
+        },
+        {
+          "name": "scope",
+          "type": "string",
+          "location": "body",
+          "description": "Required. Immutable. The scope of this custom metric."
+        }
+      ]
+    },
+    {
+      "name": "google-analytics-admin-properties_custom-metrics_list",
+      "description": "Lists CustomMetrics on a property. Required: parent. Optional: pageSize, pageToken. Returns array of GoogleAnalyticsAdminV1alphaCustomMetric.",
+      "method": "GET",
+      "path": "/v1alpha/{parent}/customMetrics",
+      "params": [
+        {
+          "name": "parent",
+          "type": "string",
+          "location": "path",
+          "description": "Required. Example format: properties/1234",
+          "required": true
+        },
+        {
+          "name": "pageSize",
+          "type": "int",
+          "location": "query",
+          "description": "The maximum number of resources to return."
+        },
+        {
+          "name": "pageToken",
+          "type": "string",
+          "location": "query",
+          "description": "A page token, received from a previous `ListCustomMetrics` call. Provide this to retrieve the subsequent page. When paginating, all other parameters provided to `ListCustomMetrics` must match the call that provided the page token."
+        }
+      ]
+    },
+    {
+      "name": "google-analytics-admin-properties_data-streams_create",
+      "description": "Creates a DataStream. Required: parent. Optional: androidAppStreamData, createTime, displayName (plus 5 more). Returns the new GoogleAnalyticsAdminV1alphaDataStream.",
+      "method": "POST",
+      "path": "/v1alpha/{parent}/dataStreams",
+      "params": [
+        {
+          "name": "parent",
+          "type": "string",
+          "location": "path",
+          "description": "Required. Example format: properties/1234",
+          "required": true
+        },
+        {
+          "name": "android-app-stream-data-firebase-app-id",
+          "wire_name": "androidAppStreamData.firebaseAppId",
+          "type": "string",
+          "location": "body",
+          "description": "Output only. ID of the corresponding Android app in Firebase, if any. This ID can change if the Android app is deleted and recreated."
+        },
+        {
+          "name": "android-app-stream-data-package-name",
+          "wire_name": "androidAppStreamData.packageName",
+          "type": "string",
+          "location": "body",
+          "description": "Immutable. The package name for the app being measured. Example: 'com.example.myandroidapp'"
+        },
+        {
+          "name": "createTime",
+          "type": "string",
+          "location": "body",
+          "description": "Output only. Time when this stream was originally created."
+        },
+        {
+          "name": "displayName",
+          "type": "string",
+          "location": "body",
+          "description": "Human-readable display name for the Data Stream. Required for web data streams. The max allowed display name length is 255 UTF-16 code units."
+        },
+        {
+          "name": "ios-app-stream-data-bundle-id",
+          "wire_name": "iosAppStreamData.bundleId",
+          "type": "string",
+          "location": "body",
+          "description": "Required. Immutable. The Apple App Store Bundle ID for the app Example: 'com.example.myiosapp'"
+        },
+        {
+          "name": "ios-app-stream-data-firebase-app-id",
+          "wire_name": "iosAppStreamData.firebaseAppId",
+          "type": "string",
+          "location": "body",
+          "description": "Output only. ID of the corresponding iOS app in Firebase, if any. This ID can change if the iOS app is deleted and recreated."
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "location": "body",
+          "description": "Output only. Resource name of this Data Stream. Format: properties/{property_id}/dataStreams/{stream_id} Example: 'properties/1000/dataStreams/2000'"
+        },
+        {
+          "name": "type",
+          "type": "string",
+          "location": "body",
+          "description": "Required. Immutable. The type of this DataStream resource."
+        },
+        {
+          "name": "updateTime",
+          "type": "string",
+          "location": "body",
+          "description": "Output only. Time when stream payload fields were last updated."
+        },
+        {
+          "name": "web-stream-data-default-uri",
+          "wire_name": "webStreamData.defaultUri",
+          "type": "string",
+          "location": "body",
+          "description": "Immutable. Domain name of the web app being measured, or empty. Example: 'http://www.google.com', 'https://www.google.com'"
+        },
+        {
+          "name": "web-stream-data-firebase-app-id",
+          "wire_name": "webStreamData.firebaseAppId",
+          "type": "string",
+          "location": "body",
+          "description": "Output only. ID of the corresponding web app in Firebase, if any. This ID can change if the web app is deleted and recreated."
+        },
+        {
+          "name": "web-stream-data-measurement-id",
+          "wire_name": "webStreamData.measurementId",
+          "type": "string",
+          "location": "body",
+          "description": "Output only. Analytics 'Measurement ID', without the 'G-' prefix. Example: 'G-1A2BCD345E' would just be '1A2BCD345E'"
+        }
+      ]
+    },
+    {
+      "name": "google-analytics-admin-properties_data-streams_list",
+      "description": "Lists DataStreams on a property. Required: parent. Optional: pageSize, pageToken. Returns array of GoogleAnalyticsAdminV1alphaDataStream.",
+      "method": "GET",
+      "path": "/v1alpha/{parent}/dataStreams",
+      "params": [
+        {
+          "name": "parent",
+          "type": "string",
+          "location": "path",
+          "description": "Required. Example format: properties/1234",
+          "required": true
+        },
+        {
+          "name": "pageSize",
+          "type": "int",
+          "location": "query",
+          "description": "The maximum number of resources to return."
+        },
+        {
+          "name": "pageToken",
+          "type": "string",
+          "location": "query",
+          "description": "A page token, received from a previous `ListDataStreams` call. Provide this to retrieve the subsequent page. When paginating, all other parameters provided to `ListDataStreams` must match the call that provided the page token."
+        }
+      ]
+    },
+    {
+      "name": "google-analytics-admin-properties_display-video360-advertiser-link-proposals_approve",
+      "description": "Approves a DisplayVideo360AdvertiserLinkProposal. The DisplayVideo360AdvertiserLinkProposal will be deleted and a new DisplayVideo360AdvertiserLink will be created. Required: name. Returns the new GoogleAnalyticsAdminV1alphaApproveDisplayVideo360AdvertiserLinkProposalResponse.",
+      "method": "POST",
+      "path": "/v1alpha/{name}:approve",
+      "params": [
+        {
+          "name": "name",
+          "type": "string",
+          "location": "path",
+          "description": "Required. The name of the DisplayVideo360AdvertiserLinkProposal to approve. Example format: properties/1234/displayVideo360AdvertiserLinkProposals/5678",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "google-analytics-admin-properties_display-video360-advertiser-link-proposals_cancel",
+      "description": "Cancels a DisplayVideo360AdvertiserLinkProposal. Cancelling can mean either: - Declining a proposal initiated from Display \u0026 Video 360 - Withdrawing a proposal initiated from Google Analytics After being cancelled, a proposal will eventually be deleted automatically. Required: name. Returns the new GoogleAnalyticsAdminV1alphaDisplayVideo360AdvertiserLinkProposal.",
+      "method": "POST",
+      "path": "/v1alpha/{name}:cancel",
+      "params": [
+        {
+          "name": "name",
+          "type": "string",
+          "location": "path",
+          "description": "Required. The name of the DisplayVideo360AdvertiserLinkProposal to cancel. Example format: properties/1234/displayVideo360AdvertiserLinkProposals/5678",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "google-analytics-admin-properties_display-video360-advertiser-link-proposals_create",
+      "description": "Creates a DisplayVideo360AdvertiserLinkProposal. Required: parent. Optional: adsPersonalizationEnabled, advertiserDisplayName, advertiserId (plus 5 more). Returns the new GoogleAnalyticsAdminV1alphaDisplayVideo360AdvertiserLinkProposal.",
+      "method": "POST",
+      "path": "/v1alpha/{parent}/displayVideo360AdvertiserLinkProposals",
+      "params": [
+        {
+          "name": "parent",
+          "type": "string",
+          "location": "path",
+          "description": "Required. Example format: properties/1234",
+          "required": true
+        },
+        {
+          "name": "adsPersonalizationEnabled",
+          "type": "bool",
+          "location": "body",
+          "description": "Immutable. Enables personalized advertising features with this integration. If this field is not set on create, it will be defaulted to true."
+        },
+        {
+          "name": "advertiserDisplayName",
+          "type": "string",
+          "location": "body",
+          "description": "Output only. The display name of the Display \u0026 Video Advertiser. Only populated for proposals that originated from Display \u0026 Video 360."
+        },
+        {
+          "name": "advertiserId",
+          "type": "string",
+          "location": "body",
+          "description": "Immutable. The Display \u0026 Video 360 Advertiser's advertiser ID."
+        },
+        {
+          "name": "campaignDataSharingEnabled",
+          "type": "bool",
+          "location": "body",
+          "description": "Immutable. Enables the import of campaign data from Display \u0026 Video 360. If this field is not set on create, it will be defaulted to true."
+        },
+        {
+          "name": "costDataSharingEnabled",
+          "type": "bool",
+          "location": "body",
+          "description": "Immutable. Enables the import of cost data from Display \u0026 Video 360. This can only be enabled if campaign_data_sharing_enabled is enabled. If this field is not set on create, it will be defaulted to true."
+        },
+        {
+          "name": "link-proposal-status-details-link-proposal-initiating-product",
+          "wire_name": "linkProposalStatusDetails.linkProposalInitiatingProduct",
+          "type": "string",
+          "location": "body",
+          "description": "Output only. The source of this proposal."
+        },
+        {
+          "name": "link-proposal-status-details-link-proposal-state",
+          "wire_name": "linkProposalStatusDetails.linkProposalState",
+          "type": "string",
+          "location": "body",
+          "description": "Output only. The state of this proposal."
+        },
+        {
+          "name": "link-proposal-status-details-requestor-email",
+          "wire_name": "linkProposalStatusDetails.requestorEmail",
+          "type": "string",
+          "location": "body",
+          "description": "Output only. The email address of the user that proposed this linkage."
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "location": "body",
+          "description": "Output only. The resource name for this DisplayVideo360AdvertiserLinkProposal resource. Format: properties/{propertyId}/displayVideo360AdvertiserLinkProposals/{proposalId} Note: proposalId is not the Display \u0026 Video 360 Advertiser ID"
+        },
+        {
+          "name": "validationEmail",
+          "type": "string",
+          "location": "body",
+          "description": "Input only. On a proposal being sent to Display \u0026 Video 360, this field must be set to the email address of an admin on the target advertiser. This is used to verify that the Google Analytics admin is aware of at least one admin on the Display \u0026 Video 360 Advertiser. This does not restrict approval of the proposal to a single user. Any admin on the Display \u0026 Video 360 Advertiser may approve the proposal."
+        }
+      ]
+    },
+    {
+      "name": "google-analytics-admin-properties_display-video360-advertiser-link-proposals_list",
+      "description": "Lists DisplayVideo360AdvertiserLinkProposals on a property. Required: parent. Optional: pageSize, pageToken. Returns array of GoogleAnalyticsAdminV1alphaDisplayVideo360AdvertiserLinkProposal.",
+      "method": "GET",
+      "path": "/v1alpha/{parent}/displayVideo360AdvertiserLinkProposals",
+      "params": [
+        {
+          "name": "parent",
+          "type": "string",
+          "location": "path",
+          "description": "Required. Example format: properties/1234",
+          "required": true
+        },
+        {
+          "name": "pageSize",
+          "type": "int",
+          "location": "query",
+          "description": "The maximum number of resources to return."
+        },
+        {
+          "name": "pageToken",
+          "type": "string",
+          "location": "query",
+          "description": "A page token, received from a previous `ListDisplayVideo360AdvertiserLinkProposals` call. Provide this to retrieve the subsequent page. When paginating, all other parameters provided to `ListDisplayVideo360AdvertiserLinkProposals` must match the call that provided the page token."
+        }
+      ]
+    },
+    {
+      "name": "google-analytics-admin-properties_display-video360-advertiser-links_create",
+      "description": "Creates a DisplayVideo360AdvertiserLink. This can only be utilized by users who have proper authorization both on the Google Analytics property and on the Display \u0026 Video 360 advertiser. Users who do not have access to the Display \u0026 Video 360 advertiser should instead seek to create a DisplayVideo360LinkProposal. Required: parent. Optional: adsPersonalizationEnabled, advertiserDisplayName, advertiserId (plus 3 more). Returns the new GoogleAnalyticsAdminV1alphaDisplayVideo360AdvertiserLink.",
+      "method": "POST",
+      "path": "/v1alpha/{parent}/displayVideo360AdvertiserLinks",
+      "params": [
+        {
+          "name": "parent",
+          "type": "string",
+          "location": "path",
+          "description": "Required. Example format: properties/1234",
+          "required": true
+        },
+        {
+          "name": "adsPersonalizationEnabled",
+          "type": "bool",
+          "location": "body",
+          "description": "Enables personalized advertising features with this integration. If this field is not set on create/update, it will be defaulted to true."
+        },
+        {
+          "name": "advertiserDisplayName",
+          "type": "string",
+          "location": "body",
+          "description": "Output only. The display name of the Display \u0026 Video 360 Advertiser."
+        },
+        {
+          "name": "advertiserId",
+          "type": "string",
+          "location": "body",
+          "description": "Immutable. The Display \u0026 Video 360 Advertiser's advertiser ID."
+        },
+        {
+          "name": "campaignDataSharingEnabled",
+          "type": "bool",
+          "location": "body",
+          "description": "Immutable. Enables the import of campaign data from Display \u0026 Video 360 into the GA4 property. After link creation, this can only be updated from the Display \u0026 Video 360 product. If this field is not set on create, it will be defaulted to true."
+        },
+        {
+          "name": "costDataSharingEnabled",
+          "type": "bool",
+          "location": "body",
+          "description": "Immutable. Enables the import of cost data from Display \u0026 Video 360 into the GA4 property. This can only be enabled if campaign_data_sharing_enabled is enabled. After link creation, this can only be updated from the Display \u0026 Video 360 product. If this field is not set on create, it will be defaulted to true."
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "location": "body",
+          "description": "Output only. The resource name for this DisplayVideo360AdvertiserLink resource. Format: properties/{propertyId}/displayVideo360AdvertiserLinks/{linkId} Note: linkId is not the Display \u0026 Video 360 Advertiser ID"
+        }
+      ]
+    },
+    {
+      "name": "google-analytics-admin-properties_display-video360-advertiser-links_list",
+      "description": "Lists all DisplayVideo360AdvertiserLinks on a property. Required: parent. Optional: pageSize, pageToken. Returns array of GoogleAnalyticsAdminV1alphaDisplayVideo360AdvertiserLink.",
+      "method": "GET",
+      "path": "/v1alpha/{parent}/displayVideo360AdvertiserLinks",
+      "params": [
+        {
+          "name": "parent",
+          "type": "string",
+          "location": "path",
+          "description": "Required. Example format: properties/1234",
+          "required": true
+        },
+        {
+          "name": "pageSize",
+          "type": "int",
+          "location": "query",
+          "description": "The maximum number of resources to return."
+        },
+        {
+          "name": "pageToken",
+          "type": "string",
+          "location": "query",
+          "description": "A page token, received from a previous `ListDisplayVideo360AdvertiserLinks` call. Provide this to retrieve the subsequent page. When paginating, all other parameters provided to `ListDisplayVideo360AdvertiserLinks` must match the call that provided the page token."
+        }
+      ]
+    },
+    {
+      "name": "google-analytics-admin-properties_expanded-data-sets_create",
+      "description": "Creates a ExpandedDataSet. Required: parent. Optional: dataCollectionStartTime, description, dimensionFilterExpression (plus 4 more). Returns the new GoogleAnalyticsAdminV1alphaExpandedDataSet.",
+      "method": "POST",
+      "path": "/v1alpha/{parent}/expandedDataSets",
+      "params": [
+        {
+          "name": "parent",
+          "type": "string",
+          "location": "path",
+          "description": "Required. Example format: properties/1234",
+          "required": true
+        },
+        {
+          "name": "dataCollectionStartTime",
+          "type": "string",
+          "location": "body",
+          "description": "Output only. Time when expanded data set began (or will begin) collecing data."
+        },
+        {
+          "name": "description",
+          "type": "string",
+          "location": "body",
+          "description": "Optional. The description of the ExpandedDataSet. Max 50 chars."
+        },
+        {
+          "name": "dimension-filter-expression-and-group-filter-expressions",
+          "wire_name": "dimensionFilterExpression.andGroup.filterExpressions",
+          "type": "array",
+          "location": "body",
+          "description": "A list of ExpandedDataSet filter expressions."
+        },
+        {
+          "name": "dimension-filter-expression-filter-field-name",
+          "wire_name": "dimensionFilterExpression.filter.fieldName",
+          "type": "string",
+          "location": "body",
+          "description": "Required. The dimension name to filter."
+        },
+        {
+          "name": "dimension-filter-expression-not-expression",
+          "wire_name": "dimensionFilterExpression.notExpression",
+          "type": "object",
+          "location": "body",
+          "description": "A logical expression of EnhancedDataSet dimension filters."
+        },
+        {
+          "name": "dimensionNames",
+          "type": "string_csv_array",
+          "location": "body",
+          "description": "Immutable. The list of dimensions included in the ExpandedDataSet. See the [API Dimensions](https://developers.google.com/analytics/devguides/reporting/data/v1/api-schema#dimensions) for the list of dimension names."
+        },
+        {
+          "name": "displayName",
+          "type": "string",
+          "location": "body",
+          "description": "Required. The display name of the ExpandedDataSet. Max 200 chars."
+        },
+        {
+          "name": "metricNames",
+          "type": "string_csv_array",
+          "location": "body",
+          "description": "Immutable. The list of metrics included in the ExpandedDataSet. See the [API Metrics](https://developers.google.com/analytics/devguides/reporting/data/v1/api-schema#metrics) for the list of dimension names."
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "location": "body",
+          "description": "Output only. The resource name for this ExpandedDataSet resource. Format: properties/{property_id}/expandedDataSets/{expanded_data_set}"
+        }
+      ]
+    },
+    {
+      "name": "google-analytics-admin-properties_expanded-data-sets_list",
+      "description": "Lists ExpandedDataSets on a property. Required: parent. Optional: pageSize, pageToken. Returns array of GoogleAnalyticsAdminV1alphaExpandedDataSet.",
+      "method": "GET",
+      "path": "/v1alpha/{parent}/expandedDataSets",
+      "params": [
+        {
+          "name": "parent",
+          "type": "string",
+          "location": "path",
+          "description": "Required. Example format: properties/1234",
+          "required": true
+        },
+        {
+          "name": "pageSize",
+          "type": "int",
+          "location": "query",
+          "description": "The maximum number of resources to return."
+        },
+        {
+          "name": "pageToken",
+          "type": "string",
+          "location": "query",
+          "description": "A page token, received from a previous `ListExpandedDataSets` call. Provide this to retrieve the subsequent page. When paginating, all other parameters provided to `ListExpandedDataSet` must match the call that provided the page token."
+        }
+      ]
+    },
+    {
+      "name": "google-analytics-admin-properties_firebase-links_create",
+      "description": "Creates a FirebaseLink. Properties can have at most one FirebaseLink. Required: parent. Optional: createTime, name, project. Returns the new GoogleAnalyticsAdminV1alphaFirebaseLink.",
+      "method": "POST",
+      "path": "/v1alpha/{parent}/firebaseLinks",
+      "params": [
+        {
+          "name": "parent",
+          "type": "string",
+          "location": "path",
+          "description": "Required. Format: properties/{property_id} Example: properties/1234",
+          "required": true
+        },
+        {
+          "name": "createTime",
+          "type": "string",
+          "location": "body",
+          "description": "Output only. Time when this FirebaseLink was originally created."
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "location": "body",
+          "description": "Output only. Example format: properties/1234/firebaseLinks/5678"
+        },
+        {
+          "name": "project",
+          "type": "string",
+          "location": "body",
+          "description": "Immutable. Firebase project resource name. When creating a FirebaseLink, you may provide this resource name using either a project number or project ID. Once this resource has been created, returned FirebaseLinks will always have a project_name that contains a project number. Format: 'projects/{project number}' Example: 'projects/1234'"
+        }
+      ]
+    },
+    {
+      "name": "google-analytics-admin-properties_firebase-links_list",
+      "description": "Lists FirebaseLinks on a property. Properties can have at most one FirebaseLink. Required: parent. Optional: pageSize, pageToken. Returns array of GoogleAnalyticsAdminV1alphaFirebaseLink.",
+      "method": "GET",
+      "path": "/v1alpha/{parent}/firebaseLinks",
+      "params": [
+        {
+          "name": "parent",
+          "type": "string",
+          "location": "path",
+          "description": "Required. Format: properties/{property_id} Example: properties/1234",
+          "required": true
+        },
+        {
+          "name": "pageSize",
+          "type": "int",
+          "location": "query",
+          "description": "The maximum number of resources to return."
+        },
+        {
+          "name": "pageToken",
+          "type": "string",
+          "location": "query",
+          "description": "A page token, received from a previous `ListFirebaseLinks` call. Provide this to retrieve the subsequent page. When paginating, all other parameters provided to `ListFirebaseLinks` must match the call that provided the page token."
+        }
+      ]
+    },
+    {
+      "name": "google-analytics-admin-properties_google-ads-links_create",
+      "description": "Creates a GoogleAdsLink. Required: parent. Optional: adsPersonalizationEnabled, canManageClients, createTime (plus 4 more). Returns the new GoogleAnalyticsAdminV1alphaGoogleAdsLink.",
+      "method": "POST",
+      "path": "/v1alpha/{parent}/googleAdsLinks",
+      "params": [
+        {
+          "name": "parent",
+          "type": "string",
+          "location": "path",
+          "description": "Required. Example format: properties/1234",
+          "required": true
+        },
+        {
+          "name": "adsPersonalizationEnabled",
+          "type": "bool",
+          "location": "body",
+          "description": "Enable personalized advertising features with this integration. Automatically publish my Google Analytics audience lists and Google Analytics remarketing events/parameters to the linked Google Ads account. If this field is not set on create/update, it will be defaulted to true."
+        },
+        {
+          "name": "canManageClients",
+          "type": "bool",
+          "location": "body",
+          "description": "Output only. If true, this link is for a Google Ads manager account."
+        },
+        {
+          "name": "createTime",
+          "type": "string",
+          "location": "body",
+          "description": "Output only. Time when this link was originally created."
+        },
+        {
+          "name": "creatorEmailAddress",
+          "type": "string",
+          "location": "body",
+          "description": "Output only. Email address of the user that created the link. An empty string will be returned if the email address can't be retrieved."
+        },
+        {
+          "name": "customerId",
+          "type": "string",
+          "location": "body",
+          "description": "Immutable. Google Ads customer ID."
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "location": "body",
+          "description": "Output only. Format: properties/{propertyId}/googleAdsLinks/{googleAdsLinkId} Note: googleAdsLinkId is not the Google Ads customer ID."
+        },
+        {
+          "name": "updateTime",
+          "type": "string",
+          "location": "body",
+          "description": "Output only. Time when this link was last updated."
+        }
+      ]
+    },
+    {
+      "name": "google-analytics-admin-properties_google-ads-links_list",
+      "description": "Lists GoogleAdsLinks on a property. Required: parent. Optional: pageSize, pageToken. Returns array of GoogleAnalyticsAdminV1alphaGoogleAdsLink.",
+      "method": "GET",
+      "path": "/v1alpha/{parent}/googleAdsLinks",
+      "params": [
+        {
+          "name": "parent",
+          "type": "string",
+          "location": "path",
+          "description": "Required. Example format: properties/1234",
+          "required": true
+        },
+        {
+          "name": "pageSize",
+          "type": "int",
+          "location": "query",
+          "description": "The maximum number of resources to return."
+        },
+        {
+          "name": "pageToken",
+          "type": "string",
+          "location": "query",
+          "description": "A page token, received from a previous `ListGoogleAdsLinks` call. Provide this to retrieve the subsequent page. When paginating, all other parameters provided to `ListGoogleAdsLinks` must match the call that provided the page token."
+        }
+      ]
+    },
+    {
+      "name": "google-analytics-admin-properties_search-ads360-links_create",
+      "description": "Creates a SearchAds360Link. Required: parent. Optional: adsPersonalizationEnabled, advertiserDisplayName, advertiserId (plus 4 more). Returns the new GoogleAnalyticsAdminV1alphaSearchAds360Link.",
+      "method": "POST",
+      "path": "/v1alpha/{parent}/searchAds360Links",
+      "params": [
+        {
+          "name": "parent",
+          "type": "string",
+          "location": "path",
+          "description": "Required. Example format: properties/1234",
+          "required": true
+        },
+        {
+          "name": "adsPersonalizationEnabled",
+          "type": "bool",
+          "location": "body",
+          "description": "Enables personalized advertising features with this integration. If this field is not set on create, it will be defaulted to true."
+        },
+        {
+          "name": "advertiserDisplayName",
+          "type": "string",
+          "location": "body",
+          "description": "Output only. The display name of the Search Ads 360 Advertiser. Allows users to easily identify the linked resource."
+        },
+        {
+          "name": "advertiserId",
+          "type": "string",
+          "location": "body",
+          "description": "Immutable. This field represents the Advertiser ID of the Search Ads 360 Advertiser. that has been linked."
+        },
+        {
+          "name": "campaignDataSharingEnabled",
+          "type": "bool",
+          "location": "body",
+          "description": "Immutable. Enables the import of campaign data from Search Ads 360 into the GA4 property. After link creation, this can only be updated from the Search Ads 360 product. If this field is not set on create, it will be defaulted to true."
+        },
+        {
+          "name": "costDataSharingEnabled",
+          "type": "bool",
+          "location": "body",
+          "description": "Immutable. Enables the import of cost data from Search Ads 360 to the GA4 property. This can only be enabled if campaign_data_sharing_enabled is enabled. After link creation, this can only be updated from the Search Ads 360 product. If this field is not set on create, it will be defaulted to true."
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "location": "body",
+          "description": "Output only. The resource name for this SearchAds360Link resource. Format: properties/{propertyId}/searchAds360Links/{linkId} Note: linkId is not the Search Ads 360 advertiser ID"
+        },
+        {
+          "name": "siteStatsSharingEnabled",
+          "type": "bool",
+          "location": "body",
+          "description": "Enables export of site stats with this integration. If this field is not set on create, it will be defaulted to true."
+        }
+      ]
+    },
+    {
+      "name": "google-analytics-admin-properties_search-ads360-links_list",
+      "description": "Lists all SearchAds360Links on a property. Required: parent. Optional: pageSize, pageToken. Returns array of GoogleAnalyticsAdminV1alphaSearchAds360Link.",
+      "method": "GET",
+      "path": "/v1alpha/{parent}/searchAds360Links",
+      "params": [
+        {
+          "name": "parent",
+          "type": "string",
+          "location": "path",
+          "description": "Required. Example format: properties/1234",
+          "required": true
+        },
+        {
+          "name": "pageSize",
+          "type": "int",
+          "location": "query",
+          "description": "The maximum number of resources to return."
+        },
+        {
+          "name": "pageToken",
+          "type": "string",
+          "location": "query",
+          "description": "A page token, received from a previous `ListSearchAds360Links` call. Provide this to retrieve the subsequent page. When paginating, all other parameters provided to `ListSearchAds360Links` must match the call that provided the page token."
+        }
+      ]
+    },
+    {
+      "name": "google-analytics-admin-properties_user-links_audit",
+      "description": "Lists all user links on an account or property, including implicit ones that come from effective permissions granted by groups or organization admin roles. If a returned user link does not have direct permissions, they cannot be removed from the account or property directly with the DeleteUserLink command. They have to be removed from the group/etc that gives them permissions, which is currently only usable/discoverable in the GA or GMP UIs. Required: parent. Optional: pageSize, pageToken. Returns array of GoogleAnalyticsAdminV1alphaAuditUserLink.",
+      "method": "POST",
+      "path": "/v1alpha/{parent}/userLinks:audit",
+      "params": [
+        {
+          "name": "parent",
+          "type": "string",
+          "location": "path",
+          "description": "Required. Example format: accounts/1234",
+          "required": true
+        },
+        {
+          "name": "pageSize",
+          "type": "int",
+          "location": "body",
+          "description": "The maximum number of user links to return. The service may return fewer than this value. If unspecified, at most 1000 user links will be returned. The maximum value is 5000; values above 5000 will be coerced to 5000."
+        },
+        {
+          "name": "pageToken",
+          "type": "string",
+          "location": "body",
+          "description": "A page token, received from a previous `AuditUserLinks` call. Provide this to retrieve the subsequent page. When paginating, all other parameters provided to `AuditUserLinks` must match the call that provided the page token."
+        }
+      ]
+    },
+    {
+      "name": "google-analytics-admin-properties_user-links_batch-create",
+      "description": "Creates information about multiple users' links to an account or property. This method is transactional. If any UserLink cannot be created, none of the UserLinks will be created. Required: parent. Optional: notifyNewUsers, requests. Returns array of GoogleAnalyticsAdminV1alphaUserLink.",
+      "method": "POST",
+      "path": "/v1alpha/{parent}/userLinks:batchCreate",
+      "params": [
+        {
+          "name": "parent",
+          "type": "string",
+          "location": "path",
+          "description": "Required. The account or property that all user links in the request are for. This field is required. The parent field in the CreateUserLinkRequest messages must either be empty or match this field. Example format: accounts/1234",
+          "required": true
+        },
+        {
+          "name": "notifyNewUsers",
+          "type": "bool",
+          "location": "body",
+          "description": "Optional. If set, then email the new users notifying them that they've been granted permissions to the resource. Regardless of whether this is set or not, notify_new_user field inside each individual request is ignored."
+        },
+        {
+          "name": "requests",
+          "type": "array",
+          "location": "body",
+          "description": "Required. The requests specifying the user links to create. A maximum of 1000 user links can be created in a batch."
+        }
+      ]
+    },
+    {
+      "name": "google-analytics-admin-properties_user-links_batch-delete",
+      "description": "Deletes information about multiple users' links to an account or property. Required: parent. Optional: requests. Returns the new GoogleProtobufEmpty.",
+      "method": "POST",
+      "path": "/v1alpha/{parent}/userLinks:batchDelete",
+      "params": [
+        {
+          "name": "parent",
+          "type": "string",
+          "location": "path",
+          "description": "Required. The account or property that all user links in the request are for. The parent of all values for user link names to delete must match this field. Example format: accounts/1234",
+          "required": true
+        },
+        {
+          "name": "requests",
+          "type": "array",
+          "location": "body",
+          "description": "Required. The requests specifying the user links to update. A maximum of 1000 user links can be updated in a batch."
+        }
+      ]
+    },
+    {
+      "name": "google-analytics-admin-properties_user-links_batch-get",
+      "description": "Gets information about multiple users' links to an account or property. Required: parent. Optional: names. Returns array of GoogleAnalyticsAdminV1alphaUserLink.",
+      "method": "GET",
+      "path": "/v1alpha/{parent}/userLinks:batchGet",
+      "params": [
+        {
+          "name": "parent",
+          "type": "string",
+          "location": "path",
+          "description": "Required. The account or property that all user links in the request are for. The parent of all provided values for the 'names' field must match this field. Example format: accounts/1234",
+          "required": true
+        },
+        {
+          "name": "names",
+          "type": "array",
+          "location": "query",
+          "description": "Required. The names of the user links to retrieve. A maximum of 1000 user links can be retrieved in a batch. Format: accounts/{accountId}/userLinks/{userLinkId}"
+        }
+      ]
+    },
+    {
+      "name": "google-analytics-admin-properties_user-links_batch-update",
+      "description": "Updates information about multiple users' links to an account or property. Required: parent. Optional: requests. Returns array of GoogleAnalyticsAdminV1alphaUserLink.",
+      "method": "POST",
+      "path": "/v1alpha/{parent}/userLinks:batchUpdate",
+      "params": [
+        {
+          "name": "parent",
+          "type": "string",
+          "location": "path",
+          "description": "Required. The account or property that all user links in the request are for. The parent field in the UpdateUserLinkRequest messages must either be empty or match this field. Example format: accounts/1234",
+          "required": true
+        },
+        {
+          "name": "requests",
+          "type": "array",
+          "location": "body",
+          "description": "Required. The requests specifying the user links to update. A maximum of 1000 user links can be updated in a batch."
+        }
+      ]
+    },
+    {
+      "name": "google-analytics-admin-properties_user-links_create",
+      "description": "Creates a user link on an account or property. If the user with the specified email already has permissions on the account or property, then the user's existing permissions will be unioned with the permissions specified in the new UserLink. Required: parent. Optional: notifyNewUser, directRoles, emailAddress (plus 1 more). Returns array of string.",
+      "method": "POST",
+      "path": "/v1alpha/{parent}/userLinks",
+      "params": [
+        {
+          "name": "parent",
+          "type": "string",
+          "location": "path",
+          "description": "Required. Example format: accounts/1234",
+          "required": true
+        },
+        {
+          "name": "notifyNewUser",
+          "type": "bool",
+          "location": "query",
+          "description": "Optional. If set, then email the new user notifying them that they've been granted permissions to the resource."
+        },
+        {
+          "name": "directRoles",
+          "type": "string_csv_array",
+          "location": "body",
+          "description": "Roles directly assigned to this user for this account or property. Valid values: predefinedRoles/viewer predefinedRoles/analyst predefinedRoles/editor predefinedRoles/admin predefinedRoles/no-cost-data predefinedRoles/no-revenue-data Excludes roles that are inherited from a higher-level entity, group, or organization admin role. A UserLink that is updated to have an empty list of direct_roles will be deleted."
+        },
+        {
+          "name": "emailAddress",
+          "type": "string",
+          "location": "body",
+          "description": "Immutable. Email address of the user to link"
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "location": "body",
+          "description": "Output only. Example format: properties/1234/userLinks/5678"
+        }
+      ]
+    },
+    {
+      "name": "google-analytics-admin-properties_user-links_delete",
+      "description": "Deletes a user link on an account or property. Required: name. Returns the GoogleProtobufEmpty. Destructive.",
+      "method": "DELETE",
+      "path": "/v1alpha/{name}",
+      "params": [
+        {
+          "name": "name",
+          "type": "string",
+          "location": "path",
+          "description": "Required. Example format: accounts/1234/userLinks/5678",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "google-analytics-admin-properties_user-links_get",
+      "description": "Gets information about a user's link to an account or property. Required: name. Returns array of string.",
+      "method": "GET",
+      "path": "/v1alpha/{name}",
+      "params": [
+        {
+          "name": "name",
+          "type": "string",
+          "location": "path",
+          "description": "Required. Example format: accounts/1234/userLinks/5678",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "google-analytics-admin-properties_user-links_list",
+      "description": "Lists all user links on an account or property. Required: parent. Optional: pageSize, pageToken. Returns array of GoogleAnalyticsAdminV1alphaUserLink.",
+      "method": "GET",
+      "path": "/v1alpha/{parent}/userLinks",
+      "params": [
+        {
+          "name": "parent",
+          "type": "string",
+          "location": "path",
+          "description": "Required. Example format: accounts/1234",
+          "required": true
+        },
+        {
+          "name": "pageSize",
+          "type": "int",
+          "location": "query",
+          "description": "The maximum number of user links to return. The service may return fewer than this value. If unspecified, at most 200 user links will be returned. The maximum value is 500; values above 500 will be coerced to 500."
+        },
+        {
+          "name": "pageToken",
+          "type": "string",
+          "location": "query",
+          "description": "A page token, received from a previous `ListUserLinks` call. Provide this to retrieve the subsequent page. When paginating, all other parameters provided to `ListUserLinks` must match the call that provided the page token."
+        }
+      ]
+    },
+    {
+      "name": "google-analytics-admin-properties_user-links_patch",
+      "description": "Updates a user link on an account or property. Required: name. Optional: updateMask, directRoles, emailAddress (plus 1 more). Returns array of string.",
+      "method": "PATCH",
+      "path": "/v1alpha/{name}",
+      "params": [
+        {
+          "name": "name",
+          "type": "string",
+          "location": "path",
+          "description": "Output only. Example format: properties/1234/userLinks/5678",
+          "required": true
+        },
+        {
+          "name": "updateMask",
+          "type": "string",
+          "location": "query",
+          "description": "Required. The list of fields to be updated. Omitted fields will not be updated. To replace the entire entity, use one path with the string '*' to match all fields."
+        },
+        {
+          "name": "directRoles",
+          "type": "string_csv_array",
+          "location": "body",
+          "description": "Roles directly assigned to this user for this account or property. Valid values: predefinedRoles/viewer predefinedRoles/analyst predefinedRoles/editor predefinedRoles/admin predefinedRoles/no-cost-data predefinedRoles/no-revenue-data Excludes roles that are inherited from a higher-level entity, group, or organization admin role. A UserLink that is updated to have an empty list of direct_roles will be deleted."
+        },
+        {
+          "name": "emailAddress",
+          "type": "string",
+          "location": "body",
+          "description": "Immutable. Email address of the user to link"
+        },
+        {
+          "name": "name-2",
+          "wire_name": "name",
+          "type": "string",
+          "location": "body",
+          "description": "Output only. Example format: properties/1234/userLinks/5678"
+        }
+      ]
+    },
+    {
+      "name": "properties_batch-run-pivot-reports",
+      "description": "Returns multiple pivot reports in a batch. All reports must be for the same GA4 Property. Required: property. Optional: requests.",
+      "method": "POST",
+      "path": "/v1beta/{property}:batchRunPivotReports",
+      "params": [
+        {
+          "name": "property",
+          "type": "string",
+          "location": "path",
+          "description": "A Google Analytics GA4 property identifier whose events are tracked. Specified in the URL path and not the body. To learn more, see [where to find your Property ID](https://developers.google.com/analytics/devguides/reporting/data/v1/property-id). This property must be specified for the batch. The property within RunPivotReportRequest may either be unspecified or consistent with this property. Example: properties/1234",
+          "required": true
+        },
+        {
+          "name": "requests",
+          "type": "array",
+          "location": "body",
+          "description": "Individual requests. Each request has a separate pivot report response. Each batch request is allowed up to 5 requests."
+        }
+      ]
+    },
+    {
+      "name": "properties_batch-run-reports",
+      "description": "Returns multiple reports in a batch. All reports must be for the same GA4 Property. Required: property. Optional: requests.",
+      "method": "POST",
+      "path": "/v1beta/{property}:batchRunReports",
+      "params": [
+        {
+          "name": "property",
+          "type": "string",
+          "location": "path",
+          "description": "A Google Analytics GA4 property identifier whose events are tracked. Specified in the URL path and not the body. To learn more, see [where to find your Property ID](https://developers.google.com/analytics/devguides/reporting/data/v1/property-id). This property must be specified for the batch. The property within RunReportRequest may either be unspecified or consistent with this property. Example: properties/1234",
+          "required": true
+        },
+        {
+          "name": "requests",
+          "type": "array",
+          "location": "body",
+          "description": "Individual requests. Each request has a separate report response. Each batch request is allowed up to 5 requests."
+        }
+      ]
+    },
+    {
+      "name": "properties_check-compatibility",
+      "description": "This compatibility method lists dimensions and metrics that can be added to a report request and maintain compatibility. This method fails if the request's dimensions and metrics are incompatible. In Google Analytics, reports fail if they request incompatible dimensions and/or metrics; in that case, you will need to remove dimensions and/or metrics from the incompatible report until the report is compatible. The Realtime and Core reports have different compatibility rules. This method checks compatibility for Core reports. Required: property. Optional: compatibilityFilter, dimensionFilter, dimensions (plus 2 more). Returns the new CheckCompatibilityResponse.",
+      "method": "POST",
+      "path": "/v1beta/{property}:checkCompatibility",
+      "params": [
+        {
+          "name": "property",
+          "type": "string",
+          "location": "path",
+          "description": "A Google Analytics GA4 property identifier whose events are tracked. To learn more, see [where to find your Property ID](https://developers.google.com/analytics/devguides/reporting/data/v1/property-id). `property` should be the same value as in your `runReport` request. Example: properties/1234",
+          "required": true
+        },
+        {
+          "name": "compatibilityFilter",
+          "type": "string",
+          "location": "body",
+          "description": "Filters the dimensions and metrics in the response to just this compatibility. Commonly used as `”compatibilityFilter”: “COMPATIBLE”` to only return compatible dimensions \u0026 metrics."
+        },
+        {
+          "name": "dimension-filter-and-group-expressions",
+          "wire_name": "dimensionFilter.andGroup.expressions",
+          "type": "array",
+          "location": "body",
+          "description": "A list of filter expressions."
+        },
+        {
+          "name": "dimension-filter-filter-field-name",
+          "wire_name": "dimensionFilter.filter.fieldName",
+          "type": "string",
+          "location": "body",
+          "description": "The dimension name or metric name. In most methods, dimensions \u0026 metrics can be used for the first time in this field. However in a RunPivotReportRequest, this field must be additionally specified by name in the RunPivotReportRequest's dimensions or metrics."
+        },
+        {
+          "name": "dimension-filter-not-expression",
+          "wire_name": "dimensionFilter.notExpression",
+          "type": "object",
+          "location": "body",
+          "description": "To express dimension or metric filters. The fields in the same FilterExpression need to be either all dimensions or all metrics."
+        },
+        {
+          "name": "dimension-filter-or-group-expressions",
+          "wire_name": "dimensionFilter.orGroup.expressions",
+          "type": "array",
+          "location": "body",
+          "description": "A list of filter expressions."
+        },
+        {
+          "name": "dimensions",
+          "type": "array",
+          "location": "body",
+          "description": "The dimensions in this report. `dimensions` should be the same value as in your `runReport` request."
+        },
+        {
+          "name": "metric-filter-and-group-expressions",
+          "wire_name": "metricFilter.andGroup.expressions",
+          "type": "array",
+          "location": "body",
+          "description": "A list of filter expressions."
+        },
+        {
+          "name": "metric-filter-filter-field-name",
+          "wire_name": "metricFilter.filter.fieldName",
+          "type": "string",
+          "location": "body",
+          "description": "The dimension name or metric name. In most methods, dimensions \u0026 metrics can be used for the first time in this field. However in a RunPivotReportRequest, this field must be additionally specified by name in the RunPivotReportRequest's dimensions or metrics."
+        },
+        {
+          "name": "metric-filter-not-expression",
+          "wire_name": "metricFilter.notExpression",
+          "type": "object",
+          "location": "body",
+          "description": "To express dimension or metric filters. The fields in the same FilterExpression need to be either all dimensions or all metrics."
+        },
+        {
+          "name": "metric-filter-or-group-expressions",
+          "wire_name": "metricFilter.orGroup.expressions",
+          "type": "array",
+          "location": "body",
+          "description": "A list of filter expressions."
+        },
+        {
+          "name": "metrics",
+          "type": "array",
+          "location": "body",
+          "description": "The metrics in this report. `metrics` should be the same value as in your `runReport` request."
+        }
+      ]
+    },
+    {
+      "name": "properties_get-metadata",
+      "description": "Returns metadata for dimensions and metrics available in reporting methods. Used to explore the dimensions and metrics. In this method, a Google Analytics GA4 Property Identifier is specified in the request, and the metadata response includes Custom dimensions and metrics as well as Universal metadata. For example if a custom metric with parameter name `levels_unlocked` is registered to a property, the Metadata response will contain `customEvent:levels_unlocked`. Universal metadata are dimensions and metrics applicable to any property such as `country` and `totalUsers`. Required: name.",
+      "method": "GET",
+      "path": "/v1beta/{name}",
+      "params": [
+        {
+          "name": "name",
+          "type": "string",
+          "location": "path",
+          "description": "Required. The resource name of the metadata to retrieve. This name field is specified in the URL path and not URL parameters. Property is a numeric Google Analytics GA4 Property identifier. To learn more, see [where to find your Property ID](https://developers.google.com/analytics/devguides/reporting/data/v1/property-id). Example: properties/1234/metadata Set the Property ID to 0 for dimensions and metrics common to all properties. In this special mode, this method will not return custom dimensions and metrics.",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "properties_run-pivot-report",
+      "description": "Returns a customized pivot report of your Google Analytics event data. Pivot reports are more advanced and expressive formats than regular reports. In a pivot report, dimensions are only visible if they are included in a pivot. Multiple pivots can be specified to further dissect your data. Required: property. Optional: cohortSpec, currencyCode, dateRanges (plus 8 more).",
+      "method": "POST",
+      "path": "/v1beta/{property}:runPivotReport",
+      "params": [
+        {
+          "name": "property",
+          "type": "string",
+          "location": "path",
+          "description": "A Google Analytics GA4 property identifier whose events are tracked.",
+          "required": true
+        },
+        {
+          "name": "cohort-spec-cohort-report-settings-accumulate",
+          "wire_name": "cohortSpec.cohortReportSettings.accumulate",
+          "type": "bool",
+          "location": "body",
+          "description": "If true, accumulates the result from first touch day to the end day. Not supported in `RunReportRequest`."
+        },
+        {
+          "name": "cohort-spec-cohorts",
+          "wire_name": "cohortSpec.cohorts",
+          "type": "array",
+          "location": "body",
+          "description": "Defines the selection criteria to group users into cohorts. Most cohort reports define only a single cohort. If multiple cohorts are specified, each cohort can be recognized in the report by their name."
+        },
+        {
+          "name": "cohort-spec-cohorts-range-end-offset",
+          "wire_name": "cohortSpec.cohortsRange.endOffset",
+          "type": "int",
+          "location": "body",
+          "description": "Required. `endOffset` specifies the end date of the extended reporting date range for a cohort report. `endOffset` can be any positive integer but is commonly set to 5 to 10 so that reports contain data on the cohort for the next several granularity time periods. If `granularity` is `DAILY`, the `endDate` of the extended reporting date range is `endDate` of the cohort plus `endOffset` days. If `granularity` is `WEEKLY`, the `endDate` of the extended reporting date range is `endDate` of the cohort plus `endOffset * 7` days. If `granularity` is `MONTHLY`, the `endDate` of the extended reporting date range is `endDate` of the cohort plus `endOffset * 30` days."
+        },
+        {
+          "name": "cohort-spec-cohorts-range-granularity",
+          "wire_name": "cohortSpec.cohortsRange.granularity",
+          "type": "string",
+          "location": "body",
+          "description": "Required. The granularity used to interpret the `startOffset` and `endOffset` for the extended reporting date range for a cohort report."
+        },
+        {
+          "name": "cohort-spec-cohorts-range-start-offset",
+          "wire_name": "cohortSpec.cohortsRange.startOffset",
+          "type": "int",
+          "location": "body",
+          "description": "`startOffset` specifies the start date of the extended reporting date range for a cohort report. `startOffset` is commonly set to 0 so that reports contain data from the acquisition of the cohort forward. If `granularity` is `DAILY`, the `startDate` of the extended reporting date range is `startDate` of the cohort plus `startOffset` days. If `granularity` is `WEEKLY`, the `startDate` of the extended reporting date range is `startDate` of the cohort plus `startOffset * 7` days. If `granularity` is `MONTHLY`, the `startDate` of the extended reporting date range is `startDate` of the cohort plus `startOffset * 30` days."
+        },
+        {
+          "name": "currencyCode",
+          "type": "string",
+          "location": "body",
+          "description": "A currency code in ISO4217 format, such as 'AED', 'USD', 'JPY'. If the field is empty, the report uses the property's default currency."
+        },
+        {
+          "name": "dateRanges",
+          "type": "array",
+          "location": "body",
+          "description": "The date range to retrieve event data for the report. If multiple date ranges are specified, event data from each date range is used in the report. A special dimension with field name 'dateRange' can be included in a Pivot's field names; if included, the report compares between date ranges. In a cohort request, this `dateRanges` must be unspecified."
+        },
+        {
+          "name": "dimension-filter-and-group-expressions",
+          "wire_name": "dimensionFilter.andGroup.expressions",
+          "type": "array",
+          "location": "body",
+          "description": "A list of filter expressions."
+        },
+        {
+          "name": "dimension-filter-filter-field-name",
+          "wire_name": "dimensionFilter.filter.fieldName",
+          "type": "string",
+          "location": "body",
+          "description": "The dimension name or metric name. In most methods, dimensions \u0026 metrics can be used for the first time in this field. However in a RunPivotReportRequest, this field must be additionally specified by name in the RunPivotReportRequest's dimensions or metrics."
+        },
+        {
+          "name": "dimension-filter-not-expression",
+          "wire_name": "dimensionFilter.notExpression",
+          "type": "object",
+          "location": "body",
+          "description": "To express dimension or metric filters. The fields in the same FilterExpression need to be either all dimensions or all metrics."
+        },
+        {
+          "name": "dimension-filter-or-group-expressions",
+          "wire_name": "dimensionFilter.orGroup.expressions",
+          "type": "array",
+          "location": "body",
+          "description": "A list of filter expressions."
+        },
+        {
+          "name": "dimensions",
+          "type": "array",
+          "location": "body",
+          "description": "The dimensions requested. All defined dimensions must be used by one of the following: dimension_expression, dimension_filter, pivots, order_bys."
+        },
+        {
+          "name": "keepEmptyRows",
+          "type": "bool",
+          "location": "body",
+          "description": "If false or unspecified, each row with all metrics equal to 0 will not be returned. If true, these rows will be returned if they are not separately removed by a filter. Regardless of this `keep_empty_rows` setting, only data recorded by the Google Analytics (GA4) property can be displayed in a report. For example if a property never logs a `purchase` event, then a query for the `eventName` dimension and `eventCount` metric will not have a row eventName: 'purchase' and eventCount: 0."
+        },
+        {
+          "name": "metric-filter-and-group-expressions",
+          "wire_name": "metricFilter.andGroup.expressions",
+          "type": "array",
+          "location": "body",
+          "description": "A list of filter expressions."
+        },
+        {
+          "name": "metric-filter-filter-field-name",
+          "wire_name": "metricFilter.filter.fieldName",
+          "type": "string",
+          "location": "body",
+          "description": "The dimension name or metric name. In most methods, dimensions \u0026 metrics can be used for the first time in this field. However in a RunPivotReportRequest, this field must be additionally specified by name in the RunPivotReportRequest's dimensions or metrics."
+        },
+        {
+          "name": "metric-filter-not-expression",
+          "wire_name": "metricFilter.notExpression",
+          "type": "object",
+          "location": "body",
+          "description": "To express dimension or metric filters. The fields in the same FilterExpression need to be either all dimensions or all metrics."
+        },
+        {
+          "name": "metric-filter-or-group-expressions",
+          "wire_name": "metricFilter.orGroup.expressions",
+          "type": "array",
+          "location": "body",
+          "description": "A list of filter expressions."
+        },
+        {
+          "name": "metrics",
+          "type": "array",
+          "location": "body",
+          "description": "The metrics requested, at least one metric needs to be specified. All defined metrics must be used by one of the following: metric_expression, metric_filter, order_bys."
+        },
+        {
+          "name": "pivots",
+          "type": "array",
+          "location": "body",
+          "description": "Describes the visual format of the report's dimensions in columns or rows. The union of the fieldNames (dimension names) in all pivots must be a subset of dimension names defined in Dimensions. No two pivots can share a dimension. A dimension is only visible if it appears in a pivot."
+        },
+        {
+          "name": "property-2",
+          "wire_name": "property",
+          "type": "string",
+          "location": "body",
+          "description": "A Google Analytics GA4 property identifier whose events are tracked."
+        },
+        {
+          "name": "returnPropertyQuota",
+          "type": "bool",
+          "location": "body",
+          "description": "Toggles whether to return the current state of this Analytics Property's quota. Quota is returned in [PropertyQuota](#PropertyQuota)."
+        }
+      ]
+    },
+    {
+      "name": "properties_run-realtime-report",
+      "description": "Returns a customized report of realtime event data for your property. Events appear in realtime reports seconds after they have been sent to the Google Analytics. Realtime reports show events and usage data for the periods of time ranging from the present moment to 30 minutes ago (up to 60 minutes for Google Analytics 360 properties). For a guide to constructing realtime requests \u0026 understanding responses, see [Creating a Realtime Report](https://developers.google.com/analytics/devguides/reporting/data/v1/realtime-basics). Required: property. Optional: dimensionFilter, dimensions, limit (plus 6 more).",
+      "method": "POST",
+      "path": "/v1beta/{property}:runRealtimeReport",
+      "params": [
+        {
+          "name": "property",
+          "type": "string",
+          "location": "path",
+          "description": "A Google Analytics GA4 property identifier whose events are tracked. Specified in the URL path and not the body. To learn more, see [where to find your Property ID](https://developers.google.com/analytics/devguides/reporting/data/v1/property-id). Example: properties/1234",
+          "required": true
+        },
+        {
+          "name": "dimension-filter-and-group-expressions",
+          "wire_name": "dimensionFilter.andGroup.expressions",
+          "type": "array",
+          "location": "body",
+          "description": "A list of filter expressions."
+        },
+        {
+          "name": "dimension-filter-filter-field-name",
+          "wire_name": "dimensionFilter.filter.fieldName",
+          "type": "string",
+          "location": "body",
+          "description": "The dimension name or metric name. In most methods, dimensions \u0026 metrics can be used for the first time in this field. However in a RunPivotReportRequest, this field must be additionally specified by name in the RunPivotReportRequest's dimensions or metrics."
+        },
+        {
+          "name": "dimension-filter-not-expression",
+          "wire_name": "dimensionFilter.notExpression",
+          "type": "object",
+          "location": "body",
+          "description": "To express dimension or metric filters. The fields in the same FilterExpression need to be either all dimensions or all metrics."
+        },
+        {
+          "name": "dimension-filter-or-group-expressions",
+          "wire_name": "dimensionFilter.orGroup.expressions",
+          "type": "array",
+          "location": "body",
+          "description": "A list of filter expressions."
+        },
+        {
+          "name": "dimensions",
+          "type": "array",
+          "location": "body",
+          "description": "The dimensions requested and displayed."
+        },
+        {
+          "name": "limit",
+          "type": "string",
+          "location": "body",
+          "description": "The number of rows to return. If unspecified, 10,000 rows are returned. The API returns a maximum of 250,000 rows per request, no matter how many you ask for. `limit` must be positive. The API can also return fewer rows than the requested `limit`, if there aren't as many dimension values as the `limit`. For instance, there are fewer than 300 possible values for the dimension `country`, so when reporting on only `country`, you can't get more than 300 rows, even if you set `limit` to a higher value."
+        },
+        {
+          "name": "metricAggregations",
+          "type": "string_csv_array",
+          "location": "body",
+          "description": "Aggregation of metrics. Aggregated metric values will be shown in rows where the dimension_values are set to 'RESERVED_(MetricAggregation)'."
+        },
+        {
+          "name": "metric-filter-and-group-expressions",
+          "wire_name": "metricFilter.andGroup.expressions",
+          "type": "array",
+          "location": "body",
+          "description": "A list of filter expressions."
+        },
+        {
+          "name": "metric-filter-filter-field-name",
+          "wire_name": "metricFilter.filter.fieldName",
+          "type": "string",
+          "location": "body",
+          "description": "The dimension name or metric name. In most methods, dimensions \u0026 metrics can be used for the first time in this field. However in a RunPivotReportRequest, this field must be additionally specified by name in the RunPivotReportRequest's dimensions or metrics."
+        },
+        {
+          "name": "metric-filter-not-expression",
+          "wire_name": "metricFilter.notExpression",
+          "type": "object",
+          "location": "body",
+          "description": "To express dimension or metric filters. The fields in the same FilterExpression need to be either all dimensions or all metrics."
+        },
+        {
+          "name": "metric-filter-or-group-expressions",
+          "wire_name": "metricFilter.orGroup.expressions",
+          "type": "array",
+          "location": "body",
+          "description": "A list of filter expressions."
+        },
+        {
+          "name": "metrics",
+          "type": "array",
+          "location": "body",
+          "description": "The metrics requested and displayed."
+        },
+        {
+          "name": "minuteRanges",
+          "type": "array",
+          "location": "body",
+          "description": "The minute ranges of event data to read. If unspecified, one minute range for the last 30 minutes will be used. If multiple minute ranges are requested, each response row will contain a zero based minute range index. If two minute ranges overlap, the event data for the overlapping minutes is included in the response rows for both minute ranges."
+        },
+        {
+          "name": "orderBys",
+          "type": "array",
+          "location": "body",
+          "description": "Specifies how rows are ordered in the response."
+        },
+        {
+          "name": "returnPropertyQuota",
+          "type": "bool",
+          "location": "body",
+          "description": "Toggles whether to return the current state of this Analytics Property's Realtime quota. Quota is returned in [PropertyQuota](#PropertyQuota)."
+        }
+      ]
+    },
+    {
+      "name": "properties_run-report",
+      "description": "Returns a customized report of your Google Analytics event data. Reports contain statistics derived from data collected by the Google Analytics tracking code. The data returned from the API is as a table with columns for the requested dimensions and metrics. Metrics are individual measurements of user activity on your property, such as active users or event count. Dimensions break down metrics across some common criteria, such as country or event name. For a guide to constructing requests \u0026 understanding responses, see [Creating a Report](https://developers.google.com/analytics/devguides/reporting/data/v1/basics). Required: property. Optional: cohortSpec, currencyCode, dateRanges (plus 11 more).",
+      "method": "POST",
+      "path": "/v1beta/{property}:runReport",
+      "params": [
+        {
+          "name": "property",
+          "type": "string",
+          "location": "path",
+          "description": "A Google Analytics GA4 property identifier whose events are tracked.",
+          "required": true
+        },
+        {
+          "name": "cohort-spec-cohort-report-settings-accumulate",
+          "wire_name": "cohortSpec.cohortReportSettings.accumulate",
+          "type": "bool",
+          "location": "body",
+          "description": "If true, accumulates the result from first touch day to the end day. Not supported in `RunReportRequest`."
+        },
+        {
+          "name": "cohort-spec-cohorts",
+          "wire_name": "cohortSpec.cohorts",
+          "type": "array",
+          "location": "body",
+          "description": "Defines the selection criteria to group users into cohorts. Most cohort reports define only a single cohort. If multiple cohorts are specified, each cohort can be recognized in the report by their name."
+        },
+        {
+          "name": "cohort-spec-cohorts-range-end-offset",
+          "wire_name": "cohortSpec.cohortsRange.endOffset",
+          "type": "int",
+          "location": "body",
+          "description": "Required. `endOffset` specifies the end date of the extended reporting date range for a cohort report. `endOffset` can be any positive integer but is commonly set to 5 to 10 so that reports contain data on the cohort for the next several granularity time periods. If `granularity` is `DAILY`, the `endDate` of the extended reporting date range is `endDate` of the cohort plus `endOffset` days. If `granularity` is `WEEKLY`, the `endDate` of the extended reporting date range is `endDate` of the cohort plus `endOffset * 7` days. If `granularity` is `MONTHLY`, the `endDate` of the extended reporting date range is `endDate` of the cohort plus `endOffset * 30` days."
+        },
+        {
+          "name": "cohort-spec-cohorts-range-granularity",
+          "wire_name": "cohortSpec.cohortsRange.granularity",
+          "type": "string",
+          "location": "body",
+          "description": "Required. The granularity used to interpret the `startOffset` and `endOffset` for the extended reporting date range for a cohort report."
+        },
+        {
+          "name": "cohort-spec-cohorts-range-start-offset",
+          "wire_name": "cohortSpec.cohortsRange.startOffset",
+          "type": "int",
+          "location": "body",
+          "description": "`startOffset` specifies the start date of the extended reporting date range for a cohort report. `startOffset` is commonly set to 0 so that reports contain data from the acquisition of the cohort forward. If `granularity` is `DAILY`, the `startDate` of the extended reporting date range is `startDate` of the cohort plus `startOffset` days. If `granularity` is `WEEKLY`, the `startDate` of the extended reporting date range is `startDate` of the cohort plus `startOffset * 7` days. If `granularity` is `MONTHLY`, the `startDate` of the extended reporting date range is `startDate` of the cohort plus `startOffset * 30` days."
+        },
+        {
+          "name": "currencyCode",
+          "type": "string",
+          "location": "body",
+          "description": "A currency code in ISO4217 format, such as 'AED', 'USD', 'JPY'. If the field is empty, the report uses the property's default currency."
+        },
+        {
+          "name": "dateRanges",
+          "type": "array",
+          "location": "body",
+          "description": "Date ranges of data to read. If multiple date ranges are requested, each response row will contain a zero based date range index. If two date ranges overlap, the event data for the overlapping days is included in the response rows for both date ranges. In a cohort request, this `dateRanges` must be unspecified."
+        },
+        {
+          "name": "dimension-filter-and-group-expressions",
+          "wire_name": "dimensionFilter.andGroup.expressions",
+          "type": "array",
+          "location": "body",
+          "description": "A list of filter expressions."
+        },
+        {
+          "name": "dimension-filter-filter-field-name",
+          "wire_name": "dimensionFilter.filter.fieldName",
+          "type": "string",
+          "location": "body",
+          "description": "The dimension name or metric name. In most methods, dimensions \u0026 metrics can be used for the first time in this field. However in a RunPivotReportRequest, this field must be additionally specified by name in the RunPivotReportRequest's dimensions or metrics."
+        },
+        {
+          "name": "dimension-filter-not-expression",
+          "wire_name": "dimensionFilter.notExpression",
+          "type": "object",
+          "location": "body",
+          "description": "To express dimension or metric filters. The fields in the same FilterExpression need to be either all dimensions or all metrics."
+        },
+        {
+          "name": "dimension-filter-or-group-expressions",
+          "wire_name": "dimensionFilter.orGroup.expressions",
+          "type": "array",
+          "location": "body",
+          "description": "A list of filter expressions."
+        },
+        {
+          "name": "dimensions",
+          "type": "array",
+          "location": "body",
+          "description": "The dimensions requested and displayed."
+        },
+        {
+          "name": "keepEmptyRows",
+          "type": "bool",
+          "location": "body",
+          "description": "If false or unspecified, each row with all metrics equal to 0 will not be returned. If true, these rows will be returned if they are not separately removed by a filter. Regardless of this `keep_empty_rows` setting, only data recorded by the Google Analytics (GA4) property can be displayed in a report. For example if a property never logs a `purchase` event, then a query for the `eventName` dimension and `eventCount` metric will not have a row eventName: 'purchase' and eventCount: 0."
+        },
+        {
+          "name": "limit",
+          "type": "string",
+          "location": "body",
+          "description": "The number of rows to return. If unspecified, 10,000 rows are returned. The API returns a maximum of 250,000 rows per request, no matter how many you ask for. `limit` must be positive. The API can also return fewer rows than the requested `limit`, if there aren't as many dimension values as the `limit`. For instance, there are fewer than 300 possible values for the dimension `country`, so when reporting on only `country`, you can't get more than 300 rows, even if you set `limit` to a higher value. To learn more about this pagination parameter, see [Pagination](https://developers.google.com/analytics/devguides/reporting/data/v1/basics#pagination)."
+        },
+        {
+          "name": "metricAggregations",
+          "type": "string_csv_array",
+          "location": "body",
+          "description": "Aggregation of metrics. Aggregated metric values will be shown in rows where the dimension_values are set to 'RESERVED_(MetricAggregation)'."
+        },
+        {
+          "name": "metric-filter-and-group-expressions",
+          "wire_name": "metricFilter.andGroup.expressions",
+          "type": "array",
+          "location": "body",
+          "description": "A list of filter expressions."
+        },
+        {
+          "name": "metric-filter-filter-field-name",
+          "wire_name": "metricFilter.filter.fieldName",
+          "type": "string",
+          "location": "body",
+          "description": "The dimension name or metric name. In most methods, dimensions \u0026 metrics can be used for the first time in this field. However in a RunPivotReportRequest, this field must be additionally specified by name in the RunPivotReportRequest's dimensions or metrics."
+        },
+        {
+          "name": "metric-filter-not-expression",
+          "wire_name": "metricFilter.notExpression",
+          "type": "object",
+          "location": "body",
+          "description": "To express dimension or metric filters. The fields in the same FilterExpression need to be either all dimensions or all metrics."
+        },
+        {
+          "name": "metric-filter-or-group-expressions",
+          "wire_name": "metricFilter.orGroup.expressions",
+          "type": "array",
+          "location": "body",
+          "description": "A list of filter expressions."
+        },
+        {
+          "name": "metrics",
+          "type": "array",
+          "location": "body",
+          "description": "The metrics requested and displayed."
+        },
+        {
+          "name": "offset",
+          "type": "string",
+          "location": "body",
+          "description": "The row count of the start row. The first row is counted as row 0. When paging, the first request does not specify offset; or equivalently, sets offset to 0; the first request returns the first `limit` of rows. The second request sets offset to the `limit` of the first request; the second request returns the second `limit` of rows. To learn more about this pagination parameter, see [Pagination](https://developers.google.com/analytics/devguides/reporting/data/v1/basics#pagination)."
+        },
+        {
+          "name": "orderBys",
+          "type": "array",
+          "location": "body",
+          "description": "Specifies how rows are ordered in the response."
+        },
+        {
+          "name": "property-2",
+          "wire_name": "property",
+          "type": "string",
+          "location": "body",
+          "description": "A Google Analytics GA4 property identifier whose events are tracked."
+        },
+        {
+          "name": "returnPropertyQuota",
+          "type": "bool",
+          "location": "body",
+          "description": "Toggles whether to return the current state of this Analytics Property's quota. Quota is returned in [PropertyQuota](#PropertyQuota)."
+        }
+      ]
+    },
+    {
+      "name": "properties-create-connected-site-tag_analyticsadmin",
+      "description": "Creates a connected site tag for a Universal Analytics property. You can create a maximum of 20 connected site tags per property. Note: This API cannot be used on GA4 properties. Optional: connectedSiteTag, property. Returns the new GoogleAnalyticsAdminV1alphaCreateConnectedSiteTagResponse.",
+      "method": "POST",
+      "path": "/v1alpha/properties:createConnectedSiteTag",
+      "params": [
+        {
+          "name": "connected-site-tag-display-name",
+          "wire_name": "connectedSiteTag.displayName",
+          "type": "string",
+          "location": "body",
+          "description": "Required. User-provided display name for the connected site tag. Must be less than 256 characters."
+        },
+        {
+          "name": "connected-site-tag-tag-id",
+          "wire_name": "connectedSiteTag.tagId",
+          "type": "string",
+          "location": "body",
+          "description": "Required. 'Tag ID to forward events to. Also known as the Measurement ID, or the 'G-ID' (For example: G-12345)."
+        },
+        {
+          "name": "property",
+          "type": "string",
+          "location": "body",
+          "description": "The Universal Analytics property to create connected site tags for. This API does not support GA4 properties. Format: properties/{universalAnalyticsPropertyId} Example: properties/1234"
+        }
+      ]
+    },
+    {
+      "name": "properties-delete-connected-site-tag_analyticsadmin",
+      "description": "Deletes a connected site tag for a Universal Analytics property. Note: this has no effect on GA4 properties. Optional: property, tagId. Returns the new GoogleProtobufEmpty.",
+      "method": "POST",
+      "path": "/v1alpha/properties:deleteConnectedSiteTag",
+      "params": [
+        {
+          "name": "property",
+          "type": "string",
+          "location": "body",
+          "description": "The Universal Analytics property to delete connected site tags for. This API does not support GA4 properties. Format: properties/{universalAnalyticsPropertyId} Example: properties/1234"
+        },
+        {
+          "name": "tagId",
+          "type": "string",
+          "location": "body",
+          "description": "Tag ID to forward events to. Also known as the Measurement ID, or the 'G-ID' (For example: G-12345)."
+        }
+      ]
+    },
+    {
+      "name": "properties-fetch-automated-ga4-configuration-opt-out_analyticsadmin",
+      "description": "Fetches the opt out status for the automated GA4 setup process for a UA property. Note: this has no effect on GA4 property. Optional: property. Returns the new GoogleAnalyticsAdminV1alphaFetchAutomatedGa4ConfigurationOptOutResponse.",
+      "method": "POST",
+      "path": "/v1alpha/properties:fetchAutomatedGa4ConfigurationOptOut",
+      "params": [
+        {
+          "name": "property",
+          "type": "string",
+          "location": "body",
+          "description": "Required. The UA property to get the opt out status. Note this request uses the internal property ID, not the tracking ID of the form UA-XXXXXX-YY. Format: properties/{internalWebPropertyId} Example: properties/1234"
+        }
+      ]
+    },
+    {
+      "name": "properties-fetch-connected-ga4-property_analyticsadmin",
+      "description": "Given a specified UA property, looks up the GA4 property connected to it. Note: this cannot be used with GA4 properties. Optional: property. Returns the GoogleAnalyticsAdminV1alphaFetchConnectedGa4PropertyResponse.",
+      "method": "GET",
+      "path": "/v1alpha/properties:fetchConnectedGa4Property",
+      "params": [
+        {
+          "name": "property",
+          "type": "string",
+          "location": "query",
+          "description": "Required. The UA property for which to look up the connected GA4 property. Note this request uses the internal property ID, not the tracking ID of the form UA-XXXXXX-YY. Format: properties/{internal_web_property_id} Example: properties/1234"
+        }
+      ]
+    },
+    {
+      "name": "properties-list-connected-site-tags_analyticsadmin",
+      "description": "Lists the connected site tags for a Universal Analytics property. A maximum of 20 connected site tags will be returned. Note: this has no effect on GA4 property. Optional: property. Returns array of GoogleAnalyticsAdminV1alphaConnectedSiteTag.",
+      "method": "POST",
+      "path": "/v1alpha/properties:listConnectedSiteTags",
+      "params": [
+        {
+          "name": "property",
+          "type": "string",
+          "location": "body",
+          "description": "The Universal Analytics property to fetch connected site tags for. This does not work on GA4 properties. A maximum of 20 connected site tags will be returned. Example Format: `properties/1234`"
+        }
+      ]
+    },
+    {
+      "name": "properties-set-automated-ga4-configuration-opt-out_analyticsadmin",
+      "description": "Sets the opt out status for the automated GA4 setup process for a UA property. Note: this has no effect on GA4 property. Optional: optOut, property. Returns the new GoogleAnalyticsAdminV1alphaSetAutomatedGa4ConfigurationOptOutResponse.",
+      "method": "POST",
+      "path": "/v1alpha/properties:setAutomatedGa4ConfigurationOptOut",
+      "params": [
+        {
+          "name": "optOut",
+          "type": "bool",
+          "location": "body",
+          "description": "The status to set."
+        },
+        {
+          "name": "property",
+          "type": "string",
+          "location": "body",
+          "description": "Required. The UA property to set the opt out status. Note this request uses the internal property ID, not the tracking ID of the form UA-XXXXXX-YY. Format: properties/{internalWebPropertyId} Example: properties/1234"
+        }
+      ]
+    }
+  ]
+}

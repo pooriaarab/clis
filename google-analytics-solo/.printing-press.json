@@ -1,0 +1,126 @@
+{
+  "schema_version": 2,
+  "generated_at": "2026-08-12T05:39:19.710744Z",
+  "printing_press_version": "4.29.0",
+  "api_name": "google-analytics-solo",
+  "display_name": "Google Analytics",
+  "cli_name": "google-analytics-solo-pp-cli",
+  "creator": {
+    "handle": "pooriaarab",
+    "name": "Pooria Arab"
+  },
+  "owner": "pooriaarab",
+  "printer": "pooriaarab",
+  "printer_name": "Pooria Arab",
+  "spec_path": "ga4-data-v1beta.json",
+  "spec_format": "openapi3",
+  "spec_checksum": "sha256:b48c16245386ed6ca4fa15d7dc9c4d3d305bc3bc59dbff95f426cfbcb838e7cf",
+  "run_id": "20260811-211116-ga4wkr01",
+  "category": "marketing",
+  "description": "Flag-driven GA4 reports, one-command fan-out across every property, and a local cache for offline trends — none of which the raw Data API gives you.",
+  "mcp_binary": "google-analytics-solo-pp-mcp",
+  "mcp_tool_count": 67,
+  "mcp_ready": "full",
+  "api_version": "v1beta",
+  "auth_type": "bearer_token",
+  "auth_preference": "Oauth2c",
+  "auth_env_vars": [
+    "GOOGLE_APPLICATION_CREDENTIALS",
+    "GOOGLE_ANALYTICS_DATA_OAUTH2C"
+  ],
+  "auth_env_var_specs": [
+    {
+      "name": "GOOGLE_APPLICATION_CREDENTIALS",
+      "kind": "per_call",
+      "required": false,
+      "sensitive": true
+    },
+    {
+      "name": "GOOGLE_ANALYTICS_DATA_OAUTH2C",
+      "kind": "per_call",
+      "required": false,
+      "sensitive": true
+    }
+  ],
+  "endpoint_template_vars": [
+    "parent"
+  ],
+  "novel_features": [
+    {
+      "name": "Fan-out report across all Solo properties",
+      "command": "report",
+      "description": "Run one report against every registered property at once and get per-property results."
+    },
+    {
+      "name": "Cross-property compare table",
+      "command": "compare",
+      "description": "Rank all registered properties by a single metric over a date range."
+    },
+    {
+      "name": "Local metric trend from cache",
+      "command": "trend",
+      "description": "Show how a metric moved over time using locally cached report runs, no re-query."
+    },
+    {
+      "name": "Saved report definitions",
+      "command": "report",
+      "description": "Save a report spec by name and replay it without retyping dimensions and metrics."
+    },
+    {
+      "name": "Property alias registry",
+      "command": "properties add",
+      "description": "Register numeric property IDs under friendly names once, then reference by name everywhere."
+    },
+    {
+      "name": "Metadata catalog search",
+      "command": "metadata search",
+      "description": "Full-text search the cached dimension/metric catalog to find exact API names."
+    }
+  ],
+  "novel_features_built": [
+    {
+      "name": "Fan-out report across all Solo properties",
+      "command": "report",
+      "description": "Run one report against every registered property at once and get per-property results."
+    },
+    {
+      "name": "Cross-property compare table",
+      "command": "compare",
+      "description": "Rank all registered properties by a single metric over a date range."
+    },
+    {
+      "name": "Local metric trend from cache",
+      "command": "trend",
+      "description": "Show how a metric moved over time using locally cached report runs, no re-query."
+    },
+    {
+      "name": "Saved report definitions",
+      "command": "report",
+      "description": "Save a report spec by name and replay it without retyping dimensions and metrics."
+    },
+    {
+      "name": "Property alias registry",
+      "command": "properties add",
+      "description": "Register numeric property IDs under friendly names once, then reference by name everywhere."
+    },
+    {
+      "name": "Metadata catalog search",
+      "command": "metadata search",
+      "description": "Full-text search the cached dimension/metric catalog to find exact API names."
+    }
+  ],
+  "verify": {
+    "mode": "mock",
+    "pass_rate": 100,
+    "passed": 49,
+    "total": 49,
+    "verdict": "PASS"
+  },
+  "scorecard": {
+    "steinberger": {
+      "percentage": 90,
+      "grade": "A",
+      "total": 90
+    }
+  }
+}

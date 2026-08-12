@@ -1,0 +1,17 @@
+# agentcookie.toml: secrets-bus adoption manifest v2
+# See docs/spec-agentcookie-secrets-bus-v2-adoption.md
+schema_version = 2
+name = "google-analytics-solo-pp-cli"
+display_name = "Google Analytics"
+description = "Flag-driven GA4 reports, one-command fan-out across every property, and a local cache for offline trends — none of which the raw Data API gives you."
+project_kind = "cli"
+
+[secrets.file]
+path = "~/.config/google-analytics-solo-pp-cli/config.toml"
+
+[sync]
+default = false
+
+[sync.keys]
+GOOGLE_ANALYTICS_DATA_OAUTH2C = true
+GOOGLE_APPLICATION_CREDENTIALS = true

@@ -1,0 +1,52 @@
+{
+  "manifest_version": "0.3",
+  "name": "google-analytics-solo-pp-mcp",
+  "display_name": "Google Analytics",
+  "version": "4.29.0",
+  "description": "Flag-driven GA4 reports, one-command fan-out across every property, and a local cache for offline trends — none of which the raw Data API gives you.",
+  "author": {
+    "name": "CLI Printing Press"
+  },
+  "license": "Apache-2.0",
+  "server": {
+    "type": "binary",
+    "entry_point": "bin/google-analytics-solo-pp-mcp",
+    "mcp_config": {
+      "command": "${__dirname}/bin/google-analytics-solo-pp-mcp",
+      "args": [],
+      "env": {
+        "GOOGLE_ANALYTICS_DATA_OAUTH2C": "${user_config.google_analytics_data_oauth2c}",
+        "GOOGLE_ANALYTICS_SOLO_PARENT": "${user_config.google_analytics_solo_parent}",
+        "GOOGLE_APPLICATION_CREDENTIALS": "${user_config.google_application_credentials}"
+      }
+    }
+  },
+  "user_config": {
+    "google_analytics_data_oauth2c": {
+      "type": "string",
+      "title": "GOOGLE_ANALYTICS_DATA_OAUTH2C",
+      "description": "Optional. Sets GOOGLE_ANALYTICS_DATA_OAUTH2C for the Google Analytics MCP server.",
+      "sensitive": true
+    },
+    "google_analytics_solo_parent": {
+      "type": "string",
+      "title": "GOOGLE_ANALYTICS_SOLO_PARENT",
+      "description": "Sets GOOGLE_ANALYTICS_SOLO_PARENT for the endpoint template variable {parent}.",
+      "required": true
+    },
+    "google_application_credentials": {
+      "type": "string",
+      "title": "GOOGLE_APPLICATION_CREDENTIALS",
+      "description": "Optional. Sets GOOGLE_APPLICATION_CREDENTIALS for the Google Analytics MCP server.",
+      "sensitive": true
+    }
+  },
+  "compatibility": {
+    "claude_desktop": ">=1.0.0",
+    "platforms": [
+      "darwin",
+      "linux",
+      "win32"
+    ]
+  }
+}
