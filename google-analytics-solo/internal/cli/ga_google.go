@@ -7,6 +7,9 @@
 //   - saved report specs (used by `report --save/--run`)
 //   - shared date/kebab helpers
 //   - the global --confirm mutation gate
+//
+// pp:data-source local — the alias/saved-report registry is a per-user local
+// config file (aliases.json); `alias discover` refreshes it from the Admin API.
 
 package cli
 
@@ -104,6 +107,9 @@ func loadAliases() (*aliasStore, error) {
 		return nil, err
 	}
 	s := &aliasStore{Aliases: map[string]string{}, Reports: map[string]savedReport{}}
+	// #nosec G304 -- path is this CLI's own per-user config file, from
+	// aliasFilePath() (GOOGLE_ANALYTICS_ALIASES override or os.UserConfigDir()
+	// + a fixed subpath), never untrusted request input.
 	data, err := os.ReadFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {
