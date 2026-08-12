@@ -56,7 +56,8 @@ Every command inherits:
 - `compare` — period-over-period metric deltas and percent changes.
 - `whats-changed` — anomaly-style mover scan across key dimensions.
 - `revenue` — ecommerce revenue, AOV, transactions by channel/source.
-- `audience` / `cohort` — cheap audience and retention snapshots.
+- `audience` — audience snapshot by country/device/new-vs-returning.
+- `cohort` — real GA4 `cohortSpec` retention (`cohortActiveUsers` by acquisition cohort); flags `--granularity daily|weekly|monthly`, `--periods`, `--end`.
 - `health` / `doctor` — token mint, Admin visibility, and per-property access grants.
 
 ## Examples

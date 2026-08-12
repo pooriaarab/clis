@@ -14,7 +14,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var version = "2026.7.1"
+var version = "2026.8.1"
 
 type rootFlags struct {
 	asJSON      bool
@@ -37,8 +37,9 @@ func newRootCmd(flags *rootFlags) *cobra.Command {
 
 Raw wrappers: report, pivot, batch, realtime, metadata, compatibility, properties, property, streams.
 Novel commands: health/doctor, channels, sources, top-pages, events, conversions, funnel, compare, whats-changed, revenue, audience, cohort.
+Escape hatch: raw <METHOD> <PATH> reaches ANY GA4 Admin/Data endpoint (mutations gated by --confirm).
 
-Auth: uses a Google service-account JSON key. Set GOOGLE_APPLICATION_CREDENTIALS, or pass --credentials. Scope: analytics.readonly.
+Auth: uses a Google service-account JSON key. Set GOOGLE_APPLICATION_CREDENTIALS, or pass --credentials. Scopes: analytics.readonly + analytics.edit (writes require an Editor+ role on the property).
 Property resolution for data commands: --property, then GA4_PROPERTY_ID. The CLI never hard-codes a brand property for reads.`, SilenceUsage: true, Version: version}
 	cmd.SetVersionTemplate("google-analytics-pp-cli {{ .Version }}\n")
 	cmd.PersistentFlags().BoolVar(&flags.asJSON, "json", false, "Output JSON")
@@ -61,6 +62,7 @@ Property resolution for data commands: --property, then GA4_PROPERTY_ID. The CLI
 	cmd.AddCommand(newPropertiesCmd(flags), newPropertyCmd(flags), newStreamsCmd(flags))
 	cmd.AddCommand(newChannelsCmd(flags), newSourcesCmd(flags), newTopPagesCmd(flags), newEventsCmd(flags), newConversionsCmd(flags))
 	cmd.AddCommand(newFunnelCmd(flags), newCompareCmd(flags), newWhatsChangedCmd(flags), newRevenueCmd(flags), newAudienceCmd(flags), newCohortCmd(flags))
+	cmd.AddCommand(newRawCmd(flags))
 	return cmd
 }
 

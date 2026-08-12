@@ -92,14 +92,18 @@ func newAudienceCmd(flags *rootFlags) *cobra.Command {
 	return c
 }
 func newCohortCmd(flags *rootFlags) *cobra.Command {
-	var start, end string
-	var limit int
-	c := &cobra.Command{Use: "cohort", Short: "Cheap retention proxy: users by first-user date and returning status", RunE: func(cmd *cobra.Command, args []string) error {
-		req := reportRequest("totalUsers,sessions,engagementRate", "firstSessionDate,newVsReturning", start, end, limit)
-		addOrder(&req, "firstSessionDate")
+	var granularity, end string
+	var periods int
+	c := &cobra.Command{Use: "cohort", Short: "GA4 Cohort exploration: cohortActiveUsers retention by acquisition cohort", RunE: func(cmd *cobra.Command, args []string) error {
+		if periods > cohortMaxPeriods {
+			cmd.PrintErrf("cohort: periods clamped from %d to %d (GA4 cohort limit)\n", periods, cohortMaxPeriods)
+		}
+		req := cohortRequest(granularity, periods, end)
 		return novelReport(cmd, flags, req, "cohort")
 	}}
-	dateLimitFlags(c, &start, &end, &limit)
+	c.Flags().StringVar(&granularity, "granularity", "weekly", "Cohort granularity: daily, weekly, or monthly")
+	c.Flags().IntVar(&periods, "periods", 6, "Number of acquisition cohorts / retention periods (max 12)")
+	c.Flags().StringVar(&end, "end", "", "Most recent cohort end date (YYYY-MM-DD; default today UTC)")
 	return c
 }
 func novelReport(cmd *cobra.Command, f *rootFlags, req ga4.RunReportRequest, name string) error {
