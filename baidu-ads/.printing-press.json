@@ -1,0 +1,15 @@
+{
+  "schema_version": 2,
+  "generated_at": "2026-08-11T00:00:00Z",
+  "printing_press_version": "4.29.0",
+  "api_name": "baidu-ads",
+  "display_name": "Baidu Ads",
+  "cli_name": "baidu-ads-pp-cli",
+  "spec_source": "official",
+  "spec_urls": [
+    "https://dev2.baidu.com/content",
+    "https://openapi.baidu.com/ms/oauth"
+  ],
+  "auth_type": "token",
+  "mode": "stub"
+}

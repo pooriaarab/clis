@@ -1,0 +1,15 @@
+{
+  "schema_version": 2,
+  "generated_at": "2026-08-11T00:00:00Z",
+  "printing_press_version": "4.29.0",
+  "api_name": "tencent-ads",
+  "display_name": "Tencent Ads",
+  "cli_name": "tencent-ads-pp-cli",
+  "spec_source": "official",
+  "spec_urls": [
+    "https://developers.e.qq.com/",
+    "https://e.qq.com/ads/"
+  ],
+  "auth_type": "token",
+  "mode": "stub"
+}

@@ -1,0 +1,15 @@
+{
+  "schema_version": 2,
+  "generated_at": "2026-08-11T00:00:00Z",
+  "printing_press_version": "4.29.0",
+  "api_name": "line-ads",
+  "display_name": "LINE Ads",
+  "cli_name": "line-ads-pp-cli",
+  "spec_source": "official",
+  "spec_urls": [
+    "https://developers.line.biz/en/docs/line-ads-api/",
+    "https://ads.line.me/public-docs/pages/v3/3.11.4/certificated-ad-tech-general-partner/"
+  ],
+  "auth_type": "token",
+  "mode": "stub"
+}

@@ -1,0 +1,15 @@
+{
+  "schema_version": 2,
+  "generated_at": "2026-08-11T00:00:00Z",
+  "printing_press_version": "4.29.0",
+  "api_name": "naver-ads",
+  "display_name": "Naver Ads",
+  "cli_name": "naver-ads-pp-cli",
+  "spec_source": "official",
+  "spec_urls": [
+    "https://naver.github.io/searchad-apidoc/",
+    "https://ads.naver.com/help/faq/302?t=1769857366078"
+  ],
+  "auth_type": "token",
+  "mode": "stub"
+}
