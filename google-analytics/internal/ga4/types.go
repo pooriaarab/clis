@@ -6,6 +6,14 @@ import "encoding/json"
 
 const AnalyticsReadonlyScope = "https://www.googleapis.com/auth/analytics.readonly"
 
+// AnalyticsEditScope permits GA4 Admin config writes. RequestedScopes is the
+// space-delimited set minted into every token: readonly satisfies the Data API,
+// edit satisfies Admin writes. Actual write permission still requires an Editor+
+// role on the property; the scope only authorizes the token to ask.
+const AnalyticsEditScope = "https://www.googleapis.com/auth/analytics.edit"
+
+const RequestedScopes = AnalyticsReadonlyScope + " " + AnalyticsEditScope
+
 type ServiceAccountKey struct {
 	ClientEmail string `json:"client_email"`
 	PrivateKey  string `json:"private_key"`
@@ -68,6 +76,27 @@ type RunReportRequest struct {
 	Limit           string            `json:"limit,omitempty"`
 	DimensionFilter *FilterExpression `json:"dimensionFilter,omitempty"`
 	OrderBys        []OrderBy         `json:"orderBys,omitempty"`
+	CohortSpec      *CohortSpec       `json:"cohortSpec,omitempty"`
+}
+
+// CohortSpec drives GA4's real Cohort exploration (runReport cohortSpec).
+// Each Cohort selects an acquisition group by firstSessionDate; CohortsRange
+// defines the retention axis (granularity + offsets) tracked for every cohort.
+type CohortSpec struct {
+	Cohorts      []Cohort     `json:"cohorts"`
+	CohortsRange CohortsRange `json:"cohortsRange"`
+}
+
+type Cohort struct {
+	Name      string    `json:"name"`
+	Dimension string    `json:"dimension"`
+	DateRange DateRange `json:"dateRange"`
+}
+
+type CohortsRange struct {
+	Granularity string `json:"granularity"`
+	StartOffset int    `json:"startOffset"`
+	EndOffset   int    `json:"endOffset"`
 }
 
 type Pivot struct {
