@@ -295,11 +295,22 @@ Run 'cineplex-pp-cli doctor' to verify auth and connectivity.`,
 	rootCmd.AddCommand(newOrdersCmd(flags))
 	rootCmd.AddCommand(newPaymentCmd(flags))
 	rootCmd.AddCommand(newSceneCmd(flags))
-	rootCmd.AddCommand(newSeatsCmd(flags))
+	seatsCmd := newSeatsCmd(flags)
+	seatsCmd.AddCommand(newSeatsBestCmd(flags))
+	seatsCmd.AddCommand(newSeatsOpenCmd(flags))
+	rootCmd.AddCommand(seatsCmd)
 	rootCmd.AddCommand(newShowtimesCmd(flags))
 	rootCmd.AddCommand(newTheatresCmd(flags))
 	rootCmd.AddCommand(newDoctorCmd(flags))
-	rootCmd.AddCommand(newAuthCmd(flags))
+	authCmd := newAuthCmd(flags)
+	for _, subcommand := range authCmd.Commands() {
+		if subcommand.Name() == "set-token" {
+			authCmd.RemoveCommand(subcommand)
+		}
+	}
+	authCmd.AddCommand(newAuthSetSceneTokenCmd(flags))
+	authCmd.AddCommand(newAuthSetSceneCookieCmd(flags))
+	rootCmd.AddCommand(authCmd)
 	rootCmd.AddCommand(newAgentContextCmd(rootCmd))
 	rootCmd.AddCommand(newProfileCmd(flags))
 	rootCmd.AddCommand(newFeedbackCmd(flags))
