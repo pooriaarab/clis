@@ -1,0 +1,776 @@
+{
+  "api_name": "cineplex",
+  "base_url": "https://apis.cineplex.com",
+  "description": "Cineplex Canada theatrical, ticketing, food, and SCENE+ API. Two auth hosts: subscription key for apis.cineplex.",
+  "mcp_ready": "full",
+  "http_transport": "standard",
+  "auth": {
+    "type": "api_key",
+    "header": "Ocp-Apim-Subscription-Key",
+    "format": "{CINEPLEX_SUBSCRIPTION_KEY}",
+    "in": "header",
+    "env_vars": [
+      "CINEPLEX_SUBSCRIPTION_KEY"
+    ],
+    "env_var_specs": [
+      {
+        "name": "CINEPLEX_SUBSCRIPTION_KEY",
+        "kind": "per_call",
+        "required": true,
+        "sensitive": true,
+        "inferred": true
+      }
+    ]
+  },
+  "required_headers": [
+    {
+      "name": "User-Agent",
+      "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36"
+    }
+  ],
+  "tools": [
+    {
+      "name": "account_subscriptions",
+      "description": "Get CineClub subscription status from /prod/connect/v2/subscription. Returns array of SceneSubscription.",
+      "method": "GET",
+      "path": "/subscription",
+      "params": []
+    },
+    {
+      "name": "concessions_list",
+      "description": "List concession items for a theatre. Required: theatre-id. Optional: language (default: en), include-in-seat-delivery. Returns array of Concession. (public)",
+      "method": "GET",
+      "path": "/v1/concessions",
+      "no_auth": true,
+      "params": [
+        {
+          "name": "theatre-id",
+          "wire_name": "theatreId",
+          "type": "int",
+          "location": "query",
+          "description": "Cineplex theatre location ID",
+          "required": true
+        },
+        {
+          "name": "language",
+          "type": "string",
+          "location": "query",
+          "description": "Content language"
+        },
+        {
+          "name": "include-in-seat-delivery",
+          "wire_name": "includeInSeatDelivery",
+          "type": "bool",
+          "location": "query",
+          "description": "Include in-seat delivery items"
+        }
+      ]
+    },
+    {
+      "name": "experiences_list",
+      "description": "List the Cineplex experience types and filters. Optional: language (default: en). Returns the ExperienceFilters.",
+      "method": "GET",
+      "path": "/prod/cpx/theatrical/api/v2/filters",
+      "params": [
+        {
+          "name": "language",
+          "type": "string",
+          "location": "query",
+          "description": "Content language"
+        }
+      ]
+    },
+    {
+      "name": "gift-cards_balance",
+      "description": "Get a Cineplex gift card balance. Required: card-number, pin. Returns the GiftCardBalance. (public)",
+      "method": "GET",
+      "path": "/giftcards/balance",
+      "no_auth": true,
+      "params": [
+        {
+          "name": "card-number",
+          "wire_name": "cardNumber",
+          "type": "string",
+          "location": "query",
+          "description": "Gift card number",
+          "required": true
+        },
+        {
+          "name": "pin",
+          "type": "string",
+          "location": "query",
+          "description": "Gift card PIN",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "loyalty_token",
+      "description": "Mint the ticketing loyalty bearer token from the SCENE+ session. Returns the LoyaltyToken.",
+      "method": "GET",
+      "path": "/v1/loyalty/token",
+      "params": []
+    },
+    {
+      "name": "movies_coming-soon",
+      "description": "List coming-soon movies with advance tickets. Optional: language (default: en), movie-type (default: 2), showtime-type (default: 0) (plus 1 more). Returns the MovieCatalog.",
+      "method": "GET",
+      "path": "/prod/cpx/theatrical/api/v1/movies/bookable",
+      "params": [
+        {
+          "name": "language",
+          "type": "string",
+          "location": "query",
+          "description": "Content language"
+        },
+        {
+          "name": "movie-type",
+          "wire_name": "movieType",
+          "type": "int",
+          "location": "query",
+          "description": "Cineplex movie type filter for coming-soon titles"
+        },
+        {
+          "name": "showtime-type",
+          "wire_name": "showTimeType",
+          "type": "int",
+          "location": "query",
+          "description": "Cineplex showtime type filter"
+        },
+        {
+          "name": "showtime-status",
+          "wire_name": "showtimeStatus",
+          "type": "int",
+          "location": "query",
+          "description": "Cineplex showtime status filter"
+        }
+      ]
+    },
+    {
+      "name": "movies_get-by-id",
+      "description": "Get a movie by Cineplex film ID. Required: movie-id. Returns the MovieDetail.",
+      "method": "GET",
+      "path": "/prod/cpx/theatrical/api/v1/movies/{movieId}",
+      "params": [
+        {
+          "name": "movie-id",
+          "wire_name": "movieId",
+          "type": "int",
+          "location": "path",
+          "description": "Cineplex film ID",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "movies_get-by-slug",
+      "description": "Get a movie by Cineplex URL slug. Required: slug. Returns the MovieDetail.",
+      "method": "GET",
+      "path": "/prod/cpx/theatrical/api/v1/movies/{slug}",
+      "params": [
+        {
+          "name": "slug",
+          "type": "string",
+          "location": "path",
+          "description": "Movie URL slug",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "movies_list",
+      "description": "List the current Cineplex movie catalog. Optional: language (default: en), filter-events, remove-irrelevant-films. Returns the MovieCatalog.",
+      "method": "GET",
+      "path": "/prod/cpx/theatrical/api/v1/movies",
+      "params": [
+        {
+          "name": "language",
+          "type": "string",
+          "location": "query",
+          "description": "Content language"
+        },
+        {
+          "name": "filter-events",
+          "wire_name": "filterEvents",
+          "type": "bool",
+          "location": "query",
+          "description": "Include event cinema titles"
+        },
+        {
+          "name": "remove-irrelevant-films",
+          "wire_name": "removeIrrelevantFilms",
+          "type": "bool",
+          "location": "query",
+          "description": "Remove films not relevant to the current market"
+        }
+      ]
+    },
+    {
+      "name": "movies_now-playing",
+      "description": "List now-playing movies that can be booked. Optional: language (default: en), movie-type (default: 1), showtime-type (default: 0) (plus 1 more). Returns the MovieCatalog.",
+      "method": "GET",
+      "path": "/prod/cpx/theatrical/api/v1/movies/bookable",
+      "params": [
+        {
+          "name": "language",
+          "type": "string",
+          "location": "query",
+          "description": "Content language"
+        },
+        {
+          "name": "movie-type",
+          "wire_name": "movieType",
+          "type": "int",
+          "location": "query",
+          "description": "Cineplex movie type filter for now-playing titles"
+        },
+        {
+          "name": "showtime-type",
+          "wire_name": "showTimeType",
+          "type": "int",
+          "location": "query",
+          "description": "Cineplex showtime type filter"
+        },
+        {
+          "name": "showtime-status",
+          "wire_name": "showtimeStatus",
+          "type": "int",
+          "location": "query",
+          "description": "Cineplex showtime status filter"
+        }
+      ]
+    },
+    {
+      "name": "orders_add-concessions",
+      "description": "WRITE: Add food and drink items to an order. Required: concessions. Returns the new Order.",
+      "method": "POST",
+      "path": "/v1/ticketing-cart",
+      "params": [
+        {
+          "name": "concessions",
+          "type": "array",
+          "location": "body",
+          "description": "JSON array of concession item and quantity objects",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "orders_add-tickets",
+      "description": "WRITE: Add ticket types to an order. Required: tickets. Returns the new Order.",
+      "method": "POST",
+      "path": "/v1/ticketing-cart",
+      "params": [
+        {
+          "name": "tickets",
+          "type": "array",
+          "location": "body",
+          "description": "JSON array of ticket type and quantity objects",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "orders_apply-voucher",
+      "description": "WRITE: Apply a ticket voucher to an order. Required: voucher-code. Optional: pin. Returns the new Order.",
+      "method": "POST",
+      "path": "/v1/ticketing-cart",
+      "params": [
+        {
+          "name": "voucher-code",
+          "wire_name": "voucherCode",
+          "type": "string",
+          "location": "body",
+          "description": "Voucher or promo code",
+          "required": true
+        },
+        {
+          "name": "pin",
+          "type": "string",
+          "location": "body",
+          "description": "Optional voucher PIN"
+        }
+      ]
+    },
+    {
+      "name": "orders_create-session",
+      "description": "WRITE: Create a ticketing cart. Required: theatreId, showtimeId. Optional: language (default: en). Returns the new OrderSession.",
+      "method": "POST",
+      "path": "/v1/ticketing-cart",
+      "params": [
+        {
+          "name": "theatreId",
+          "type": "int",
+          "location": "body",
+          "description": "Cineplex theatre location ID",
+          "required": true
+        },
+        {
+          "name": "showtimeId",
+          "type": "int",
+          "location": "body",
+          "description": "Vista showtime ID",
+          "required": true
+        },
+        {
+          "name": "language",
+          "type": "string",
+          "location": "body",
+          "description": "Content language"
+        }
+      ]
+    },
+    {
+      "name": "orders_get",
+      "description": "Get the current ticketing cart. Returns the Order.",
+      "method": "GET",
+      "path": "/v1/ticketing-cart",
+      "params": []
+    },
+    {
+      "name": "orders_update",
+      "description": "WRITE: Update the ticketing cart. Required: cart. Returns the updated Order.",
+      "method": "PUT",
+      "path": "/v1/ticketing-cart",
+      "params": [
+        {
+          "name": "cart",
+          "type": "object",
+          "location": "body",
+          "description": "Cart update payload",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "payment_apply-giftcard",
+      "description": "WRITE: Apply a Cineplex gift card to the ticketing cart. Required: cardNumber, pin. Returns the new Order.",
+      "method": "POST",
+      "path": "/v1/ticketing-cart",
+      "params": [
+        {
+          "name": "cardNumber",
+          "type": "string",
+          "location": "body",
+          "description": "Gift card number",
+          "required": true
+        },
+        {
+          "name": "pin",
+          "type": "string",
+          "location": "body",
+          "description": "Gift card PIN",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "payment_apply-points",
+      "description": "WRITE: Apply SCENE+ points to the ticketing cart. Required: points. Returns the new Order.",
+      "method": "POST",
+      "path": "/v1/ticketing-cart",
+      "params": [
+        {
+          "name": "points",
+          "type": "int",
+          "location": "body",
+          "description": "SCENE+ points to redeem; $1 equals 100 points",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "payment_confirm",
+      "description": "WRITE: Confirm payment and complete an order. Required: order-id, paymentToken. Optional: threeDSecureResult. Returns the new PaymentResult.",
+      "method": "POST",
+      "path": "/v1/order/{orderId}/payment/confirm",
+      "params": [
+        {
+          "name": "order-id",
+          "wire_name": "orderId",
+          "type": "string",
+          "location": "path",
+          "description": "Ticketing order session ID",
+          "required": true
+        },
+        {
+          "name": "paymentToken",
+          "type": "string",
+          "location": "body",
+          "description": "Token returned by the payment provider or init call",
+          "required": true
+        },
+        {
+          "name": "threeDSecureResult",
+          "type": "string",
+          "location": "body",
+          "description": "Optional 3DS result JSON"
+        }
+      ]
+    },
+    {
+      "name": "payment_init",
+      "description": "WRITE: Initialize payment for an order. Required: order-id, paymentMethod. Optional: returnUrl. Returns the new PaymentSession.",
+      "method": "POST",
+      "path": "/v1/order/{orderId}/payment/init",
+      "params": [
+        {
+          "name": "order-id",
+          "wire_name": "orderId",
+          "type": "string",
+          "location": "path",
+          "description": "Ticketing order session ID",
+          "required": true
+        },
+        {
+          "name": "paymentMethod",
+          "type": "string",
+          "location": "body",
+          "description": "Payment method identifier",
+          "required": true
+        },
+        {
+          "name": "returnUrl",
+          "type": "string",
+          "location": "body",
+          "description": "3DS or hosted payment return URL"
+        }
+      ]
+    },
+    {
+      "name": "scene_get_gift_cards",
+      "description": "Get gift cards linked to the SCENE+ account. Returns array of GiftCardBalance.",
+      "method": "GET",
+      "path": "/Account/CCWebConnect/GetGiftCards",
+      "params": []
+    },
+    {
+      "name": "scene_get_login_status",
+      "description": "Get SCENE+ login status from the cookie session. Returns the SceneSession.",
+      "method": "GET",
+      "path": "/Account/CCWebConnect/GetLoginStatus",
+      "params": []
+    },
+    {
+      "name": "scene_get_pay_pal_information",
+      "description": "Get saved PayPal information for the SCENE+ account. Returns the SceneProfile.",
+      "method": "GET",
+      "path": "/Account/CCWebConnect/GetPayPalInformation",
+      "params": []
+    },
+    {
+      "name": "scene_get_payment_cards",
+      "description": "Get saved payment cards for the SCENE+ account. Returns array of SceneProfile.",
+      "method": "GET",
+      "path": "/Account/CCWebConnect/GetPaymentCards",
+      "params": []
+    },
+    {
+      "name": "scene_get_scene_info",
+      "description": "Get SCENE+ member information and points. Returns the ScenePoints.",
+      "method": "GET",
+      "path": "/Account/CCWebConnect/GetSceneInfo",
+      "params": []
+    },
+    {
+      "name": "scene_get_user_profile_info",
+      "description": "Get the authenticated SCENE+ user profile. Returns the SceneProfile.",
+      "method": "GET",
+      "path": "/Account/CCWebConnect/GetUserProfileInfo",
+      "params": []
+    },
+    {
+      "name": "seats_availability",
+      "description": "Get current seat availability for a showtime. Required: theatre-id, showtime-id. Returns the SeatAvailability. (public)",
+      "method": "GET",
+      "path": "/v1/theatre/{theatreId}/showtime/{showtimeId}/seat-availability-for-cart",
+      "no_auth": true,
+      "params": [
+        {
+          "name": "theatre-id",
+          "wire_name": "theatreId",
+          "type": "int",
+          "location": "path",
+          "description": "Cineplex theatre location ID",
+          "required": true
+        },
+        {
+          "name": "showtime-id",
+          "wire_name": "showtimeId",
+          "type": "int",
+          "location": "path",
+          "description": "Vista showtime ID",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "seats_booking-fees",
+      "description": "Get online booking fees for a theatre. Required: theatre-id. Returns the BookingFees.",
+      "method": "GET",
+      "path": "/v1/theatre/{theatreId}/booking-fees",
+      "params": [
+        {
+          "name": "theatre-id",
+          "wire_name": "theatreId",
+          "type": "int",
+          "location": "path",
+          "description": "Cineplex theatre location ID",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "seats_layout",
+      "description": "Get the physical seat layout for a showtime. Required: theatre-id, showtime-id. Returns the SeatLayout. (public)",
+      "method": "GET",
+      "path": "/v1/theatre/{theatreId}/showtime/{showtimeId}/seat-layout",
+      "no_auth": true,
+      "params": [
+        {
+          "name": "theatre-id",
+          "wire_name": "theatreId",
+          "type": "int",
+          "location": "path",
+          "description": "Cineplex theatre location ID",
+          "required": true
+        },
+        {
+          "name": "showtime-id",
+          "wire_name": "showtimeId",
+          "type": "int",
+          "location": "path",
+          "description": "Vista showtime ID",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "seats_reserve-seats",
+      "description": "WRITE: Hold seats for a ticketing cart. Required: theatre-id, showtime-id, seats. Returns the new Order.",
+      "method": "POST",
+      "path": "/v1/theatre/{theatreId}/showtime/{showtimeId}/reserve-seats",
+      "params": [
+        {
+          "name": "theatre-id",
+          "wire_name": "theatreId",
+          "type": "int",
+          "location": "path",
+          "description": "Cineplex theatre location ID",
+          "required": true
+        },
+        {
+          "name": "showtime-id",
+          "wire_name": "showtimeId",
+          "type": "int",
+          "location": "path",
+          "description": "Vista showtime ID",
+          "required": true
+        },
+        {
+          "name": "seats",
+          "type": "array",
+          "location": "body",
+          "description": "Seat identifiers to hold",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "showtimes_detail",
+      "description": "Get showtime details for a theatre. Required: theatre-id, showtime-id. Returns the ShowtimeTheatre.",
+      "method": "GET",
+      "path": "/prod/cpx/theatrical/api/v1/theatres/{theatreId}/showtimes/{showtimeId}",
+      "params": [
+        {
+          "name": "theatre-id",
+          "wire_name": "theatreId",
+          "type": "int",
+          "location": "path",
+          "description": "Cineplex theatre location ID",
+          "required": true
+        },
+        {
+          "name": "showtime-id",
+          "wire_name": "showtimeId",
+          "type": "int",
+          "location": "path",
+          "description": "Vista showtime ID",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "showtimes_list",
+      "description": "List showtimes for a theatre and date. Required: theatre-id, date. Optional: language (default: en), experiences. Returns array of ShowtimeTheatre.",
+      "method": "GET",
+      "path": "/prod/cpx/theatrical/api/v1/showtimes",
+      "params": [
+        {
+          "name": "language",
+          "type": "string",
+          "location": "query",
+          "description": "Content language"
+        },
+        {
+          "name": "theatre-id",
+          "wire_name": "locationId",
+          "type": "int",
+          "location": "query",
+          "description": "Cineplex theatre location ID",
+          "required": true
+        },
+        {
+          "name": "date",
+          "type": "string",
+          "location": "query",
+          "description": "Showtime date in M/D/YYYY format",
+          "required": true
+        },
+        {
+          "name": "experiences",
+          "type": "string",
+          "location": "query",
+          "description": "Optional comma-separated experience filter"
+        }
+      ]
+    },
+    {
+      "name": "theatres_by-location",
+      "description": "Resolve a location before finding nearby theatres. Optional: language (default: en), latitude, longitude (plus 1 more). Returns the Location.",
+      "method": "GET",
+      "path": "/prod/utilities/v1/GetLocation",
+      "params": [
+        {
+          "name": "language",
+          "type": "string",
+          "location": "query",
+          "description": "Content language"
+        },
+        {
+          "name": "latitude",
+          "type": "float",
+          "location": "query",
+          "description": "Optional latitude"
+        },
+        {
+          "name": "longitude",
+          "type": "float",
+          "location": "query",
+          "description": "Optional longitude"
+        },
+        {
+          "name": "postal-code",
+          "wire_name": "postalCode",
+          "type": "string",
+          "location": "query",
+          "description": "Optional Canadian postal code"
+        }
+      ]
+    },
+    {
+      "name": "theatres_get",
+      "description": "Get a theatre by location ID. Required: theatre-id. Returns the Theatre.",
+      "method": "GET",
+      "path": "/prod/cpx/theatrical/api/v1/theatres/{theatreId}",
+      "params": [
+        {
+          "name": "theatre-id",
+          "wire_name": "theatreId",
+          "type": "int",
+          "location": "path",
+          "description": "Cineplex theatre location ID",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "theatres_list",
+      "description": "List the Cineplex theatre directory. Optional: language (default: en). Returns the TheatreDirectory.",
+      "method": "GET",
+      "path": "/prod/cpx/theatrical/api/v1/theatres",
+      "params": [
+        {
+          "name": "language",
+          "type": "string",
+          "location": "query",
+          "description": "Content language"
+        }
+      ]
+    },
+    {
+      "name": "theatres_nearby",
+      "description": "Find theatres near latitude and longitude. Required: latitude, longitude. Optional: language (default: en), accuracy-km (default: 50), date. Returns array of Theatre.",
+      "method": "GET",
+      "path": "/prod/cpx/theatrical/api/v1/theatres/playingnearby",
+      "params": [
+        {
+          "name": "language",
+          "type": "string",
+          "location": "query",
+          "description": "Content language"
+        },
+        {
+          "name": "latitude",
+          "type": "float",
+          "location": "query",
+          "description": "Origin latitude",
+          "required": true
+        },
+        {
+          "name": "longitude",
+          "type": "float",
+          "location": "query",
+          "description": "Origin longitude",
+          "required": true
+        },
+        {
+          "name": "accuracy-km",
+          "wire_name": "accuracyKm",
+          "type": "float",
+          "location": "query",
+          "description": "Requested search radius in kilometres"
+        },
+        {
+          "name": "date",
+          "type": "string",
+          "location": "query",
+          "description": "Date used by the theatre search"
+        }
+      ]
+    },
+    {
+      "name": "utilities_location",
+      "description": "Resolve the current browser location. Optional: language (default: en), latitude, longitude (plus 1 more). Returns the Location.",
+      "method": "GET",
+      "path": "/prod/utilities/v1/GetLocation",
+      "params": [
+        {
+          "name": "language",
+          "type": "string",
+          "location": "query",
+          "description": "Content language"
+        },
+        {
+          "name": "latitude",
+          "type": "float",
+          "location": "query",
+          "description": "Optional latitude"
+        },
+        {
+          "name": "longitude",
+          "type": "float",
+          "location": "query",
+          "description": "Optional longitude"
+        },
+        {
+          "name": "postal-code",
+          "wire_name": "postalCode",
+          "type": "string",
+          "location": "query",
+          "description": "Optional Canadian postal code"
+        }
+      ]
+    }
+  ]
+}

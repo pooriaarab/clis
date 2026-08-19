@@ -1,0 +1,51 @@
+version: 2
+project_name: cineplex-pp-cli
+changelog:
+  disable: true
+builds:
+  - id: cineplex-pp-cli
+    main: ./cmd/cineplex-pp-cli
+    binary: cineplex-pp-cli
+    env:
+      - CGO_ENABLED=0
+    ldflags:
+      - -s -w -X cineplex-pp-cli/internal/cli.version={{ .Version }}
+    targets:
+      - darwin_amd64
+      - darwin_arm64
+      - linux_amd64
+      - linux_arm64
+      - windows_amd64
+      - windows_arm64
+  - id: cineplex-pp-mcp
+    main: ./cmd/cineplex-pp-mcp
+    binary: cineplex-pp-mcp
+    env:
+      - CGO_ENABLED=0
+    ldflags:
+      - -s -w -X main.version={{ .Version }}
+    targets:
+      - darwin_amd64
+      - darwin_arm64
+      - linux_amd64
+      - linux_arm64
+      - windows_amd64
+      - windows_arm64
+archives:
+  - formats: [tar.gz]
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+checksum:
+  name_template: checksums.txt
+brews:
+  - name: cineplex-pp-cli
+    repository:
+      owner: pooriaarab
+      name: homebrew-tap
+    homepage: "https://github.com/pooriaarab/cineplex-pp-cli"
+    description: "Cineplex Canada theatrical, ticketing, food, and SCENE+ API. Two auth hosts: subscription key for apis.cineplex."
+    install: |
+      bin.install "cineplex-pp-cli"
+      bin.install "cineplex-pp-mcp"
