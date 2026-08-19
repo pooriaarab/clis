@@ -310,6 +310,7 @@ Run 'cineplex-pp-cli doctor' to verify auth and connectivity.`,
 	}
 	authCmd.AddCommand(newAuthSetSceneTokenCmd(flags))
 	authCmd.AddCommand(newAuthSetSceneCookieCmd(flags))
+	authCmd.AddCommand(newAuthLoginCmd(flags))
 	rootCmd.AddCommand(authCmd)
 	rootCmd.AddCommand(newAgentContextCmd(rootCmd))
 	rootCmd.AddCommand(newProfileCmd(flags))
