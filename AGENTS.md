@@ -1,5 +1,8 @@
 # AGENTS.md
 
+Read [.agents/brand.md](.agents/brand.md) for the collection's identity and voice.
+Read [.agents/design.md](.agents/design.md) for its terminal interface rules.
+
 <!-- pr-standards:start -->
 
 ## Pull requests
