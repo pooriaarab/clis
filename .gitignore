@@ -15,3 +15,6 @@ config.toml
 
 # OS
 .DS_Store
+# Cursor cloud — local secrets stay local
+.env.local
+.env.*.local
