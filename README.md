@@ -6,35 +6,37 @@ Each CLI is generated from the platform's real API spec via [cli-printing-press]
 
 ## CLIs
 
-| CLI | What it covers | Auth |
-|---|---|---|
-| [`google-ads/`](google-ads/README.md) | Full read (GAQL) and near-full write coverage of the Google Ads API — campaigns, ad groups, keywords, experiments, and every other mutable resource via a generic escape hatch | OAuth2 (Desktop client + refresh token) |
-| [`reddit-ads/`](reddit-ads/README.md) | Reddit's Ads API v3 — ad accounts, campaigns, ad groups, ads, custom audiences, funding instruments, reporting, forecasting | OAuth2 (interactive browser login built in) |
-| [`meta-ads/`](meta-ads/README.md) | Meta Marketing API — campaigns, ad sets, ads, creatives, custom audiences, insights, plus a generic node/edge escape hatch for the rest of the Graph API | Access token (no built-in login flow — see that CLI's README for why) |
-| [`microsoft-ads/`](microsoft-ads/README.md) | Auth-only Microsoft Advertising stub pending the SOAP-to-REST migration and developer-token access | OAuth access token + developer token TODO |
-| [`tiktok-ads/`](tiktok-ads/README.md) | Auth-only TikTok Ads stub pending Marketing API app approval | OAuth access token TODO |
-| [`linkedin-ads/`](linkedin-ads/README.md) | Auth-only LinkedIn Ads stub pending Marketing Developer Platform approval | OAuth 2.0 access token TODO |
-| [`pinterest-ads/`](pinterest-ads/README.md) | Pinterest campaigns, customer-list audience upload, audience reads, and campaign analytics | OAuth 2.0 access token |
-| [`snapchat-ads/`](snapchat-ads/README.md) | Snapchat organization discovery and campaign list/create | OAuth 2.0 access token |
-| [`x-ads/`](x-ads/README.md) | Auth-only X Ads stub pending approved Ads API access and OAuth 1.0a signing | OAuth 1.0a TODO |
-| [`amazon-ads/`](amazon-ads/README.md) | Auth-only Amazon Ads stub pending application approval | OAuth 2.0 access token TODO |
-| [`apple-search-ads/`](apple-search-ads/README.md) | Apple Search Ads campaign list/create and campaign-level reports | OAuth 2.0 access token |
-| [`criteo/`](criteo/README.md) | Auth-only Criteo Marketing Solutions stub pending product and permission selection | OAuth 2.0 TODO |
-| [`taboola/`](taboola/README.md) | Taboola campaign list/create and campaign summary reports | OAuth 2.0 access token |
-| [`outbrain/`](outbrain/README.md) | Auth-only Outbrain Amplify stub pending a public endpoint reference | Token TODO |
-| [`quora/`](quora/README.md) | Auth-only Quora Ads stub; no public advertiser API reference found | Token TODO |
-| [`trade-desk/`](trade-desk/README.md) | Auth-only The Trade Desk stub pending partner access | Token TODO |
-| [`stackadapt/`](stackadapt/README.md) | Auth-only StackAdapt stub pending a public advertiser API reference | Token TODO |
-| [`nextdoor/`](nextdoor/README.md) | Auth-only Nextdoor Ads stub pending partner access | Token TODO |
-| [`yandex-direct/`](yandex-direct/README.md) | Yandex Direct v5 report submission against the documented JSON endpoint | OAuth 2.0 access token |
-| [`vk-ads/`](vk-ads/README.md) | Auth-only VK Ads stub pending a stable public API contract | Token TODO |
-| [`tencent-ads/`](tencent-ads/README.md) | Auth-only Tencent Ads stub pending regional account access | Token TODO |
-| [`baidu-ads/`](baidu-ads/README.md) | Auth-only Baidu Ads stub pending partner endpoint access | OAuth 2.0 TODO |
-| [`naver-ads/`](naver-ads/README.md) | Auth-only Naver Ads stub pending request-signing coverage | API license and secret TODO |
-| [`kakao-ads/`](kakao-ads/README.md) | Kakao Moment campaign report command with a documented business token | Business access token |
-| [`line-ads/`](line-ads/README.md) | Auth-only LINE Ads stub pending the documented request signer | Access key and secret TODO |
-| [`yahoo-japan-ads/`](yahoo-japan-ads/README.md) | Auth-only Yahoo! JAPAN Ads stub pending service-specific endpoint generation | OAuth 2.0 TODO |
-| [`mercadolibre-ads/`](mercadolibre-ads/README.md) | Auth-only Mercado Ads stub pending product access | OAuth 2.0 TODO |
+| CLI | What it covers | Auth | Developer access |
+|---|---|---|---|
+| [`google-ads/`](google-ads/README.md) | Full read (GAQL) and near-full write coverage of the Google Ads API — campaigns, ad groups, keywords, experiments, and every other mutable resource via a generic escape hatch | OAuth2 (Desktop client + refresh token) | — |
+| [`reddit-ads/`](reddit-ads/README.md) | Reddit's Ads API v3 — ad accounts, campaigns, ad groups, ads, custom audiences, funding instruments, reporting, forecasting | OAuth2 (interactive browser login built in) | — |
+| [`meta-ads/`](meta-ads/README.md) | Meta Marketing API — campaigns, ad sets, ads, creatives, custom audiences, insights, plus a generic node/edge escape hatch for the rest of the Graph API | Access token (no built-in login flow — see that CLI's README for why) | — |
+| [`microsoft-ads/`](microsoft-ads/README.md) | Auth-only stub (`doctor`, `auth` only — verified via `go build` + `--help`); pending the SOAP-to-REST migration and developer-token access | OAuth access token + developer token TODO | [Developer Portal — Request Token](https://developers.ads.microsoft.com/account) |
+| [`tiktok-ads/`](tiktok-ads/README.md) | Auth-only stub (`doctor`, `auth` only); pending Marketing API app approval | OAuth access token TODO | [Developer portal](https://business-api.tiktok.com/portal) |
+| [`linkedin-ads/`](linkedin-ads/README.md) | Auth-only stub (`doctor`, `auth` only); pending Marketing Developer Platform approval | OAuth 2.0 access token TODO | [Developer Portal — My Apps](https://www.linkedin.com/developers/apps) |
+| [`pinterest-ads/`](pinterest-ads/README.md) | Thin unverified print, never checked against a real account: `accounts list`, `campaigns list/create`, `audiences list/upload`, `reporting get` against documented `/v5` paths (generic `--body` JSON passthrough) | OAuth 2.0 access token | [My Apps](https://developers.pinterest.com/apps/) |
+| [`snapchat-ads/`](snapchat-ads/README.md) | Thin unverified print: `accounts list` (org discovery) and `campaigns list/create` hit documented paths; `audiences` and `reporting` subcommands are listed in `--help` but exit with a not-implemented TODO (no verified paths) | OAuth 2.0 access token | [Apply for Ads API access](https://businesshelp.snapchat.com/s/article/api-apply) |
+| [`x-ads/`](x-ads/README.md) | Auth-only stub (`doctor`, `auth` only); pending approved Ads API access and OAuth 1.0a signing | OAuth 1.0a TODO | [Ads API getting started](https://docs.x.com/x-ads-api/getting-started) |
+| [`amazon-ads/`](amazon-ads/README.md) | Auth-only stub (`doctor`, `auth` only); pending application approval | OAuth 2.0 access token TODO | [API onboarding](https://advertising.amazon.com/API/docs/en-us/guides/onboarding/overview) |
+| [`apple-search-ads/`](apple-search-ads/README.md) | Thin unverified print: `campaigns list/create` and `reporting get` hit documented `/api/v5` paths; `accounts`/`audiences` subcommands are listed in `--help` but exit with a not-implemented TODO | OAuth 2.0 access token | [OAuth guide — API user setup](https://developer.apple.com/documentation/apple_ads/implementing-oauth-for-the-apple-search-ads-api) |
+| [`criteo/`](criteo/README.md) | Auth-only stub (`doctor`, `auth` only); pending product and permission selection | OAuth 2.0 TODO | [Onboarding checklist](https://developers.criteo.com/marketing-solutions/docs/onboarding-checklist) |
+| [`taboola/`](taboola/README.md) | Thin unverified print: `campaigns list/create` and `reporting get` hit documented Backstage paths; `accounts`/`audiences` subcommands are listed in `--help` but exit with a not-implemented TODO | OAuth 2.0 access token | [Backstage API welcome — credentials via account manager](https://developers.taboola.com/backstage-api/reference/welcome) |
+| [`outbrain/`](outbrain/README.md) | Auth-only stub (`doctor`, `auth` only); the public Amplify endpoint reference is not complete enough for safe generation | Token TODO | [Amplify API application](https://developer.outbrain.com/home-page/amplify-api/apply/) |
+| [`quora/`](quora/README.md) | Auth-only stub (`doctor`, `auth` only); no public advertiser API reference found | Token TODO | no public application URL found |
+| [`trade-desk/`](trade-desk/README.md) | Auth-only stub (`doctor`, `auth` only); pending partner access (provisioned by an account representative, no self-serve registration) | Token TODO | [Partner portal](https://partner.thetradedesk.com/) |
+| [`stackadapt/`](stackadapt/README.md) | Auth-only stub (`doctor`, `auth` only); no public advertiser API reference (API key is issued inside the platform to customers) | Token TODO | no public application URL found |
+| [`nextdoor/`](nextdoor/README.md) | Auth-only stub (`doctor`, `auth` only); pending partner access | Token TODO | [Developer site — request access](https://developer.nextdoor.com/) |
+| [`yandex-direct/`](yandex-direct/README.md) | Thin unverified print: `reporting get` (POST JSON to the documented v501 reports endpoint) only; all other groups are listed in `--help` but exit with a not-implemented TODO | OAuth 2.0 access token | [Yandex Direct developer docs](https://yandex.com/dev/direct/) |
+| [`vk-ads/`](vk-ads/README.md) | Auth-only stub (`doctor`, `auth` only); no stable public API contract (access is granted per-request, not self-serve) | Token TODO | [VK Ads cabinet — request access](https://ads.vk.com/) |
+| [`tencent-ads/`](tencent-ads/README.md) | Auth-only stub (`doctor`, `auth` only); pending regional account access | Token TODO | [Developer portal](https://developers.e.qq.com/) |
+| [`baidu-ads/`](baidu-ads/README.md) | Auth-only stub (`doctor`, `auth` only); pending partner endpoint access | OAuth 2.0 TODO | [Commercial open platform](https://dev2.baidu.com/) |
+| [`naver-ads/`](naver-ads/README.md) | Auth-only stub (`doctor`, `auth` only); pending request-signing coverage (API license is issued in the advertiser center) | API license and secret TODO | [Advertiser center](https://searchad.naver.com/) |
+| [`kakao-ads/`](kakao-ads/README.md) | Thin unverified print: `reporting get` against the documented `/openapi/v4/campaigns/report` path only; all other groups are listed in `--help` but exit with a not-implemented TODO | Business access token | [Kakao Developers — request the Moment feature](https://developers.kakao.com/) |
+| [`line-ads/`](line-ads/README.md) | Auth-only stub (`doctor`, `auth` only); pending the documented request signer (corporate users apply in the Ads Manager) | Access key and secret TODO | [LINE Ads API docs](https://developers.line.biz/en/docs/line-ads-api/) |
+| [`yahoo-japan-ads/`](yahoo-japan-ads/README.md) | Auth-only stub (`doctor`, `auth` only); pending service-specific endpoint generation | OAuth 2.0 TODO | [App registration](https://ads-developers.yahoo.co.jp/developercenter/en/startup-guide/app-registration.html) |
+| [`mercadolibre-ads/`](mercadolibre-ads/README.md) | Auth-only stub (`doctor`, `auth` only); pending product access | OAuth 2.0 TODO | [Developer portal — create an application](https://developers.mercadolibre.com/) |
+
+"Auth-only stub" means the built binary exposes only `doctor` and `auth` (`status`, `login`, `set-token`) — the `accounts`/`campaigns`/`audiences`/`reporting` functions exist in source as an unwired template and are not reachable. "Thin unverified print" means only the commands named as implemented in the row above hit documented endpoint paths, as generic `--body` JSON passthrough, and even those were never verified end-to-end against a real account, unlike the big three. The remaining subcommands in the same CLI appear in `--help` but call no endpoint at all — they exit with a not-implemented error.
 
 Each subdirectory's README has the exact setup steps for that platform: where to register a developer app, which environment variables the CLI needs, and how to get your first real credential.
 
