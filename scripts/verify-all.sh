@@ -207,7 +207,10 @@ for ((i = 0; i < count; i++)); do
 done
 
 if [ -n "$REPORT_FILE" ]; then
-  mkdir -p "$(dirname "$REPORT_FILE")"
+  if ! mkdir -p "$(dirname "$REPORT_FILE")" 2>/dev/null || ! touch "$REPORT_FILE" 2>/dev/null; then
+    echo "verify-all: cannot write report to $REPORT_FILE" >&2
+    exit 1
+  fi
   exec > >(tee "$REPORT_FILE")
 fi
 
