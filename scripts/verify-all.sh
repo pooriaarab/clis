@@ -13,6 +13,10 @@ REPO_ROOT=$(cd "$(dirname "$0")/.." && pwd)
 REPORT_FILE="${REPORT:-}"
 
 TMP_DIR=$(mktemp -d /tmp/verify-all.XXXXXX)
+if [ -z "$TMP_DIR" ] || [ ! -d "$TMP_DIR" ]; then
+  echo "verify-all: failed to create a temporary directory" >&2
+  exit 1
+fi
 trap 'rm -rf "$TMP_DIR"' EXIT
 
 names=()
