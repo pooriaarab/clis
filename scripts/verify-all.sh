@@ -10,7 +10,7 @@
 set -u
 
 REPO_ROOT=$(cd "$(dirname "$0")/.." && pwd)
-REPORT_FILE="${REPORT:-/Users/parab/Documents/Personal/_wt/_briefs/cli-45-report.md}"
+REPORT_FILE="${REPORT:-}"
 
 TMP_DIR=$(mktemp -d /tmp/verify-all.XXXXXX)
 trap 'rm -rf "$TMP_DIR"' EXIT
@@ -174,7 +174,8 @@ while IFS= read -r gomod; do
   binpath="$TMP_DIR/bin/$binname"
   mkdir -p "$TMP_DIR/bin"
 
-  if (cd "$moddir" && go build -o "$binpath" "./$rel" > "$build_out" 2> "$build_err"); then
+  if (cd "$moddir" && go build ./... > "$build_out" 2> "$build_err") && \
+     (cd "$moddir" && go build -o "$binpath" "./$rel" >> "$build_out" 2>> "$build_err"); then
     builds+=("ok")
     auths+=("$(__auth_status_for "$binpath" "$name")")
   else
@@ -201,9 +202,10 @@ for ((i = 0; i < count; i++)); do
   [ "$a" -gt "$max_auth" ] && max_auth=$a
 done
 
-mkdir -p "$(dirname "$REPORT_FILE")"
-
-exec > >(tee "$REPORT_FILE")
+if [ -n "$REPORT_FILE" ]; then
+  mkdir -p "$(dirname "$REPORT_FILE")"
+  exec > >(tee "$REPORT_FILE")
+fi
 
 printf "%-${max_name}s   %-${max_build}s   %s\n" "CLI" "BUILD" "AUTH"
 
