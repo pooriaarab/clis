@@ -56,6 +56,16 @@ go build -o <cli-name>-pp-cli ./cmd/<cli-name>-pp-cli
 
 Requires [Go](https://go.dev/dl/) 1.22+. See each CLI's own README for the exact binary name and setup steps.
 
+## Verifying all CLIs
+
+`scripts/verify-all.sh` builds every Go module in the repo and runs each CLI's auth-status command, printing an aligned table of BUILD and AUTH results. Run it from the repo root:
+
+```bash
+./scripts/verify-all.sh
+```
+
+BUILD failures exit non-zero; unconfigured auth does not.
+
 ## Contributing
 
 Found a gap, a bug, or want to add another platform's CLI? PRs welcome. If you're adding a new CLI generated via `cli-printing-press`, please:
