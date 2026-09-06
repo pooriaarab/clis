@@ -370,11 +370,11 @@ func newDoctorCmd(flags *rootFlags) *cobra.Command {
 								report["auth"] = "FAIL configured, token invalid"
 								report["credentials"] = fmt.Sprintf("FAIL token invalid (error %d)", code)
 							case code == 100 || (code >= 200 && code < 300):
-								report["auth"] = "WARN configured, missing permission"
+								report["auth"] = "WARN configured, lacks permission"
 								report["credentials"] = fmt.Sprintf("WARN valid token, lacks permission (code %d); cannot manage campaigns", code)
 							default:
 								report["auth"] = "WARN configured, not verified"
-								report["credentials"] = fmt.Sprintf("WARN present, not verified (error %d)", code)
+								report["credentials"] = fmt.Sprintf("WARN present, not verified (code %d)", code)
 							}
 						default:
 							report["auth"] = "WARN configured, not verified"
