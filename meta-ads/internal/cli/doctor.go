@@ -360,7 +360,7 @@ func newDoctorCmd(flags *rootFlags) *cobra.Command {
 								report["auth"] = "OK configured and verified"
 								report["credentials"] = fmt.Sprintf("OK proven for campaign management: %d ad account(s)", n)
 							} else {
-								report["auth"] = "WARN configured, not verified"
+								report["auth"] = "WARN configured, no ad account assigned"
 								report["credentials"] = "WARN valid token, no ad account assigned; cannot manage campaigns"
 							}
 						case errors.As(probeErr, &probeAPIErr):
