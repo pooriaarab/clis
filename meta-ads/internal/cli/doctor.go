@@ -6,6 +6,7 @@ package cli
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -62,6 +63,75 @@ func looksLikeDoctorInterstitial(body []byte) string {
 		return "PerimeterX"
 	}
 	return ""
+}
+
+// extractMetaErrorCode returns the numeric code from a Meta Graph API error
+// response body. Returns 0 when the body does not contain a recognizable error
+// envelope.
+func extractMetaErrorCode(body []byte) int {
+	var envelope struct {
+		Error struct {
+			Code int `json:"code"`
+		} `json:"error"`
+	}
+	if err := json.Unmarshal(body, &envelope); err != nil {
+		return 0
+	}
+	return envelope.Error.Code
+}
+
+// countAdAccounts returns the number of objects in the top-level data array of
+// a Meta Graph API /me/adaccounts response.
+func countAdAccounts(body json.RawMessage) int {
+	var envelope struct {
+		Data json.RawMessage `json:"data"`
+	}
+	if err := json.Unmarshal(body, &envelope); err != nil {
+		return 0
+	}
+	var accounts []json.RawMessage
+	if err := json.Unmarshal(envelope.Data, &accounts); err != nil {
+		return 0
+	}
+	return len(accounts)
+}
+
+// doctorStatus maps a report value to its display indicator and strips a
+// leading severity prefix when present. The report string keeps its prefix so
+// --fail-on and JSON consumers can classify the result unambiguously.
+func doctorStatus(s string) (string, string) {
+	prefixes := []struct {
+		prefix    string
+		indicator string
+	}{
+		{"WARN ", "WARN"},
+		{"INFO ", "INFO"},
+		{"ERROR ", "FAIL"},
+		{"FAIL ", "FAIL"},
+		{"OK ", "OK"},
+		{"optional ", "INFO"},
+	}
+	for _, p := range prefixes {
+		if strings.HasPrefix(s, p.prefix) {
+			return p.indicator, strings.TrimPrefix(s, p.prefix)
+		}
+	}
+	switch {
+	case s == "not configured":
+		// A missing credential on a fresh machine is expected, not a failure.
+		return "OK", s
+	case strings.Contains(s, "scope-limited"):
+		return "WARN", s
+	case strings.Contains(s, "not verified"):
+		return "INFO", s
+	case strings.Contains(s, "error") || strings.Contains(s, "not configured") || strings.Contains(s, "unreachable") || strings.Contains(s, "invalid") || strings.Contains(s, "missing"):
+		return "FAIL", s
+	case s == "not required":
+		return "OK", s
+	case strings.Contains(s, "not ") || strings.Contains(s, "skipped") || strings.Contains(s, "inferred"):
+		return "WARN", s
+	}
+	return "OK", s
 }
 
 // suggestReadCommand walks the Cobra tree to find an endpoint-mirror command
@@ -183,8 +253,8 @@ func newDoctorCmd(flags *rootFlags) *cobra.Command {
 					report["auth_hint"] = "Set it with: meta-ads-pp-cli auth set-token <token> or export META_ADS_BEARER_AUTH=\"your-token-here\""
 				} else {
 					authConfigured = true
-					report["auth"] = "configured"
 					report["auth_source"] = cfg.AuthSource
+					// auth is finalized below after the capability probe.
 				}
 			}
 
@@ -208,7 +278,8 @@ func newDoctorCmd(flags *rootFlags) *cobra.Command {
 			}
 			switch {
 			case len(authEnvRequiredMissing) > 0:
-				report["env_vars"] = "ERROR missing required: " + strings.Join(authEnvRequiredMissing, ", ")
+				// A missing token on a fresh machine is expected, not a failure.
+				report["env_vars"] = "INFO not set: " + strings.Join(authEnvRequiredMissing, ", ")
 			case len(authEnvOptionalNames) > 1 && !authEnvOptionalSatisfied:
 				report["env_vars"] = "INFO set one of: " + strings.Join(authEnvOptionalNames, " or ")
 			case len(authEnvInfo) > 0 && authConfigured:
@@ -233,6 +304,10 @@ func newDoctorCmd(flags *rootFlags) *cobra.Command {
 				c, clientErr := flags.newClient()
 				if clientErr != nil {
 					report["api"] = fmt.Sprintf("client init error: %s", clientErr)
+					if authConfigured {
+						report["auth"] = "WARN configured, not verified"
+						report["credentials"] = fmt.Sprintf("WARN present, not verified (%s)", clientErr)
+					}
 				} else {
 					// Step 1: Basic reachability via the configured transport.
 					reachBody, reachErr := c.Get(cmd.Context(), "/", nil)
@@ -249,14 +324,13 @@ func newDoctorCmd(flags *rootFlags) *cobra.Command {
 						}
 					case errors.As(reachErr, &reachAPIErr):
 						// Non-2xx from the server. The network reached, the
-						// server responded — that's "reachable" for our
-						// purposes. Inspect the response body for a known
-						// interstitial first; otherwise note the status.
+						// server responded. Report it as a non-OK signal so a
+						// 400/404/405 is not silently read as healthy.
 						status := reachAPIErr.StatusCode
 						if vendor := looksLikeDoctorInterstitial([]byte(reachAPIErr.Body)); vendor != "" {
 							report["api"] = fmt.Sprintf("blocked by %s interstitial (HTTP %d) — the configured transport reached the wall.", vendor, status)
 						} else {
-							report["api"] = fmt.Sprintf("reachable (HTTP %d at /)", status)
+							report["api"] = fmt.Sprintf("INFO answered (HTTP %d at /)", status)
 						}
 					default:
 						// Network-level failure: DNS, connection refused, TLS,
@@ -268,20 +342,52 @@ func newDoctorCmd(flags *rootFlags) *cobra.Command {
 					// Step 2: Validate credentials with an authenticated probe.
 					authHeader := cfg.AuthHeader()
 					if authHeader == "" {
-						// No auth configured — skip credential validation
+						// No auth configured — skip credential validation.
 					} else if reachErr != nil && !errors.As(reachErr, &reachAPIErr) {
-						report["credentials"] = "skipped (API unreachable)"
+						report["auth"] = "WARN configured, not verified"
+						report["credentials"] = "WARN present, not verified (API unreachable)"
 					} else {
-						suggestion := suggestReadCommand(cmd.Root())
-						if suggestion != "" {
-							report["credentials"] = fmt.Sprintf("present, not verified. Run `%s %s` to confirm the token works end-to-end.", "meta-ads-pp-cli", suggestion)
-						} else {
-							report["credentials"] = "present, not verified. Run any read command to confirm the token works end-to-end."
+						// /me/adaccounts requires ads_read or ads_management and
+						// returns an empty list (not an error) when the token is
+						// valid but has no ad account assigned.
+						params := map[string]string{"fields": "name,account_id,account_status"}
+						body, probeErr := c.GetNoCache(cmd.Context(), "/me/adaccounts", params)
+						var probeAPIErr *client.APIError
+						switch {
+						case probeErr == nil:
+							n := countAdAccounts(body)
+							if n > 0 {
+								report["auth"] = "OK configured and verified"
+								report["credentials"] = fmt.Sprintf("OK proven for campaign management: %d ad account(s)", n)
+							} else {
+								report["auth"] = "WARN configured, not verified"
+								report["credentials"] = "WARN valid token, no ad account assigned; cannot manage campaigns"
+							}
+						case errors.As(probeErr, &probeAPIErr):
+							code := extractMetaErrorCode([]byte(probeAPIErr.Body))
+							switch {
+							case code == 190:
+								report["auth"] = "FAIL configured, token invalid"
+								report["credentials"] = fmt.Sprintf("FAIL token invalid (error %d)", code)
+							case code == 100 || (code >= 200 && code < 300):
+								report["auth"] = "WARN configured, missing permission"
+								report["credentials"] = fmt.Sprintf("WARN valid token, lacks permission (code %d); cannot manage campaigns", code)
+							default:
+								report["auth"] = "WARN configured, not verified"
+								report["credentials"] = fmt.Sprintf("WARN present, not verified (error %d)", code)
+							}
+						default:
+							report["auth"] = "WARN configured, not verified"
+							report["credentials"] = fmt.Sprintf("WARN present, not verified (%s)", probeErr)
 						}
 					}
 				}
 			} else if cfg != nil && cfg.BaseURL == "" {
 				report["api"] = "not configured (set base_url in config file)"
+				if authConfigured {
+					report["auth"] = "WARN configured, not verified"
+					report["credentials"] = "WARN present, not verified (base_url not configured)"
+				}
 			}
 			// Cache health: only reported when this CLI has generated sync.
 			// Surfaces rows + last_synced_at per resource, schema version,
@@ -331,33 +437,17 @@ func newDoctorCmd(flags *rootFlags) *cobra.Command {
 					continue
 				}
 				s := fmt.Sprintf("%v", v)
+				status, text := doctorStatus(s)
 				indicator := green("OK")
-				switch {
-				case strings.HasPrefix(s, "WARN"):
+				switch status {
+				case "WARN":
 					indicator = yellow("WARN")
-				case strings.HasPrefix(s, "INFO"):
+				case "INFO":
 					indicator = yellow("INFO")
-				case strings.HasPrefix(s, "ERROR"):
+				case "FAIL":
 					indicator = red("FAIL")
-				case strings.HasPrefix(s, "optional"):
-					// Optional-auth CLI with no key set — informational, not a failure.
-					indicator = yellow("INFO")
-				case strings.Contains(s, "scope-limited"):
-					indicator = yellow("WARN")
-				case strings.Contains(s, "not verified"):
-					// "present, not verified" — credentials are loaded but no
-					// probe ran. Informational, not a warning; a clean config
-					// shouldn't render yellow WARN in CI dashboards.
-					indicator = yellow("INFO")
-				case strings.Contains(s, "error") || strings.Contains(s, "not configured") || strings.Contains(s, "unreachable") || strings.Contains(s, "invalid") || strings.Contains(s, "missing"):
-					indicator = red("FAIL")
-				case s == "not required":
-					// Public APIs: no auth needed is a healthy state, not a warning.
-					indicator = green("OK")
-				case strings.Contains(s, "not ") || strings.Contains(s, "skipped") || strings.Contains(s, "inferred"):
-					indicator = yellow("WARN")
 				}
-				fmt.Fprintf(w, "  %s %s: %s\n", indicator, ck.label, s)
+				fmt.Fprintf(w, "  %s %s: %s\n", indicator, ck.label, text)
 			}
 			// Print info keys without status indicator
 			for _, key := range []string{"config_path", "base_url", "auth_source", "credentials_location", "version"} {
