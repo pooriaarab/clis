@@ -349,6 +349,10 @@ func fetchOne(dir string, d dataset, force bool) (string, meta, error) {
 		os.Remove(tmp)
 		return "", meta{}, err
 	}
+	if err := os.Chmod(tmp, 0o644); err != nil {
+		os.Remove(tmp)
+		return "", meta{}, err
+	}
 	if err := os.Rename(tmp, csvPath(dir, d.ID)); err != nil {
 		os.Remove(tmp)
 		return "", meta{}, err
