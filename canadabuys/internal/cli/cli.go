@@ -153,7 +153,10 @@ func doctorCmd() *cobra.Command {
 		if err != nil {
 			return err
 		}
-		used := diskUsed(dir)
+		used, err := diskUsed(dir)
+		if err != nil {
+			return err
+		}
 		ok := ping()
 		if flagJSON {
 			return emit(map[string]any{"ok": ok, "cache_dir": dir, "bytes": used, "reachable": ok, "host": "https://canadabuys.canada.ca/", "datasets": rs})
@@ -274,10 +277,13 @@ func listRows(dir, kind string) ([]listRow, error) {
 	return out, nil
 }
 
-func diskUsed(dir string) int64 {
+func diskUsed(dir string) (int64, error) {
 	ents, err := os.ReadDir(dir)
 	if err != nil {
-		return 0
+		if os.IsNotExist(err) {
+			return 0, nil
+		}
+		return 0, err
 	}
 	var n int64
 	for _, e := range ents {
@@ -285,7 +291,7 @@ func diskUsed(dir string) int64 {
 			n += info.Size()
 		}
 	}
-	return n
+	return n, nil
 }
 
 func ping() bool {
@@ -300,7 +306,7 @@ func ping() bool {
 		return false
 	}
 	resp.Body.Close()
-	return true
+	return resp.StatusCode >= 200 && resp.StatusCode < 300
 }
 
 // fetchOne streams to a temp file, hashes on the way, then renames into place.
