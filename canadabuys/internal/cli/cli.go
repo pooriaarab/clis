@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -54,7 +55,12 @@ var catalog = []dataset{
 var (
 	flagCache string
 	flagJSON  bool
-	client    = &http.Client{Timeout: time.Hour}
+	// No overall Timeout: a progressing body can outlast an hour.
+	client = &http.Client{Transport: &http.Transport{
+		DialContext:           (&net.Dialer{Timeout: 30 * time.Second}).DialContext,
+		TLSHandshakeTimeout:   10 * time.Second,
+		ResponseHeaderTimeout: 30 * time.Second,
+	}}
 )
 
 func Execute() error { return root().Execute() }
@@ -323,11 +329,11 @@ func fetchOne(dir string, d dataset, force bool) (string, meta, error) {
 	if resp.StatusCode != http.StatusOK {
 		return "", meta{}, fmt.Errorf("%s: HTTP %s", d.ID, resp.Status)
 	}
-	tmp := csvPath(dir, d.ID) + ".tmp"
-	f, err := os.Create(tmp)
+	f, err := os.CreateTemp(dir, d.ID+".csv.*.tmp")
 	if err != nil {
 		return "", meta{}, err
 	}
+	tmp := f.Name()
 	h := sha256.New()
 	n, copyErr := io.Copy(io.MultiWriter(f, h, &progress{id: d.ID}), resp.Body)
 	closeErr := f.Close()
@@ -337,6 +343,11 @@ func fetchOne(dir string, d dataset, force bool) (string, meta, error) {
 			return "", meta{}, copyErr
 		}
 		return "", meta{}, closeErr
+	}
+	// Drop the sidecar first so a crash cannot pair a new CSV with old metadata.
+	if err := os.Remove(metaPath(dir, d.ID)); err != nil && !os.IsNotExist(err) {
+		os.Remove(tmp)
+		return "", meta{}, err
 	}
 	if err := os.Rename(tmp, csvPath(dir, d.ID)); err != nil {
 		os.Remove(tmp)
