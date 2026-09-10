@@ -150,7 +150,7 @@ func doctorCmd() *cobra.Command {
 		used := diskUsed(dir)
 		ok := ping()
 		if flagJSON {
-			return emit(map[string]any{"ok": true, "cache_dir": dir, "bytes": used, "reachable": ok, "host": "https://canadabuys.canada.ca/", "datasets": rs})
+			return emit(map[string]any{"ok": ok, "cache_dir": dir, "bytes": used, "reachable": ok, "host": "https://canadabuys.canada.ca/", "datasets": rs})
 		}
 		fmt.Printf("cache: %s\ndisk: %d bytes\nreachable: %t\n", dir, used, ok)
 		for _, r := range rs {
