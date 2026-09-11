@@ -40,6 +40,11 @@ func opportunitiesCmd() *cobra.Command {
 			}
 			*b.dst = cents
 		}
+		full, err := queryTenders(&tenderFilter{})
+		if err != nil {
+			return err
+		}
+		addRecurYears(ctx, full)
 		f := &tenderFilter{since: since}
 		if category != "" {
 			f.category = []string{category}
@@ -48,7 +53,6 @@ func opportunitiesCmd() *cobra.Command {
 		if err != nil {
 			return err
 		}
-		addRecurYears(ctx, all)
 		out := []score.Opportunity{}
 		staffing := 0
 		for _, t := range all {
