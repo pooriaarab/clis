@@ -127,13 +127,13 @@ func (c *Client) batch(batch []score.Opportunity, m string) (map[string]Enrichme
 		} `json:"choices"`
 	}
 	if json.Unmarshal(raw, &env) != nil || len(env.Choices) == 0 {
-		return nil, len(batch), nil
+		return nil, 0, nil
 	}
 	var doc struct {
 		Results []Enrichment `json:"results"`
 	}
 	if json.Unmarshal([]byte(env.Choices[0].Message.Content), &doc) != nil {
-		return nil, len(batch), nil
+		return nil, 0, nil
 	}
 	byRef := map[string]Enrichment{}
 	for _, e := range doc.Results {
