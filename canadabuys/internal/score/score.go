@@ -482,7 +482,7 @@ func FutureClosing(s string) bool {
 }
 
 func today() time.Time {
-	y, m, d := Now().Date()
+	y, m, d := Now().UTC().Date()
 	return time.Date(y, m, d, 0, 0, 0, 0, time.UTC)
 }
 

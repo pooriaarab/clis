@@ -441,11 +441,13 @@ func addLensAggregates(ctx *score.Context, all []model.Tender) {
 			depts[k] = map[string]bool{}
 		}
 		depts[k][t.Org] = true
+		classes := map[string]bool{}
 		for _, code := range score.Codes(t.UNSPSC, t.GSIN, ctx.GsinUNSPSC) {
-			k := score.ClassOf(code)
-			if k == "" {
-				continue
+			if k := score.ClassOf(code); k != "" {
+				classes[k] = true
 			}
+		}
+		for k := range classes {
 			ctx.BuyerCat[t.Org+"\x00"+k]++
 			if seen[k] == nil {
 				seen[k] = map[string]bool{}
