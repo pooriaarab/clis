@@ -331,6 +331,21 @@ endpoint with `CANADABUYS_LLM_BASE_URL` (default
 runs ten-notice batches in a bounded worker pool. Replies are cached under
 `$CANADABUYS_CACHE_DIR/llm`.
 
+`--lens default|horizontal|displace|bootstrap` re-ranks the same tenders with
+different weights. Every lens keeps `category-fit` and `keyword` so the
+result stays software, not just cheap and open. Lenses issue no model
+requests, so each is free once the cache exists:
+
+- `horizontal` favors notices solicited by many distinct departments.
+- `displace` favors categories where one supplier holds most of the value;
+  its table adds an INCUMBENT column, computed at the notice's own UNSPSC
+  granularity rather than the whole procurement category.
+- `bootstrap` favors open competitive work in the $50k-$250k band.
+
+`--lens` cannot combine with `--llm`: a lens re-ranks cached enrichment, and
+`--llm` issues new model requests, so run `--llm` on the default lens first
+and re-rank with `--lens` afterward.
+
 ## Four things that surprise readers
 
 1. The web UI shows only open notices: 913 out of 101,212. The archive files

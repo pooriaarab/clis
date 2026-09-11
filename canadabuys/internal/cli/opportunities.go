@@ -5,6 +5,7 @@ import (
 	"canadabuys-cli/internal/llm"
 	"canadabuys-cli/internal/model"
 	"canadabuys-cli/internal/score"
+	"encoding/json"
 	"fmt"
 	"github.com/spf13/cobra"
 	"io"
@@ -23,18 +24,37 @@ type oppOut struct {
 	Enrichment *llm.Enrichment `json:"enrichment,omitempty"`
 }
 
+var coreSignal = map[string]string{"displace": "concentration", "bootstrap": "band-fit"}
+
 func opportunitiesCmd() *cobra.Command {
-	var minAward, maxAward, since, category, explain, llmModel string
+	var minAward, maxAward, since, category, explain, llmModel, lensName string
 	var minScore float64
 	var limit, llmLimit, llmConcurrency int
 	var useLLM, noStaffing, groupSimilar bool
 	cmd := &cobra.Command{Use: "opportunities", Short: "Rank tender notices a small software team could win", RunE: func(*cobra.Command, []string) error {
+		lens, err := score.LensByName(lensName)
+		if err != nil {
+			return err
+		}
+		if useLLM && lens.Name != "default" {
+			return fmt.Errorf("--llm issues model requests; lens %q re-ranks cached enrichment only (omit --llm)", lens.Name)
+		}
 		ctx, err := buildOppContext()
 		if err != nil {
 			return err
 		}
+		full, err := queryTenders(&tenderFilter{})
+		if err != nil {
+			return err
+		}
+		addRecurYears(ctx, full)
+		aggBase, _ := keepLatestAmendments(full)
+		addLensAggregates(&ctx, aggBase)
+		if lens.Name != "default" {
+			loadEnrichCache(&ctx)
+		}
 		if explain != "" {
-			return explainOpp(ctx, explain)
+			return explainOpp(ctx, explain, lens)
 		}
 		var minC, maxC int64
 		for _, b := range []struct {
@@ -50,11 +70,6 @@ func opportunitiesCmd() *cobra.Command {
 			}
 			*b.dst = cents
 		}
-		full, err := queryTenders(&tenderFilter{})
-		if err != nil {
-			return err
-		}
-		addRecurYears(ctx, full)
 		f := &tenderFilter{since: since}
 		if category != "" {
 			f.category = []string{category}
@@ -72,7 +87,10 @@ func opportunitiesCmd() *cobra.Command {
 		out := []score.Opportunity{}
 		staffing := 0
 		for _, t := range all {
-			o := score.Score(t, ctx)
+			o, _ := score.ScoreLens(t, ctx, lens.Name) // lens validated above
+			if sig, ok := coreSignal[lens.Name]; ok && !haveSignal(o, sig) {
+				continue
+			}
 			if minScore >= 0 && o.Score*100 < minScore {
 				continue
 			}
@@ -144,6 +162,13 @@ func opportunitiesCmd() *cobra.Command {
 			}
 			return w.Flush()
 		}
+		if lens.Name == "displace" {
+			fmt.Fprintln(w, "SCORE\tREFERENCE\tBUYER\tBAND\tINCUMBENT\tTITLE")
+			for _, o := range out {
+				fmt.Fprintf(w, "%.1f\t%s\t%s\t%s\t%s\t%s\n", o.Score*100, o.Reference, o.Buyer, o.AwardBand, o.Incumbent, o.Title)
+			}
+			return w.Flush()
+		}
 		fmt.Fprintln(w, "SCORE\tREFERENCE\tBUYER\tBAND\tTITLE")
 		for _, o := range out {
 			fmt.Fprintf(w, "%.1f\t%s\t%s\t%s\t%s\n", o.Score*100, o.Reference, o.Buyer, o.AwardBand, o.Title)
@@ -160,6 +185,7 @@ func opportunitiesCmd() *cobra.Command {
 	cmd.Flags().IntVar(&limit, "limit", 20, "max rows")
 	cmd.Flags().IntVar(&llmLimit, "llm-limit", 100, "max shortlist notices sent to the LLM")
 	cmd.Flags().IntVar(&llmConcurrency, "llm-concurrency", 8, "parallel LLM batch requests; 1 is serial")
+	cmd.Flags().StringVar(&lensName, "lens", "default", "ranking lens: default|horizontal|displace|bootstrap")
 	cmd.Flags().BoolVar(&useLLM, "llm", false, "enrich the shortlist with the LLM provider")
 	cmd.Flags().BoolVar(&noStaffing, "exclude-staffing", true, "hide staffing supply arrangements")
 	cmd.Flags().BoolVar(&groupSimilar, "group-similar", false, "also collapse notices that share a buyer and title")
@@ -295,10 +321,10 @@ func buildOppContext() (score.Context, error) {
 		if a.Solicitation != "" {
 			ctx.AwardCents[a.Solicitation] = max(ctx.AwardCents[a.Solicitation], a.AmountCents)
 		}
-		for _, c := range awardCats(a.Categories) {
-			catTotal[c] += a.AmountCents
+		for _, k := range score.UnspscKeys(score.Codes(a.UNSPSC, a.GSIN, ctx.GsinUNSPSC)) {
+			catTotal[k] += a.AmountCents
 			if a.Supplier != "" {
-				supCat[a.Supplier+"\x00"+c] += a.AmountCents
+				supCat[a.Supplier+"\x00"+k] += a.AmountCents
 			}
 		}
 		return true
@@ -360,12 +386,7 @@ func addRecurYears(ctx score.Context, all []model.Tender) {
 		ctx.RecurYears[k] = len(m)
 	}
 }
-func explainOpp(ctx score.Context, ref string) error {
-	all, err := queryTenders(&tenderFilter{})
-	if err != nil {
-		return err
-	}
-	addRecurYears(ctx, all)
+func explainOpp(ctx score.Context, ref string, lens score.Lens) error {
 	ex, err := queryTenders(&tenderFilter{exact: ref, limit: 1})
 	if err != nil {
 		return err
@@ -373,16 +394,67 @@ func explainOpp(ctx score.Context, ref string) error {
 	if len(ex) == 0 {
 		return fmt.Errorf("no tender with reference number %q", ref)
 	}
-	o := score.Score(ex[0], ctx)
+	o, _ := score.ScoreLens(ex[0], ctx, lens.Name) // lens validated above
 	if flagJSON {
 		return emit(o)
 	}
-	fmt.Printf("reference: %s\ntitle: %s\nbuyer: %s\ncategory: %s\nclosing: %s\naward band: %s\nstaffing: %t\nscore: %.1f\n",
-		o.Reference, o.Title, o.Buyer, o.Category, o.Closing, o.AwardBand, o.Staffing, o.Score*100)
+	ws := []string{}
+	for _, s := range o.Signals {
+		ws = append(ws, fmt.Sprintf("%s=%.0f", s.Name, s.Weight))
+	}
+	fmt.Printf("lens: %s (%s)\nweights: %s\nreference: %s\ntitle: %s\nbuyer: %s\ncategory: %s\nclosing: %s\naward band: %s\nstaffing: %t\nscore: %.1f\n",
+		lens.Name, lens.Why, strings.Join(ws, " "), o.Reference, o.Title, o.Buyer, o.Category, o.Closing, o.AwardBand, o.Staffing, o.Score*100)
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
 	fmt.Fprintln(w, "SIGNAL\tRAW\tWEIGHT\tSCORE\tCONTRIBUTION")
 	for _, s := range o.Signals {
 		fmt.Fprintf(w, "%s\t%s\t%.0f\t%.2f\t%.3f\n", s.Name, s.Raw, s.Weight, s.Score, s.Contribution)
 	}
 	return w.Flush()
+}
+
+func haveSignal(o score.Opportunity, name string) bool {
+	for _, s := range o.Signals {
+		if s.Name == name {
+			return s.HasData
+		}
+	}
+	return false
+}
+
+func addLensAggregates(ctx *score.Context, all []model.Tender) {
+	depts := map[string]map[string]bool{}
+	for _, t := range all {
+		if ok, _ := score.IsStaffing(t); !ok {
+			k := score.NormTitle(t.Title)
+			if depts[k] == nil {
+				depts[k] = map[string]bool{}
+			}
+			depts[k][t.Org] = true
+		}
+	}
+	ctx.TitleDepts = map[string]int{}
+	for k, m := range depts {
+		ctx.TitleDepts[k] = len(m)
+	}
+}
+
+func loadEnrichCache(ctx *score.Context) {
+	dir, err := cacheDir()
+	if err != nil {
+		return
+	}
+	names, _ := filepath.Glob(filepath.Join(dir, "llm", "*"))
+	sort.Strings(names)
+	ctx.ProductFit, ctx.FitShape = map[string]float64{}, map[string]string{}
+	for _, n := range names {
+		raw, err := os.ReadFile(n)
+		var v llm.Enrichment
+		if err != nil || json.Unmarshal(raw, &v) != nil || v.Reference == "" {
+			continue
+		}
+		if _, seen := ctx.ProductFit[v.Reference]; !seen {
+			ctx.ProductFit[v.Reference] = max(0, min(100, v.ProductFit))
+			ctx.FitShape[v.Reference] = v.Shape
+		}
+	}
 }
