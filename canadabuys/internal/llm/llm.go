@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 )
@@ -82,9 +83,22 @@ func (c *Client) Enrich(notices []score.Opportunity, m string) ([]*Enrichment, i
 func promptFor(b score.Opportunity) string {
 	return fmt.Sprintf("reference: %s\nbuyer: %s\ntitle: %s\ndescription: %s", b.Reference, b.Buyer, b.Title, b.Description[:min(1500, len(b.Description))])
 }
+var unsafeFilenameChars = regexp.MustCompile(`[^A-Za-z0-9_-]+`)
+
+// safeRefComponent strips path separators and other filesystem-meaningful
+// characters from a reference sourced from external tender data, so it
+// cannot be used to escape CacheDir when embedded in a cache filename.
+func safeRefComponent(ref string) string {
+	s := unsafeFilenameChars.ReplaceAllString(ref, "_")
+	if s == "" {
+		return "_"
+	}
+	return s
+}
+
 func (c *Client) key(b score.Opportunity, m string) string {
 	h := sha256.Sum256([]byte(m + "\x00" + instruction + "\x00" + promptFor(b)))
-	return "llm-" + b.Reference + "-" + hex.EncodeToString(h[:])[:16] + ".json"
+	return "llm-" + safeRefComponent(b.Reference) + "-" + hex.EncodeToString(h[:])[:16] + ".json"
 }
 func (c *Client) cached(b score.Opportunity, m string) (Enrichment, bool) {
 	var e Enrichment

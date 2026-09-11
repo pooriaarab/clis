@@ -30,6 +30,19 @@ func TestPrefersGeneralKeyEnv(t *testing.T) {
 	}
 }
 
+func TestKeyRejectsPathTraversalReference(t *testing.T) {
+	dir := t.TempDir()
+	c := &Client{CacheDir: dir}
+	o := score.Opportunity{Reference: "../../../../tmp/evil", Title: "t", Buyer: "b", Description: "d"}
+	name := c.key(o, "m")
+	if strings.ContainsAny(name, "/\\") {
+		t.Fatalf("cache filename escapes CacheDir: %q", name)
+	}
+	if filepath.Dir(filepath.Join(dir, name)) != dir {
+		t.Fatalf("joined path leaves CacheDir: %q", filepath.Join(dir, name))
+	}
+}
+
 func TestCacheHitIssuesNoRequest(t *testing.T) {
 	dir := t.TempDir()
 	o := score.Opportunity{Reference: "r1", Title: "t", Buyer: "b", Description: "d"}
