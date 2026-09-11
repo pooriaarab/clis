@@ -2,22 +2,31 @@ package cli
 
 import (
 	"canadabuys-cli/internal/csvx"
+	"canadabuys-cli/internal/llm"
 	"canadabuys-cli/internal/model"
 	"canadabuys-cli/internal/score"
 	"fmt"
 	"github.com/spf13/cobra"
 	"io"
 	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 	"text/tabwriter"
 )
 
+// oppOut is the JSON row when --llm is on. Without --llm we emit
+// []score.Opportunity so that output stays byte-identical to #55.
+type oppOut struct {
+	score.Opportunity
+	Enrichment *llm.Enrichment `json:"enrichment,omitempty"`
+}
+
 func opportunitiesCmd() *cobra.Command {
-	var minAward, maxAward, since, category, explain string
+	var minAward, maxAward, since, category, explain, llmModel string
 	var minScore float64
-	var limit int
-	var noStaffing bool
+	var limit, llmLimit int
+	var useLLM, noStaffing bool
 	cmd := &cobra.Command{Use: "opportunities", Short: "Rank tender notices a small software team could win", RunE: func(*cobra.Command, []string) error {
 		ctx, err := buildOppContext()
 		if err != nil {
@@ -80,9 +89,32 @@ func opportunitiesCmd() *cobra.Command {
 		if limit > 0 && len(out) > limit {
 			out = out[:limit]
 		}
-		fmt.Fprintf(os.Stderr, "%d staffing vehicles seen (--exclude-staffing=false to include)\n", staffing)
+		// Enrichment runs only on the already-ranked shortlist, never
+		// the full tender corpus. --llm-limit is the send cap.
+		var enr []*llm.Enrichment
+		skipped := 0
+		if useLLM {
+			var e error
+			enr, skipped, e = applyLLM(out, llmModel, llmLimit)
+			if e != nil {
+				return e
+			}
+			fmt.Fprintf(os.Stderr, "%d staffing vehicles seen (--exclude-staffing=false to include), llm skipped %d\n", staffing, skipped)
+		} else {
+			fmt.Fprintf(os.Stderr, "%d staffing vehicles seen (--exclude-staffing=false to include)\n", staffing)
+		}
 		if flagJSON {
-			return emit(out)
+			if !useLLM {
+				return emit(out)
+			}
+			rows := make([]oppOut, len(out))
+			for i, o := range out {
+				rows[i] = oppOut{Opportunity: o}
+				if i < len(enr) {
+					rows[i].Enrichment = enr[i]
+				}
+			}
+			return emit(rows)
 		}
 		w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
 		fmt.Fprintln(w, "SCORE\tREFERENCE\tBUYER\tBAND\tTITLE")
@@ -97,9 +129,30 @@ func opportunitiesCmd() *cobra.Command {
 	cmd.Flags().StringVar(&maxAward, "max-award", "", "maximum joined award in dollars")
 	cmd.Flags().StringVar(&since, "since", "", "published on or after YYYY-MM-DD")
 	cmd.Flags().StringVar(&explain, "explain", "", "print every signal for one referenceNumber")
+	cmd.Flags().StringVar(&llmModel, "llm-model", "gpt-oss-120b", "LLM model for --llm enrichment")
 	cmd.Flags().IntVar(&limit, "limit", 20, "max rows")
+	cmd.Flags().IntVar(&llmLimit, "llm-limit", 100, "max shortlist notices sent to the LLM")
+	cmd.Flags().BoolVar(&useLLM, "llm", false, "enrich the shortlist with the LLM provider")
 	cmd.Flags().BoolVar(&noStaffing, "exclude-staffing", true, "hide staffing supply arrangements")
 	return cmd
+}
+
+// applyLLM sends the first llmLimit shortlist rows to the provider.
+// CANADABUYS_LLM_API_KEY wins over CEREBRAS_API_KEY when both are set.
+func applyLLM(out []score.Opportunity, model string, llmLimit int) ([]*llm.Enrichment, int, error) {
+	key := os.Getenv("CANADABUYS_LLM_API_KEY")
+	if key == "" {
+		key = os.Getenv("CEREBRAS_API_KEY")
+	}
+	if key == "" {
+		return nil, 0, fmt.Errorf("set CANADABUYS_LLM_API_KEY or CEREBRAS_API_KEY to use --llm; the deterministic path needs no key")
+	}
+	dir, err := cacheDir()
+	if err != nil {
+		return nil, 0, err
+	}
+	n := min(max(llmLimit, 0), len(out))
+	return (&llm.Client{Key: key, CacheDir: filepath.Join(dir, "llm")}).Enrich(out[:n], model)
 }
 func buildOppContext() (score.Context, error) {
 	ctx := score.Context{GsinUNSPSC: map[string]string{}, AwardCents: map[string]int64{}, RecurYears: map[string]int{}, CatShare: map[string]float64{}, CatTop: map[string]string{}}
