@@ -24,9 +24,14 @@ canadabuys tenders show <referenceNumber> [--json] [--dataset ID]
 canadabuys awards list [--json] [--supplier S] [--org O] [--unspsc U] [--category C]
                         [--currency C] [--since D] [--until D]
                         [--min-amount N] [--max-amount N] [--limit N]
+canadabuys opportunities [--json] [--min-score N] [--category C] [--min-award N]
+                         [--max-award N] [--since D] [--explain REF] [--limit N]
+                         [--exclude-staffing] [--llm] [--llm-model M] [--llm-limit N]
 ```
 
 `awards list` reads only the `awards` dataset; `awards-legacy` is fetchable but not yet queryable.
+
+`--llm` enriches the already-ranked shortlist (never the full corpus). It needs `CANADABUYS_LLM_API_KEY` or `CEREBRAS_API_KEY`. Override the OpenAI-compatible endpoint with `CANADABUYS_LLM_BASE_URL` (default `https://api.cerebras.ai/v1`). Replies are cached under `$CANADABUYS_CACHE_DIR/llm`.
 
 Kinds: `tenders`, `awards`, `contracts`, `reference`.
 
