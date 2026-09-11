@@ -146,3 +146,21 @@ func TestAggregatesFilterStaffingFirst(t *testing.T) {
 		t.Fatal(ctx.TitleDepts)
 	}
 }
+
+func TestAggregatesBuyerCatAndCatBuyers(t *testing.T) {
+	all := []model.Tender{
+		{Reference: "1", Title: "Cloud analytics platform SaaS", Org: "A", UNSPSC: []string{"43230000"}},
+		// Two codes in the same class on one notice must count once, not twice.
+		{Reference: "2", Title: "Cloud analytics platform SaaS", Org: "A", UNSPSC: []string{"43230000", "43230001"}},
+		{Reference: "3", Title: "Cloud analytics platform SaaS", Org: "B", UNSPSC: []string{"43230000"}},
+		{Reference: "4", Title: "Developer Level Programmer Software", Org: "A", Description: "TBIPS task-based supply arrangement level 3", UNSPSC: []string{"43230000"}},
+	}
+	var ctx score.Context
+	addLensAggregates(&ctx, all)
+	if got := ctx.BuyerCat["A\x00432300"]; got != 2 {
+		t.Fatalf("buyer depth: got %d want 2 (a staffing notice, and a second code in an already-counted class, must not add depth)", got)
+	}
+	if got := ctx.CatBuyers["432300"]; got != 2 {
+		t.Fatalf("category spread: got %d want 2 (a staffing notice must not count as a buyer)", got)
+	}
+}
