@@ -407,44 +407,58 @@ func ClassOf(code string) string {
 // wedge rewards one buyer purchasing deeply in a class other departments
 // also buy: buyer depth times category spread, at the notice's own UNSPSC
 // granularity. HasData needs repeat buying (depth>=2) and neighbours (>=2).
+// depth and spread must come from the same class, or a notice spanning
+// several classes could borrow the best depth from one and the best spread
+// from another with neither actually being a beachhead.
 func wedge(t model.Tender, c Context) Signal {
 	g := Signal{Name: "wedge", Raw: "no category repeat"}
-	var depth, spread int
-	var key string
+	var bestDepth, bestSpread int
+	var bestKey string
+	bestScore := -1.0
+	seen := map[string]bool{}
 	for _, code := range Codes(t.UNSPSC, t.GSIN, c.GsinUNSPSC) {
 		k := ClassOf(code)
-		if k == "" {
+		if k == "" || seen[k] {
 			continue
 		}
-		if d := c.BuyerCat[t.Org+"\x00"+k]; d > depth {
-			depth, key = d, k
+		seen[k] = true
+		depth, spread := c.BuyerCat[t.Org+"\x00"+k], c.CatBuyers[k]
+		if depth < 2 || spread < 2 {
+			continue
 		}
-		if s := c.CatBuyers[k]; s > spread {
-			spread = s
+		if score := depthNorm(depth) * spreadNorm(spread); score > bestScore {
+			bestScore, bestDepth, bestSpread, bestKey = score, depth, spread, k
 		}
 	}
-	if depth < 2 || spread < 2 {
+	if bestScore < 0 {
 		return g
 	}
-	dn, sn := 0.4, 0.5
+	g.HasData = true
+	g.Score = bestScore
+	g.Raw = fmt.Sprintf("buyerx%d in %s, %d dept(s)", bestDepth, bestKey, bestSpread)
+	return g
+}
+
+func depthNorm(depth int) float64 {
 	switch {
 	case depth >= 10:
-		dn = 1
+		return 1
 	case depth >= 5:
-		dn = 0.8
+		return 0.8
 	case depth >= 3:
-		dn = 0.6
+		return 0.6
 	}
+	return 0.4
+}
+
+func spreadNorm(spread int) float64 {
 	switch {
 	case spread >= 6:
-		sn = 1
+		return 1
 	case spread >= 3:
-		sn = 0.7
+		return 0.7
 	}
-	g.HasData = true
-	g.Score = dn * sn
-	g.Raw = fmt.Sprintf("buyerx%d in %s, %d dept(s)", depth, key, spread)
-	return g
+	return 0.5
 }
 
 // urgency scores a sooner future closing higher. Past or missing closings

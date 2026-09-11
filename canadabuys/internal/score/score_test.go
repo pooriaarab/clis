@@ -123,6 +123,30 @@ func TestWedgeNeedsDepthAndNeighbours(t *testing.T) {
 	}
 }
 
+// A notice touching two UNSPSC classes must not mix the depth from one
+// class with the spread from the other: neither class alone is a beachhead
+// here (deep-but-lone-buyer class, shallow-but-widely-bought class), so the
+// notice must score no wedge data at all.
+func TestWedgeKeepsDepthAndSpreadInTheSameClass(t *testing.T) {
+	mixed := model.Tender{
+		Reference: "R-Mixed", Title: "Cloud analytics platform SaaS", Org: "Deep",
+		UNSPSC: []string{"11111100", "22222200"},
+	}
+	ctx := Context{
+		BuyerCat:  map[string]int{"Deep\x00111111": 10, "Deep\x00222222": 1},
+		CatBuyers: map[string]int{"111111": 1, "222222": 10},
+	}
+	o, err := ScoreLens(mixed, ctx, "wedge")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, s := range o.Signals {
+		if s.Name == "wedge" && s.HasData {
+			t.Fatalf("wedge must not combine depth from one class with spread from another, got %+v", s)
+		}
+	}
+}
+
 func TestRecurringRewardsCadence(t *testing.T) {
 	mk := func() model.Tender {
 		return model.Tender{Reference: "PW", Title: "ACAN - Publishing Court Decisions Online", Org: "Courts Administration Service", UNSPSC: []string{"43230000"}}
