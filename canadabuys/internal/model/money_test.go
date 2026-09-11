@@ -17,6 +17,7 @@ func TestParseCents(t *testing.T) {
 		{"abc", 0, AmountInvalid}, {"1,000.00", 0, AmountInvalid},
 		{"$5.00", 0, AmountInvalid}, {"1.234", 0, AmountInvalid},
 		{"99999999999999999999999.00", 0, AmountInvalid},
+		{"92233720368547759", 0, AmountInvalid},
 	}
 	for _, c := range cases {
 		if got, kind := ParseCents(c.in); got != c.cents || kind != c.kind {

@@ -34,15 +34,15 @@ func ParseCents(s string) (int64, string) {
 	if ip == "" || len(fp) > 2 || !allDigits(ip) || !allDigits(fp) {
 		return 0, AmountInvalid
 	}
+	// Pad missing fraction digits with zeros so the overflow check below
+	// also guards the ×10 padding, not just the digits actually present.
+	digits := ip + fp + strings.Repeat("0", 2-len(fp))
 	var cents int64
-	for _, d := range ip + fp {
+	for _, d := range digits {
 		if cents > (1<<62)/10 {
 			return 0, AmountInvalid
 		}
 		cents = cents*10 + int64(d-'0')
-	}
-	for i := len(fp); i < 2; i++ {
-		cents *= 10
 	}
 	if cents == 0 {
 		return 0, AmountZero
