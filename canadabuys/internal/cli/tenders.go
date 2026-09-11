@@ -8,6 +8,7 @@ import (
 	"sort"
 	"strings"
 	"text/tabwriter"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -92,6 +93,13 @@ func tendersShowCmd() *cobra.Command {
 }
 
 func queryTenders(f *tenderFilter) ([]model.Tender, error) {
+	for _, p := range [][2]string{{"--since", f.since}, {"--until", f.until}, {"--closing-after", f.closingAfter}, {"--closing-before", f.closingBefore}} {
+		if p[1] != "" {
+			if _, err := time.Parse("2006-01-02", p[1]); err != nil {
+				return nil, fmt.Errorf("%s: %q is not YYYY-MM-DD", p[0], p[1])
+			}
+		}
+	}
 	paths, err := tenderPaths(f.datasets)
 	if err != nil {
 		return nil, err
@@ -146,8 +154,7 @@ func tenderPaths(ids []string) ([]string, error) {
 		}
 		p := csvPath(dir, id)
 		if _, err := os.Stat(p); err != nil {
-			fmt.Fprintf(os.Stderr, "warning: %s not cached, skipping (run: fetch %s)\n", id, id)
-			continue
+			return nil, fmt.Errorf("%s: %s is missing or unreadable (run: canadabuys fetch %s)", id, p, id)
 		}
 		paths = append(paths, p)
 	}
@@ -216,9 +223,9 @@ func (f *tenderFilter) match(t model.Tender) bool {
 		return false
 	case len(f.category) > 0 && !anySet(t.Categories, f.category, strings.EqualFold):
 		return false
-	case len(f.unspsc) > 0 && !anyMatch(f.unspsc, t.UNSPSC, strings.EqualFold):
+	case len(f.unspsc) > 0 && !anySet(model.SplitSet(t.UNSPSC), f.unspsc, strings.EqualFold):
 		return false
-	case len(f.gsin) > 0 && !anyMatch(f.gsin, t.GSIN, strings.EqualFold):
+	case len(f.gsin) > 0 && !anySet(model.SplitSet(t.GSIN), f.gsin, strings.EqualFold):
 		return false
 	case len(f.org) > 0 && !anyMatch(f.org, t.Org, has):
 		return false
