@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -51,6 +52,11 @@ var catalog = []dataset{
 	{"contracts-legacy", "Contract history, 2009-01 to 2023-05", "contracts", "https://canadabuys.canada.ca/opendata/pub/2009-2023-contractHistoryHistorical-contratsOctroyesHistorique.csv"},
 	{"gsin-unspsc", "Mapping of GSIN to UNSPSC codes", "reference", "https://donnees-data.tpsgc-pwgsc.gc.ca/ba2/aev-bas/nibsunspsc-gsinunspsc.csv"},
 }
+
+// idleTimeout bounds gaps between body reads. ResponseHeaderTimeout only
+// covers the wait for headers, so a connection that goes silent mid-transfer
+// without closing would otherwise hang fetchOne forever.
+const idleTimeout = 60 * time.Second
 
 var (
 	flagCache string
@@ -314,7 +320,9 @@ func fetchOne(dir string, d dataset, force bool) (string, meta, error) {
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return "", meta{}, err
 	}
-	req, err := http.NewRequest(http.MethodGet, d.URL, nil)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, d.URL, nil)
 	if err != nil {
 		return "", meta{}, err
 	}
@@ -323,11 +331,16 @@ func fetchOne(dir string, d dataset, force bool) (string, meta, error) {
 		req.Header.Set("If-Modified-Since", m.LastModified)
 	}
 	fmt.Fprintf(os.Stderr, "fetching %s\n", d.ID)
+	// The Transport's own Dial/TLS/ResponseHeader timeouts bound everything up
+	// to here; the idle timer only needs to cover the body-read phase, where a
+	// connection can go silent without closing.
 	resp, err := client.Do(req)
 	if err != nil {
 		return "", meta{}, err
 	}
 	defer resp.Body.Close()
+	idle := time.AfterFunc(idleTimeout, cancel)
+	defer idle.Stop()
 	if resp.StatusCode == http.StatusNotModified {
 		m, _ := loadMeta(dir, d.ID)
 		return "skipped", m, nil
@@ -341,7 +354,7 @@ func fetchOne(dir string, d dataset, force bool) (string, meta, error) {
 	}
 	tmp := f.Name()
 	h := sha256.New()
-	n, copyErr := io.Copy(io.MultiWriter(f, h, &progress{id: d.ID}), resp.Body)
+	n, copyErr := io.Copy(io.MultiWriter(f, h, &progress{id: d.ID, onWrite: func() { idle.Reset(idleTimeout) }}), resp.Body)
 	closeErr := f.Close()
 	if copyErr != nil || closeErr != nil {
 		os.Remove(tmp)
@@ -377,9 +390,11 @@ func fetchOne(dir string, d dataset, force bool) (string, meta, error) {
 type progress struct {
 	id      string
 	n, last int64
+	onWrite func()
 }
 
 func (p *progress) Write(b []byte) (int, error) {
+	p.onWrite()
 	p.n += int64(len(b))
 	if p.n-p.last >= 8<<20 {
 		fmt.Fprintf(os.Stderr, "%s: %d MB\n", p.id, p.n>>20)
