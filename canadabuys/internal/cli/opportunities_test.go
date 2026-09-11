@@ -37,32 +37,19 @@ func TestBlankSolicitationFallsBackToReference(t *testing.T) {
 }
 
 func TestCollapsedSetHasUniqueSolicitation(t *testing.T) {
-	kept, _ := keepLatestAmendments([]model.Tender{
+	kept, n := keepLatestAmendments([]model.Tender{
 		{Reference: "a1", Solicitation: "S1", Amendment: "000"},
 		{Reference: "a2", Solicitation: "S1", Amendment: "002"},
 		{Reference: "b1", Solicitation: "S2", Amendment: "000"},
 		{Reference: "c1", Solicitation: "", Amendment: "000"},
 		{Reference: "c2", Solicitation: "", Amendment: "001"},
 	})
-	seen := map[string]bool{}
-	for _, tnd := range kept {
-		k := tnd.Solicitation
-		if k == "" {
-			k = tnd.Reference
-		}
-		if seen[k] {
-			t.Fatalf("duplicate key %q", k)
-		}
-		seen[k] = true
-	}
-	if len(kept) != 4 {
-		t.Fatalf("kept=%d", len(kept))
+	if n != 1 || len(kept) != 4 {
+		t.Fatalf("kept=%d n=%d", len(kept), n)
 	}
 }
 
 func TestSameTitleDifferentSolicitationNotMerged(t *testing.T) {
-	// "Dental Services" is many distinct prison contracts. Title-only
-	// grouping discarded 15,510 real solicitations; this must not.
 	in := []model.Tender{
 		{Reference: "d1", Solicitation: "S-2014", Title: "Dental Services", Org: "Correctional Service of Canada", Amendment: "000"},
 		{Reference: "d2", Solicitation: "S-2024", Title: "Dental Services", Org: "Correctional Service of Canada", Amendment: "000"},
@@ -81,15 +68,8 @@ func TestGroupSimilarIsBuyerPlusTitle(t *testing.T) {
 		{Reference: "b1", Solicitation: "S3", Title: "Request for Qualifications - Web Development Consultants", Org: "Dept B", Amendment: "000"},
 	}
 	kept, n := groupSimilarNotices(in)
-	if n != 1 || len(kept) != 2 {
-		t.Fatalf("buyer+title: kept=%d collapsed=%d", len(kept), n)
-	}
-	buyers := map[string]bool{}
-	for _, tnd := range kept {
-		buyers[tnd.Org] = true
-	}
-	if !buyers["Dept A"] || !buyers["Dept B"] {
-		t.Fatalf("different buyers must stay separate: %+v", kept)
+	if n != 1 || len(kept) != 2 || kept[0].Org == kept[1].Org {
+		t.Fatalf("buyer+title: kept=%d collapsed=%d %+v", len(kept), n, kept)
 	}
 }
 
@@ -107,6 +87,37 @@ func TestOppSummaryMentionsGroupingOnlyWhenAsked(t *testing.T) {
 	}
 }
 
+func TestPlaceholderSolicitationKeepsDistinctBuyers(t *testing.T) {
+	kept, n := keepLatestAmendments([]model.Tender{
+		{Reference: "ncc-1", Solicitation: "N/A", Org: "National Capital Commission"},
+		{Reference: "dnd-1", Solicitation: "n/a", Org: "National Defence"},
+	})
+	if n != 0 || len(kept) != 2 {
+		t.Fatalf("N/A must not merge different buyers: kept=%d n=%d", len(kept), n)
+	}
+}
+
+func TestReferenceFallbackDoesNotCollideWithSolicitation(t *testing.T) {
+	kept, n := keepLatestAmendments([]model.Tender{
+		{Reference: "r-other", Solicitation: "PW-123"},
+		{Reference: "PW-123"},
+	})
+	if n != 0 || len(kept) != 2 {
+		t.Fatalf("namespace collision: kept=%d n=%d", len(kept), n)
+	}
+}
+
+func TestGroupSimilarPicksNewestPublication(t *testing.T) {
+	kept, n := groupSimilarNotices([]model.Tender{
+		{Reference: "pw-16", Title: "ACAN - Publishing Court Decisions Online", Org: "CAS", Amendment: "005", Publication: "2016-05-01"},
+		{Reference: "pw-17", Title: "ACAN - Publishing Court Decisions Online", Org: "CAS", Amendment: "000", Publication: "2017-05-01"},
+		{Reference: "pw-18", Title: "ACAN - Publishing Court Decisions Online", Org: "CAS", Amendment: "000", Publication: "2018-05-01"},
+	})
+	if n != 2 || len(kept) != 1 || kept[0].Reference != "pw-18" {
+		t.Fatalf("newest publication must win: %+v n=%d", kept, n)
+	}
+}
+
 func TestRankOnProductFit(t *testing.T) {
 	rows := []oppOut{
 		{Enrichment: &llm.Enrichment{Reference: "resale", ProductFit: 8, Shape: "resale"}},
@@ -114,7 +125,6 @@ func TestRankOnProductFit(t *testing.T) {
 		{Enrichment: &llm.Enrichment{Reference: "staff", ProductFit: 12, Shape: "staffing"}},
 		{Enrichment: &llm.Enrichment{Reference: "train", ProductFit: 10, Shape: "training"}},
 	}
-	// moreProductFit is the sort callback; apply it the same way the command does.
 	less := moreProductFit(rows)
 	if !less(1, 0) || less(0, 1) {
 		t.Fatal("product must rank above resale")

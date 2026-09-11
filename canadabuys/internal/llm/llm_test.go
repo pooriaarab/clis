@@ -121,8 +121,6 @@ func TestOldBuildabilityCacheIsIgnored(t *testing.T) {
 	}
 }
 
-// Pilot titles that scored as easy fulfilment. They must stay tagged as
-// non-product shapes and must not outrank a real product on productFit.
 var pilotFixtures = []struct {
 	title string
 	shape string
@@ -149,6 +147,12 @@ func TestPilotFixturesAreNonProductAndNotTop(t *testing.T) {
 	}
 	if !strings.Contains(instruction, pilotFixtures[0].title) || !strings.Contains(instruction, pilotFixtures[1].title) || !strings.Contains(instruction, pilotFixtures[2].title) {
 		t.Fatal("instruction dropped the pilot fixtures")
+	}
+}
+
+func TestMalformedRatingIsSkipped(t *testing.T) {
+	if validReply(Enrichment{Shape: "consulting", ProductFit: 1000, Deliverable: 80}) {
+		t.Fatal(`{"shape":"consulting","productFit":1000} must be skipped`)
 	}
 }
 

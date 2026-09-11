@@ -30,8 +30,7 @@ type Provider interface {
 }
 type Client struct{ BaseURL, Key, CacheDir string }
 
-// instructionVersion is hashed with the prompt so a new instruction cannot
-// reuse cache entries written under the old field names.
+// instructionVersion is hashed into the cache key so a new prompt cannot reuse old entries.
 const instructionVersion = "product-fit-v2"
 
 const instruction = `Rate each procurement notice for PRODUCT FIT, not how easily a small team could fulfil the contract.
@@ -98,7 +97,7 @@ func (c *Client) Enrich(notices []score.Opportunity, m string) ([]*Enrichment, i
 		}
 		for _, j := range idx {
 			e, ok := got[notices[j].Reference]
-			if !ok || e.Thesis == "" || e.Shape == "" {
+			if !ok || e.Thesis == "" || !validReply(e) {
 				skipped++
 				continue
 			}
@@ -113,8 +112,14 @@ func (c *Client) Enrich(notices []score.Opportunity, m string) ([]*Enrichment, i
 	return out, skipped, nil
 }
 
-// clampShape enforces the hard rule the model keeps breaking: a named
-// non-product shape cannot outrank a product on productFit.
+// validReply accepts only a known shape and scores in [0, 100].
+func validReply(e Enrichment) bool {
+	s := strings.ToLower(strings.TrimSpace(e.Shape))
+	ok := s == "product" || s == "resale" || s == "staffing" || s == "training"
+	return ok && e.ProductFit >= 0 && e.ProductFit <= 100 && e.Deliverable >= 0 && e.Deliverable <= 100
+}
+
+// clampShape caps a named non-product shape so it cannot outrank a product.
 func clampShape(e *Enrichment) {
 	e.Shape = strings.ToLower(strings.TrimSpace(e.Shape))
 	switch e.Shape {
@@ -149,7 +154,7 @@ func (c *Client) key(b score.Opportunity, m string) string {
 func (c *Client) cached(b score.Opportunity, m string) (Enrichment, bool) {
 	var e Enrichment
 	raw, err := os.ReadFile(filepath.Join(c.CacheDir, c.key(b, m)))
-	if err != nil || json.Unmarshal(raw, &e) != nil || e.Reference != b.Reference || e.Shape == "" {
+	if err != nil || json.Unmarshal(raw, &e) != nil || e.Reference != b.Reference || !validReply(e) {
 		return Enrichment{}, false
 	}
 	return e, true

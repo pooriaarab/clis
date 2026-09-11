@@ -63,8 +63,7 @@ func opportunitiesCmd() *cobra.Command {
 		if err != nil {
 			return err
 		}
-		// Collapse amendment rows before scoring or sending a shortlist
-		// to the LLM, otherwise the same solicitation is rated twice.
+		// Collapse amendments before scoring so one solicitation is not rated twice.
 		all, amendments := keepLatestAmendments(all)
 		similar := 0
 		if groupSimilar {
@@ -166,28 +165,28 @@ func opportunitiesCmd() *cobra.Command {
 	return cmd
 }
 
-// keepLatestAmendments keeps one row per solicitation. Blank solicitation
-// numbers fall back to referenceNumber: that is a real key, not padding.
+// keepLatestAmendments keeps one row per real solicitation; placeholders use a namespaced reference.
 func keepLatestAmendments(ts []model.Tender) ([]model.Tender, int) {
 	return collapseBy(ts, func(t model.Tender) string {
-		if s := strings.TrimSpace(t.Solicitation); s != "" {
-			return s
+		s := strings.TrimSpace(t.Solicitation)
+		switch strings.ToLower(s) {
+		case "", "n/a", "na", "tbd", "-", "--", "none", "nil":
+			return "\x00" + t.Reference
 		}
-		return t.Reference
-	})
+		return s
+	}, newerAmendment)
 }
 
-// groupSimilarNotices is opt-in and keyed on buyer plus title. Title
-// alone would merge different buyers and discard real solicitations.
+// groupSimilarNotices is opt-in and keyed on buyer plus title, not title alone.
 func groupSimilarNotices(ts []model.Tender) ([]model.Tender, int) {
-	return collapseBy(ts, func(t model.Tender) string { return t.Org + "\x00" + t.Title })
+	return collapseBy(ts, func(t model.Tender) string { return t.Org + "\x00" + t.Title }, newerPublication)
 }
 
-func collapseBy(ts []model.Tender, key func(model.Tender) string) ([]model.Tender, int) {
+func collapseBy(ts []model.Tender, key func(model.Tender) string, newer func(a, b model.Tender) bool) ([]model.Tender, int) {
 	best := make(map[string]model.Tender, len(ts))
 	for _, t := range ts {
 		k := key(t)
-		if prev, ok := best[k]; !ok || newerAmendment(t, prev) {
+		if prev, ok := best[k]; !ok || newer(t, prev) {
 			best[k] = t
 		}
 	}
@@ -215,6 +214,17 @@ func newerAmendment(a, b model.Tender) bool {
 	}
 	if a.Publication != b.Publication {
 		return a.Publication > b.Publication
+	}
+	return a.Reference > b.Reference
+}
+
+// newerPublication picks the latest published notice, then closing, then reference.
+func newerPublication(a, b model.Tender) bool {
+	if a.Publication != b.Publication {
+		return a.Publication > b.Publication
+	}
+	if a.Closing != b.Closing {
+		return a.Closing > b.Closing
 	}
 	return a.Reference > b.Reference
 }
