@@ -71,7 +71,9 @@ func (c *Client) Enrich(notices []score.Opportunity, m string) ([]*Enrichment, i
 				continue
 			}
 			raw, _ := json.Marshal(e)
-			os.WriteFile(filepath.Join(c.CacheDir, c.key(notices[j], m)), append(raw, '\n'), 0o644)
+			if werr := os.WriteFile(filepath.Join(c.CacheDir, c.key(notices[j], m)), append(raw, '\n'), 0o644); werr != nil {
+				fmt.Fprintf(os.Stderr, "llm: cache write failed for %s: %v\n", notices[j].Reference, werr)
+			}
 			out[j] = &e
 		}
 	}
@@ -115,7 +117,10 @@ func (c *Client) batch(batch []score.Opportunity, m string) (map[string]Enrichme
 		return nil, 0, err
 	}
 	defer resp.Body.Close()
-	raw, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+	raw, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+	if err != nil {
+		return nil, 0, fmt.Errorf("llm provider: reading response body: %w", err)
+	}
 	if resp.StatusCode/100 != 2 {
 		return nil, 0, fmt.Errorf("llm provider: HTTP %s: %s", resp.Status, strings.TrimSpace(string(raw)))
 	}
