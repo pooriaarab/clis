@@ -228,13 +228,18 @@ func rankAwards(path string, by string) ([]bucket, error) {
 	out := make([]bucket, 0, len(agg))
 	for _, b := range agg {
 		if by == "supplier" {
+			cats := make([]string, 0, len(catOf[b.Name]))
+			for c := range catOf[b.Name] {
+				cats = append(cats, c)
+			}
+			sort.Strings(cats)
 			top, topTotal := "", int64(0)
-			for c, v := range catOf[b.Name] {
-				if v > topTotal {
+			for _, c := range cats {
+				if v := catOf[b.Name][c]; v > topTotal {
 					top, topTotal = c, v
 				}
 			}
-			b.Share, b.ShareKey, b.ShareTotalCents = model.CategoryShare(b.TotalCents, catTotals[top]), top, catTotals[top]
+			b.Share, b.ShareKey, b.ShareTotalCents = model.CategoryShare(topTotal, catTotals[top]), top, catTotals[top]
 		}
 		out = append(out, *b)
 	}
