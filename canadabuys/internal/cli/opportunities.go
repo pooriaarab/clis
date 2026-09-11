@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"text/tabwriter"
 )
@@ -26,7 +27,7 @@ func opportunitiesCmd() *cobra.Command {
 	var minAward, maxAward, since, category, explain, llmModel string
 	var minScore float64
 	var limit, llmLimit int
-	var useLLM, noStaffing bool
+	var useLLM, noStaffing, groupSimilar bool
 	cmd := &cobra.Command{Use: "opportunities", Short: "Rank tender notices a small software team could win", RunE: func(*cobra.Command, []string) error {
 		ctx, err := buildOppContext()
 		if err != nil {
@@ -61,6 +62,13 @@ func opportunitiesCmd() *cobra.Command {
 		all, err := queryTenders(f)
 		if err != nil {
 			return err
+		}
+		// Collapse amendment rows before scoring or sending a shortlist
+		// to the LLM, otherwise the same solicitation is rated twice.
+		all, amendments := keepLatestAmendments(all)
+		similar := 0
+		if groupSimilar {
+			all, similar = groupSimilarNotices(all)
 		}
 		out := []score.Opportunity{}
 		staffing := 0
@@ -99,9 +107,9 @@ func opportunitiesCmd() *cobra.Command {
 			if e != nil {
 				return e
 			}
-			fmt.Fprintf(os.Stderr, "%d staffing vehicles seen (--exclude-staffing=false to include), llm skipped %d\n", staffing, skipped)
+			fmt.Fprintln(os.Stderr, oppSummary(amendments, similar, staffing, skipped, groupSimilar, true))
 		} else {
-			fmt.Fprintf(os.Stderr, "%d staffing vehicles seen (--exclude-staffing=false to include)\n", staffing)
+			fmt.Fprintln(os.Stderr, oppSummary(amendments, similar, staffing, 0, groupSimilar, false))
 		}
 		if flagJSON {
 			if !useLLM {
@@ -114,9 +122,29 @@ func opportunitiesCmd() *cobra.Command {
 					rows[i].Enrichment = enr[i]
 				}
 			}
+			sort.SliceStable(rows, moreProductFit(rows))
 			return emit(rows)
 		}
 		w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+		if useLLM {
+			rows := make([]oppOut, len(out))
+			for i, o := range out {
+				rows[i] = oppOut{Opportunity: o}
+				if i < len(enr) {
+					rows[i].Enrichment = enr[i]
+				}
+			}
+			sort.SliceStable(rows, moreProductFit(rows))
+			fmt.Fprintln(w, "FIT\tSHAPE\tREFERENCE\tBUYER\tTITLE")
+			for _, r := range rows {
+				fit, shape := 0.0, ""
+				if r.Enrichment != nil {
+					fit, shape = r.Enrichment.ProductFit, r.Enrichment.Shape
+				}
+				fmt.Fprintf(w, "%.0f\t%s\t%s\t%s\t%s\n", fit, shape, r.Reference, r.Buyer, r.Title)
+			}
+			return w.Flush()
+		}
 		fmt.Fprintln(w, "SCORE\tREFERENCE\tBUYER\tBAND\tTITLE")
 		for _, o := range out {
 			fmt.Fprintf(w, "%.1f\t%s\t%s\t%s\t%s\n", o.Score*100, o.Reference, o.Buyer, o.AwardBand, o.Title)
@@ -134,7 +162,88 @@ func opportunitiesCmd() *cobra.Command {
 	cmd.Flags().IntVar(&llmLimit, "llm-limit", 100, "max shortlist notices sent to the LLM")
 	cmd.Flags().BoolVar(&useLLM, "llm", false, "enrich the shortlist with the LLM provider")
 	cmd.Flags().BoolVar(&noStaffing, "exclude-staffing", true, "hide staffing supply arrangements")
+	cmd.Flags().BoolVar(&groupSimilar, "group-similar", false, "also collapse notices that share a buyer and title")
 	return cmd
+}
+
+// keepLatestAmendments keeps one row per solicitation. Blank solicitation
+// numbers fall back to referenceNumber: that is a real key, not padding.
+func keepLatestAmendments(ts []model.Tender) ([]model.Tender, int) {
+	return collapseBy(ts, func(t model.Tender) string {
+		if s := strings.TrimSpace(t.Solicitation); s != "" {
+			return s
+		}
+		return t.Reference
+	})
+}
+
+// groupSimilarNotices is opt-in and keyed on buyer plus title. Title
+// alone would merge different buyers and discard real solicitations.
+func groupSimilarNotices(ts []model.Tender) ([]model.Tender, int) {
+	return collapseBy(ts, func(t model.Tender) string { return t.Org + "\x00" + t.Title })
+}
+
+func collapseBy(ts []model.Tender, key func(model.Tender) string) ([]model.Tender, int) {
+	best := make(map[string]model.Tender, len(ts))
+	for _, t := range ts {
+		k := key(t)
+		if prev, ok := best[k]; !ok || newerAmendment(t, prev) {
+			best[k] = t
+		}
+	}
+	out := make([]model.Tender, 0, len(best))
+	seen := make(map[string]bool, len(best))
+	for _, t := range ts {
+		k := key(t)
+		if seen[k] {
+			continue
+		}
+		seen[k] = true
+		out = append(out, best[k])
+	}
+	return out, len(ts) - len(out)
+}
+
+func newerAmendment(a, b model.Tender) bool {
+	an, aerr := strconv.Atoi(strings.TrimSpace(a.Amendment))
+	bn, berr := strconv.Atoi(strings.TrimSpace(b.Amendment))
+	if aerr == nil && berr == nil && an != bn {
+		return an > bn
+	}
+	if a.AmendmentDate != b.AmendmentDate {
+		return a.AmendmentDate > b.AmendmentDate
+	}
+	if a.Publication != b.Publication {
+		return a.Publication > b.Publication
+	}
+	return a.Reference > b.Reference
+}
+
+func productFitOf(r oppOut) float64 {
+	if r.Enrichment == nil {
+		return -1
+	}
+	return r.Enrichment.ProductFit
+}
+
+func moreProductFit(rows []oppOut) func(int, int) bool {
+	return func(i, j int) bool {
+		if pi, pj := productFitOf(rows[i]), productFitOf(rows[j]); pi != pj {
+			return pi > pj
+		}
+		return rows[i].Reference < rows[j].Reference
+	}
+}
+
+func oppSummary(amendments, similar, staffing, skipped int, groupSimilar, useLLM bool) string {
+	s := fmt.Sprintf("%d amendment rows collapsed, %d staffing vehicles seen (--exclude-staffing=false to include)", amendments, staffing)
+	if groupSimilar {
+		s = fmt.Sprintf("%d amendment rows collapsed, %d similar notices grouped, %d staffing vehicles seen (--exclude-staffing=false to include)", amendments, similar, staffing)
+	}
+	if useLLM {
+		s += fmt.Sprintf(", llm skipped %d", skipped)
+	}
+	return s
 }
 
 // applyLLM sends the first llmLimit shortlist rows to the provider.

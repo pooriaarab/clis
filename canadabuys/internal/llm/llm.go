@@ -1,4 +1,4 @@
-// Package llm enriches a deterministic shortlist with buildability notes.
+// Package llm enriches a deterministic shortlist with product-fit notes.
 package llm
 
 import (
@@ -18,17 +18,47 @@ import (
 )
 
 type Enrichment struct {
-	Reference    string  `json:"reference"`
-	Buildability float64 `json:"buildability"`
-	Thesis       string  `json:"thesis"`
-	Category     string  `json:"category"`
+	Reference   string  `json:"reference"`
+	Deliverable float64 `json:"deliverable"`
+	ProductFit  float64 `json:"productFit"`
+	Shape       string  `json:"shape"`
+	Thesis      string  `json:"thesis"`
+	Category    string  `json:"category"`
 }
 type Provider interface {
 	Enrich(notices []score.Opportunity, model string) (enr []*Enrichment, skipped int, err error)
 }
 type Client struct{ BaseURL, Key, CacheDir string }
 
-const instruction = `Rate each procurement notice for a small software team. Reply with one JSON object {"results":[{"reference":..., "buildability":0-100, "thesis":one product line, "category":closest commercial category}]} and nothing else.`
+// instructionVersion is hashed with the prompt so a new instruction cannot
+// reuse cache entries written under the old field names.
+const instructionVersion = "product-fit-v2"
+
+const instruction = `Rate each procurement notice for PRODUCT FIT, not how easily a small team could fulfil the contract.
+
+A product is something you build once and sell many times. Name exactly one shape:
+- product   a platform, SaaS, or software system the team would own and resell
+- resale    the deliverable is existing third-party licences, datasets, or hardware you would buy and pass through
+- staffing  consulting or developer time billed by the day
+- training  course or training delivery
+
+A notice asking for a platform, portal, or software system is product, even if vendors already sell something similar. Resale is only pass-through of someone else's licences or data.
+
+Examples:
+- "Exceed TurboX Premium Licences and Maintenance for SSC" → resale
+- "Request for Qualifications - Web Development Consultants" → staffing
+- "Online ArcGIS training" → training
+- "Specialized Investigative Management Software" → product
+- "User Testing and Research Platform" → product
+- "Board Meeting Portal Management Software" → product
+
+Split the rating. Do not collapse them into one number:
+- deliverable  0-100: could a small team deliver this contract
+- productFit   0-100: is this a repeatable product
+
+Hard rule: if shape is resale, staffing, or training, productFit MUST be 0-25. Only shape "product" may score above 40.
+
+Reply with one JSON object {"results":[{"reference":..., "deliverable":0-100, "productFit":0-100, "shape":"product|resale|staffing|training", "thesis":one product line, "category":closest commercial category}]} and nothing else.`
 
 func (c *Client) Enrich(notices []score.Opportunity, m string) ([]*Enrichment, int, error) {
 	if c.Key == "" {
@@ -48,6 +78,7 @@ func (c *Client) Enrich(notices []score.Opportunity, m string) ([]*Enrichment, i
 	for i, b := range notices {
 		if e, ok := c.cached(b, m); ok {
 			e := e
+			clampShape(&e)
 			out[i] = &e
 		} else {
 			pending = append(pending, i)
@@ -67,10 +98,11 @@ func (c *Client) Enrich(notices []score.Opportunity, m string) ([]*Enrichment, i
 		}
 		for _, j := range idx {
 			e, ok := got[notices[j].Reference]
-			if !ok || e.Thesis == "" {
+			if !ok || e.Thesis == "" || e.Shape == "" {
 				skipped++
 				continue
 			}
+			clampShape(&e)
 			raw, _ := json.Marshal(e)
 			if werr := os.WriteFile(filepath.Join(c.CacheDir, c.key(notices[j], m)), append(raw, '\n'), 0o644); werr != nil {
 				fmt.Fprintf(os.Stderr, "llm: cache write failed for %s: %v\n", notices[j].Reference, werr)
@@ -80,9 +112,23 @@ func (c *Client) Enrich(notices []score.Opportunity, m string) ([]*Enrichment, i
 	}
 	return out, skipped, nil
 }
+
+// clampShape enforces the hard rule the model keeps breaking: a named
+// non-product shape cannot outrank a product on productFit.
+func clampShape(e *Enrichment) {
+	e.Shape = strings.ToLower(strings.TrimSpace(e.Shape))
+	switch e.Shape {
+	case "resale", "staffing", "training":
+		if e.ProductFit > 25 {
+			e.ProductFit = 25
+		}
+	}
+}
+
 func promptFor(b score.Opportunity) string {
 	return fmt.Sprintf("reference: %s\nbuyer: %s\ntitle: %s\ndescription: %s", b.Reference, b.Buyer, b.Title, b.Description[:min(1500, len(b.Description))])
 }
+
 var unsafeFilenameChars = regexp.MustCompile(`[^A-Za-z0-9_-]+`)
 
 // safeRefComponent strips path separators and other filesystem-meaningful
@@ -97,13 +143,13 @@ func safeRefComponent(ref string) string {
 }
 
 func (c *Client) key(b score.Opportunity, m string) string {
-	h := sha256.Sum256([]byte(m + "\x00" + instruction + "\x00" + promptFor(b)))
+	h := sha256.Sum256([]byte(instructionVersion + "\x00" + m + "\x00" + instruction + "\x00" + promptFor(b)))
 	return "llm-" + safeRefComponent(b.Reference) + "-" + hex.EncodeToString(h[:])[:16] + ".json"
 }
 func (c *Client) cached(b score.Opportunity, m string) (Enrichment, bool) {
 	var e Enrichment
 	raw, err := os.ReadFile(filepath.Join(c.CacheDir, c.key(b, m)))
-	if err != nil || json.Unmarshal(raw, &e) != nil || e.Reference != b.Reference {
+	if err != nil || json.Unmarshal(raw, &e) != nil || e.Reference != b.Reference || e.Shape == "" {
 		return Enrichment{}, false
 	}
 	return e, true
