@@ -331,16 +331,24 @@ endpoint with `CANADABUYS_LLM_BASE_URL` (default
 runs ten-notice batches in a bounded worker pool. Replies are cached under
 `$CANADABUYS_CACHE_DIR/llm`.
 
-`--lens default|horizontal|displace|bootstrap` re-ranks the same tenders with
-different weights. Every lens keeps `category-fit` and `keyword` so the
-result stays software, not just cheap and open. Lenses issue no model
-requests, so each is free once the cache exists:
+`--lens default|horizontal|displace|bootstrap|wedge|recurring|biddable`
+re-ranks the same tenders with different weights. Every lens keeps
+`category-fit` and `keyword` so the result stays software, not just cheap and
+open. Lenses issue no model requests, so each is free once the cache exists:
 
 - `horizontal` favors notices solicited by many distinct departments.
 - `displace` favors categories where one supplier holds most of the value;
   its table adds an INCUMBENT column, computed at the notice's own UNSPSC
   granularity rather than the whole procurement category.
 - `bootstrap` favors open competitive work in the $50k-$250k band.
+- `wedge` favors one buyer purchasing deeply in a category other departments
+  also buy: the beachhead shape, dominate a narrow niche then expand into the
+  neighbours.
+- `recurring` favors purchase cadence, ranking a buyer on an annual cycle
+  above a one-off.
+- `biddable` drops notices that are already closed and ranks the rest by
+  product fit and closing date; its table adds a CLOSING column in place of
+  BAND.
 
 `--lens` cannot combine with `--llm`: a lens re-ranks cached enrichment, and
 `--llm` issues new model requests, so run `--llm` on the default lens first
