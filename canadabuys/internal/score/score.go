@@ -17,7 +17,7 @@ var WeightTable = []struct {
 	Weight float64
 	Why    string
 }{
-	{"category-fit", 3, "UNSPSC 43 IT or 81 research; GSIN maps to UNSPSC where blank"},
+	{"category-fit", 3, "UNSPSC 4323 software or 8111 computer services; other 43/81 is weak; GSIN maps where blank"},
 	{"keyword", 3, "software/product terms up, construction and goods terms down"},
 	{"award-band", 2, "$50k-$2M is small-team-winnable; banded, never raw"},
 	{"recurrence", 2, "same buyer and title across years is a product"},
@@ -53,19 +53,86 @@ type Context struct {
 	RecurYears map[string]int
 	CatShare   map[string]float64
 	CatTop     map[string]string
+	TitleDepts map[string]int
+	ProductFit map[string]float64
+	FitShape   map[string]string
 }
 
+type Lens struct {
+	Name, Why string
+	Weights   map[string]float64
+}
+
+func ListLenses() []Lens {
+	def := map[string]float64{}
+	for _, w := range WeightTable {
+		def[w.Name] = w.Weight
+	}
+	gate := func(extra map[string]float64) map[string]float64 {
+		w := map[string]float64{"category-fit": 3, "keyword": 3}
+		for k, v := range extra {
+			w[k] = v
+		}
+		return w
+	}
+	return []Lens{
+		{"default", "the blended small-team score", def},
+		{"horizontal", "market breadth across departments", gate(map[string]float64{"category-fit": 5, "keyword": 4, "breadth": 5, "recurrence": 2, "product-fit": 2})},
+		{"displace", "incumbent vulnerability", gate(map[string]float64{"concentration": 5, "recurrence": 2, "award-band": 1, "competition": 1})},
+		{"bootstrap", "winnable without capital", gate(map[string]float64{"band-fit": 4, "competition": 3, "incumbency": 2})},
+	}
+}
+
+func LensByName(name string) (Lens, error) {
+	if name == "" {
+		name = "default"
+	}
+	var names []string
+	for _, l := range ListLenses() {
+		if l.Name == name {
+			return l, nil
+		}
+		names = append(names, l.Name)
+	}
+	return Lens{}, fmt.Errorf("unknown lens %q (one of %s)", name, strings.Join(names, ", "))
+}
+
+var signalOrder = []string{"category-fit", "keyword", "award-band", "recurrence", "competition", "incumbency", "breadth", "concentration", "band-fit", "product-fit"}
+
 func Score(t model.Tender, c Context) Opportunity {
+	o, _ := ScoreLens(t, c, "default")
+	return o
+}
+
+func ScoreLens(t model.Tender, c Context, lens string) (Opportunity, error) {
+	l, err := LensByName(lens)
+	if err != nil {
+		return Opportunity{}, err
+	}
 	ab, band := awardBand(t.Solicitation, c.AwardCents)
 	is, inc := incumbency(t, c)
-	s := []Signal{categoryFit(t, c.GsinUNSPSC), keyword(t), ab, recurrence(t, c), competition(t), is}
+	byName := map[string]Signal{
+		"category-fit": categoryFit(t, c.GsinUNSPSC), "keyword": keyword(t),
+		"award-band": ab, "recurrence": recurrence(t, c),
+		"competition": competition(t), "incumbency": is,
+		"breadth": breadth(t, c), "concentration": concentration(t, c),
+		"band-fit": bandFit(t.Solicitation, c.AwardCents), "product-fit": productFit(c, t.Reference),
+	}
+	s := []Signal{}
 	var num, den float64
-	for i := range s {
-		if s[i].HasData {
-			num += s[i].Weight * s[i].Score
-			den += s[i].Weight
-			s[i].Contribution = s[i].Weight * s[i].Score
+	for _, name := range signalOrder {
+		w, ok := l.Weights[name]
+		if !ok || w <= 0 {
+			continue
 		}
+		g := byName[name]
+		g.Weight = w
+		if g.HasData {
+			num += w * g.Score
+			den += w
+			g.Contribution = w * g.Score
+		}
+		s = append(s, g)
 	}
 	total := num / den
 	for i := range s {
@@ -77,10 +144,10 @@ func Score(t model.Tender, c Context) Opportunity {
 	}
 	o := Opportunity{Reference: t.Reference, Solicitation: t.Solicitation, Title: t.Title, Buyer: t.Org, Category: cat, Score: total, Signals: s, AwardBand: band, Incumbent: inc, Closing: t.Closing, Description: t.Description}
 	o.Staffing, _ = IsStaffing(t)
-	return o
+	return o, nil
 }
 func categoryFit(t model.Tender, gsin map[string]string) Signal {
-	g := Signal{Name: "category-fit", Weight: WeightTable[0].Weight, HasData: true, Score: 0.5}
+	g := Signal{Name: "category-fit", Weight: WeightTable[0].Weight, HasData: true}
 	var codes []string
 	for _, c := range t.UNSPSC {
 		if c != "" {
@@ -98,23 +165,29 @@ func categoryFit(t model.Tender, gsin map[string]string) Signal {
 	}
 	g.Raw = src + " " + strings.Join(codes, ",")
 	for _, code := range codes {
-		switch segment(code) {
-		case "43":
+		d := unspscDigits(code)
+		switch {
+		case len(d) >= 4 && (d[:4] == "4323" || d[:4] == "8111"):
 			g.Score, g.Raw = 1, src+" "+code
-		case "81":
-			if g.Score < 1 {
-				g.Score, g.Raw = 0.7, src+" "+code
-			}
+		case segment(code) == "43" && g.Score < 0.25:
+			g.Score, g.Raw = 0.25, src+" "+code+" hardware"
+		case segment(code) == "81" && g.Score < 0.25:
+			g.Score, g.Raw = 0.25, src+" "+code+" research"
 		}
 	}
-	if g.Score == 0.5 {
-		hay := strings.ToLower(t.UNSPSCDesc + "\n" + t.GSINDesc)
-		if strings.Contains(hay, "software") || strings.Contains(hay, "computer") || strings.Contains(hay, "information") || strings.Contains(hay, "data") {
+	if g.Score == 0 {
+		hay := strings.ToLower(t.UNSPSCDesc)
+		if strings.Contains(hay, "software") || strings.Contains(hay, "computer") {
 			g.Score = 0.6
 		}
-		if len(codes) == 0 && hay == "\n" {
-			g.Score, g.Raw = 0, "no category codes"
+		if len(codes) == 0 && hay == "" {
+			g.Raw = "no category codes"
 		}
+	}
+	if countTerms(t.Title, goodsTitleTerms) > 0 {
+		g.Score, g.Raw = 0, g.Raw+" title not software"
+	} else if countTerms(t.Title, softwareTitleTerms) == 0 && g.Score >= 1 {
+		g.Score, g.Raw = 0.45, g.Raw+" title silent"
 	}
 	return g
 }
@@ -127,20 +200,12 @@ func segment(code string) string {
 }
 func keyword(t model.Tender) Signal {
 	g := Signal{Name: "keyword", Weight: WeightTable[1].Weight, HasData: true}
-	hay := strings.ToLower(t.Title + "\n" + t.Description)
-	np, nn := 0, 0
-	for _, k := range []string{"software", "platform", "saas", "cloud", "data", "analytics", "machine learning", "portal", "dashboard", "api", "integration", "automation", "licence", "license", "application", "system"} {
-		if strings.Contains(hay, k) {
-			np++
-		}
-	}
-	for _, k := range []string{"construction", "janitorial", "furniture", "vehicle", "ammunition", "snow", "roof", "paving", "uniform", "catering", "pest", "landscaping", "plumbing", "electrical"} {
-		if strings.Contains(hay, k) {
-			nn++
-		}
-	}
+	np, nn := countTerms(t.Title, softwareTitleTerms), countTerms(t.Title, goodsTitleTerms) // title only: descriptions are boilerplate
 	g.Raw = fmt.Sprintf("+%d positive, -%d negative", np, nn)
 	g.Score = max(0, min(1, 0.4+0.12*float64(np)-0.3*float64(nn)))
+	if np == 0 {
+		g.Score = max(0, 0.1-0.3*float64(nn))
+	}
 	return g
 }
 func awardBand(solic string, cents map[string]int64) (Signal, string) {
@@ -197,18 +262,130 @@ func competition(t model.Tender) Signal {
 }
 func incumbency(t model.Tender, c Context) (Signal, string) {
 	g := Signal{Name: "incumbency", Weight: WeightTable[5].Weight, Raw: "no supplier data"}
-	for _, k := range t.Categories {
-		if sh, ok := c.CatShare[k]; ok {
-			g.HasData, g.Raw, g.Score = true, fmt.Sprintf("top share %.0f%%", sh*100), 1-sh
-			return g, fmt.Sprintf("%s (%.0f%%)", c.CatTop[k], sh*100)
+	if sh, top, key, ok := categoryShare(t, c); ok {
+		g.HasData, g.Raw, g.Score = true, fmt.Sprintf("top share %.0f%% of %s", sh*100, key), 1-sh
+		return g, fmt.Sprintf("%s (%.0f%%)", top, sh*100)
+	}
+	return g, "no incumbent identified"
+}
+
+func categoryShare(t model.Tender, c Context) (float64, string, string, bool) {
+	for _, k := range UnspscKeys(Codes(t.UNSPSC, t.GSIN, c.GsinUNSPSC)) {
+		if sh, ok := c.CatShare[k]; ok && c.CatTop[k] != "" {
+			return sh, c.CatTop[k], k, true
 		}
 	}
-	return g, ""
+	return 0, "", "", false
 }
 func RecurKey(t model.Tender) string { return t.Org + "\x00" + normTitle(t.Title) }
 func normTitle(s string) string {
 	return strings.Join(strings.Fields(nonAlnum.ReplaceAllString(strings.ToLower(s), " ")), " ")
 }
+func NormTitle(s string) string { return normTitle(s) }
+
+func Codes(unspsc, gsin []string, gsinMap map[string]string) []string {
+	var codes []string
+	for _, c := range unspsc {
+		if c != "" {
+			codes = append(codes, c)
+		}
+	}
+	if len(codes) > 0 {
+		return codes
+	}
+	for _, c := range gsin {
+		if u := gsinMap[strings.TrimSpace(c)]; u != "" {
+			codes = append(codes, u)
+		}
+	}
+	return codes
+}
+func unspscDigits(code string) string {
+	f := strings.FieldsFunc(code, func(r rune) bool { return r < '0' || r > '9' })
+	if len(f) > 0 {
+		return f[0]
+	}
+	return ""
+}
+
+func UnspscKeys(codes []string) []string {
+	var out, class []string
+	seen := map[string]bool{}
+	add := func(k string) {
+		if k != "" && !seen[k] {
+			seen[k] = true
+			out = append(out, k)
+		}
+	}
+	for _, c := range codes {
+		d := unspscDigits(c)
+		add(d)
+		if len(d) > 6 {
+			class = append(class, d[:6])
+		}
+	}
+	for _, k := range class {
+		add(k)
+	}
+	return out
+}
+
+var softwareTitleTerms = []string{"software", "platform", "saas", "cloud", "analytics", "machine learning", "portal", "dashboard", "api", "integration", "automation", "licence", "license", "application", "digital", "web", "online"}
+var goodsTitleTerms = []string{"construction", "janitorial", "furniture", "vehicle", "ammunition", "snow", "roof", "paving", "uniform", "catering", "pest", "landscaping", "plumbing", "electrical", "forklift", "telehandler", "valve", "jacket", "helicopter", "submarine", "housing", "spare", "scanner", "switch", "heating", "steam", "design-build", "pcr", "microscope", "display", "indicator", "in car", "mail delivery"}
+
+func countTerms(title string, terms []string) (n int) {
+	hay := strings.ToLower(strings.ReplaceAll(title, "-", " "))
+	for _, k := range terms {
+		if strings.Contains(hay, strings.ReplaceAll(k, "-", " ")) {
+			n++
+		}
+	}
+	return
+}
+
+func breadth(t model.Tender, c Context) Signal {
+	n := c.TitleDepts[NormTitle(t.Title)]
+	return Signal{Name: "breadth", HasData: true, Raw: fmt.Sprintf("%d department(s)", n), Score: []float64{0.05, 0.15, 0.4, 0.4, 0.7, 0.7, 0.7, 1}[min(n, 7)]}
+}
+
+func concentration(t model.Tender, c Context) Signal {
+	g := Signal{Name: "concentration", Raw: "no supplier data"}
+	if sh, top, key, ok := categoryShare(t, c); ok {
+		g.HasData, g.Score, g.Raw = true, sh, fmt.Sprintf("%s %.0f%% of %s", top, sh*100, key)
+	}
+	return g
+}
+
+func bandFit(solic string, cents map[string]int64) Signal {
+	g := Signal{Name: "band-fit", Raw: "no award data"}
+	v, ok := cents[solic]
+	if !ok || solic == "" {
+		return g
+	}
+	k, s := v/100000, 0.2
+	switch {
+	case k >= 50 && k < 250:
+		s = 1
+	case k < 50:
+		s = 0.4
+	case k < 1000:
+		s = 0.6
+	}
+	return Signal{Name: "band-fit", HasData: true, Raw: fmt.Sprintf("$%d", v/100), Score: s}
+}
+
+func productFit(c Context, ref string) Signal {
+	v, ok := c.ProductFit[ref]
+	if !ok {
+		return Signal{Name: "product-fit", Raw: "no cached enrichment"}
+	}
+	shape := strings.ToLower(strings.TrimSpace(c.FitShape[ref]))
+	if shape == "resale" || shape == "staffing" || shape == "training" {
+		v = min(v, 25)
+	}
+	return Signal{Name: "product-fit", HasData: true, Score: v / 100, Raw: fmt.Sprintf("%.0f shape %s", v, shape)}
+}
+
 func IsStaffing(t model.Tender) (bool, string) {
 	hay := strings.ToLower(t.Title + "\n" + t.Description + "\n" + t.NoticeType)
 	for _, k := range []string{"tbips", "sbips", "proservices", "task-based", "supply arrangement", "professional services", "level 1", "level 2", "level 3", "level 4"} {

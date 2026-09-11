@@ -3,6 +3,7 @@ package cli
 import (
 	"canadabuys-cli/internal/llm"
 	"canadabuys-cli/internal/model"
+	"canadabuys-cli/internal/score"
 	"strings"
 	"testing"
 )
@@ -131,5 +132,17 @@ func TestRankOnProductFit(t *testing.T) {
 	}
 	if productFitOf(rows[0]) >= productFitOf(rows[1]) {
 		t.Fatal("resale outranked product")
+	}
+}
+
+func TestAggregatesFilterStaffingFirst(t *testing.T) {
+	all := []model.Tender{{Title: "Developer Level Programmer Software", Org: "a", Description: "TBIPS task-based supply arrangement level 3"}}
+	for i := range 7 {
+		all = append(all, model.Tender{Title: "Cyber Protection Services", Org: string(rune('A' + i))})
+	}
+	var ctx score.Context
+	addLensAggregates(&ctx, all)
+	if ctx.TitleDepts[score.NormTitle("Developer Level Programmer Software")] != 0 || ctx.TitleDepts[score.NormTitle("Cyber Protection Services")] != 7 {
+		t.Fatal(ctx.TitleDepts)
 	}
 }
