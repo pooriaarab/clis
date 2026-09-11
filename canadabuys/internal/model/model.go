@@ -84,6 +84,7 @@ type Tender struct {
 	GSINDesc        string   `json:"gsinDescription"`
 	NoticeType      string   `json:"noticeType"`
 	Method          string   `json:"procurementMethod"`
+	LimitedReason   string   `json:"limitedTenderingReason,omitempty"`
 	Org             string   `json:"contractingEntity"`
 	EndUser         string   `json:"endUserEntities"`
 	Regions         []string `json:"regionsOfDelivery"`
@@ -111,6 +112,7 @@ func Parse(get func(string) string) Tender {
 		GSINDesc:        c("gsinDescription-nibsDescription-eng"),
 		NoticeType:      c("noticeType-avisType-eng"),
 		Method:          c("procurementMethod-methodeApprovisionnement-eng"),
+		LimitedReason:   c("limitedTenderingReason-raisonAppelOffresLimite-eng"),
 		Org:             c("contractingEntityName-nomEntitContractante-eng"),
 		EndUser:         c("endUserEntitiesName-nomEntitesUtilisateurFinal-eng"),
 		Regions:         SplitSet(c("regionsOfDelivery-regionsLivraison-eng")),
