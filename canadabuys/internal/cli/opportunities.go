@@ -24,7 +24,7 @@ type oppOut struct {
 	Enrichment *llm.Enrichment `json:"enrichment,omitempty"`
 }
 
-var coreSignal = map[string]string{"displace": "concentration", "bootstrap": "band-fit"}
+var coreSignal = map[string]string{"displace": "concentration", "bootstrap": "band-fit", "wedge": "wedge", "biddable": "urgency"}
 
 func opportunitiesCmd() *cobra.Command {
 	var minAward, maxAward, since, category, explain, llmModel, lensName string
@@ -169,6 +169,13 @@ func opportunitiesCmd() *cobra.Command {
 			}
 			return w.Flush()
 		}
+		if lens.Name == "biddable" {
+			fmt.Fprintln(w, "SCORE\tREFERENCE\tBUYER\tCLOSING\tTITLE")
+			for _, o := range out {
+				fmt.Fprintf(w, "%.1f\t%s\t%s\t%s\t%s\n", o.Score*100, o.Reference, o.Buyer, o.Closing[:10], o.Title)
+			}
+			return w.Flush()
+		}
 		fmt.Fprintln(w, "SCORE\tREFERENCE\tBUYER\tBAND\tTITLE")
 		for _, o := range out {
 			fmt.Fprintf(w, "%.1f\t%s\t%s\t%s\t%s\n", o.Score*100, o.Reference, o.Buyer, o.AwardBand, o.Title)
@@ -185,7 +192,7 @@ func opportunitiesCmd() *cobra.Command {
 	cmd.Flags().IntVar(&limit, "limit", 20, "max rows")
 	cmd.Flags().IntVar(&llmLimit, "llm-limit", 100, "max shortlist notices sent to the LLM")
 	cmd.Flags().IntVar(&llmConcurrency, "llm-concurrency", 8, "parallel LLM batch requests; 1 is serial")
-	cmd.Flags().StringVar(&lensName, "lens", "default", "ranking lens: default|horizontal|displace|bootstrap")
+	cmd.Flags().StringVar(&lensName, "lens", "default", "ranking lens: default|horizontal|displace|bootstrap|wedge|recurring|biddable")
 	cmd.Flags().BoolVar(&useLLM, "llm", false, "enrich the shortlist with the LLM provider")
 	cmd.Flags().BoolVar(&noStaffing, "exclude-staffing", true, "hide staffing supply arrangements")
 	cmd.Flags().BoolVar(&groupSimilar, "group-similar", false, "also collapse notices that share a buyer and title")
@@ -423,13 +430,30 @@ func haveSignal(o score.Opportunity, name string) bool {
 
 func addLensAggregates(ctx *score.Context, all []model.Tender) {
 	depts := map[string]map[string]bool{}
+	ctx.BuyerCat, ctx.CatBuyers = map[string]int{}, map[string]int{}
+	seen := map[string]map[string]bool{}
 	for _, t := range all {
-		if ok, _ := score.IsStaffing(t); !ok {
-			k := score.NormTitle(t.Title)
-			if depts[k] == nil {
-				depts[k] = map[string]bool{}
+		if ok, _ := score.IsStaffing(t); ok {
+			continue
+		}
+		k := score.NormTitle(t.Title)
+		if depts[k] == nil {
+			depts[k] = map[string]bool{}
+		}
+		depts[k][t.Org] = true
+		for _, code := range score.Codes(t.UNSPSC, t.GSIN, ctx.GsinUNSPSC) {
+			k := score.ClassOf(code)
+			if k == "" {
+				continue
 			}
-			depts[k][t.Org] = true
+			ctx.BuyerCat[t.Org+"\x00"+k]++
+			if seen[k] == nil {
+				seen[k] = map[string]bool{}
+			}
+			if !seen[k][t.Org] {
+				seen[k][t.Org] = true
+				ctx.CatBuyers[k]++
+			}
 		}
 	}
 	ctx.TitleDepts = map[string]int{}

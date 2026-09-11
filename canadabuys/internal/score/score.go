@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+	"time"
 )
 
 var nonAlnum = regexp.MustCompile("[^a-z0-9]+")
@@ -56,7 +57,12 @@ type Context struct {
 	TitleDepts map[string]int
 	ProductFit map[string]float64
 	FitShape   map[string]string
+	BuyerCat   map[string]int
+	CatBuyers  map[string]int
 }
+
+// Now is the clock urgency and FutureClosing read; tests override it.
+var Now = time.Now
 
 type Lens struct {
 	Name, Why string
@@ -80,6 +86,9 @@ func ListLenses() []Lens {
 		{"horizontal", "market breadth across departments", gate(map[string]float64{"category-fit": 5, "keyword": 4, "breadth": 5, "recurrence": 2, "product-fit": 2})},
 		{"displace", "incumbent vulnerability", gate(map[string]float64{"concentration": 5, "recurrence": 2, "award-band": 1, "competition": 1})},
 		{"bootstrap", "winnable without capital", gate(map[string]float64{"band-fit": 4, "competition": 3, "incumbency": 2})},
+		{"wedge", "beachhead depth times category breadth", gate(map[string]float64{"category-fit": 5, "keyword": 4, "wedge": 5, "recurrence": 2, "product-fit": 2})},
+		{"recurring", "subscription-shaped purchase cadence", gate(map[string]float64{"category-fit": 5, "keyword": 4, "recurrence": 8})},
+		{"biddable", "open now, ranked by fit and closing date", gate(map[string]float64{"category-fit": 6, "keyword": 5, "product-fit": 5, "urgency": 3, "competition": 1})},
 	}
 }
 
@@ -97,7 +106,7 @@ func LensByName(name string) (Lens, error) {
 	return Lens{}, fmt.Errorf("unknown lens %q (one of %s)", name, strings.Join(names, ", "))
 }
 
-var signalOrder = []string{"category-fit", "keyword", "award-band", "recurrence", "competition", "incumbency", "breadth", "concentration", "band-fit", "product-fit"}
+var signalOrder = []string{"category-fit", "keyword", "award-band", "recurrence", "competition", "incumbency", "breadth", "concentration", "band-fit", "product-fit", "wedge", "urgency"}
 
 func Score(t model.Tender, c Context) Opportunity {
 	o, _ := ScoreLens(t, c, "default")
@@ -117,6 +126,7 @@ func ScoreLens(t model.Tender, c Context, lens string) (Opportunity, error) {
 		"competition": competition(t), "incumbency": is,
 		"breadth": breadth(t, c), "concentration": concentration(t, c),
 		"band-fit": bandFit(t.Solicitation, c.AwardCents), "product-fit": productFit(c, t.Reference),
+		"wedge": wedge(t, c), "urgency": urgency(t),
 	}
 	s := []Signal{}
 	var num, den float64
@@ -384,6 +394,107 @@ func productFit(c Context, ref string) Signal {
 		v = min(v, 25)
 	}
 	return Signal{Name: "product-fit", HasData: true, Score: v / 100, Raw: fmt.Sprintf("%.0f shape %s", v, shape)}
+}
+
+// ClassOf returns the 6-digit UNSPSC class of one code, or "".
+func ClassOf(code string) string {
+	if d := unspscDigits(code); len(d) >= 6 {
+		return d[:6]
+	}
+	return ""
+}
+
+// wedge rewards one buyer purchasing deeply in a class other departments
+// also buy: buyer depth times category spread, at the notice's own UNSPSC
+// granularity. HasData needs repeat buying (depth>=2) and neighbours (>=2).
+func wedge(t model.Tender, c Context) Signal {
+	g := Signal{Name: "wedge", Raw: "no category repeat"}
+	var depth, spread int
+	var key string
+	for _, code := range Codes(t.UNSPSC, t.GSIN, c.GsinUNSPSC) {
+		k := ClassOf(code)
+		if k == "" {
+			continue
+		}
+		if d := c.BuyerCat[t.Org+"\x00"+k]; d > depth {
+			depth, key = d, k
+		}
+		if s := c.CatBuyers[k]; s > spread {
+			spread = s
+		}
+	}
+	if depth < 2 || spread < 2 {
+		return g
+	}
+	dn, sn := 0.4, 0.5
+	switch {
+	case depth >= 10:
+		dn = 1
+	case depth >= 5:
+		dn = 0.8
+	case depth >= 3:
+		dn = 0.6
+	}
+	switch {
+	case spread >= 6:
+		sn = 1
+	case spread >= 3:
+		sn = 0.7
+	}
+	g.HasData = true
+	g.Score = dn * sn
+	g.Raw = fmt.Sprintf("buyerx%d in %s, %d dept(s)", depth, key, spread)
+	return g
+}
+
+// urgency scores a sooner future closing higher. Past or missing closings
+// carry no data, so the biddable lens never ranks them.
+func urgency(t model.Tender) Signal {
+	g := Signal{Name: "urgency", Raw: "no closing date"}
+	d, ok := closeDate(t.Closing)
+	if !ok {
+		return g
+	}
+	days := int(d.Sub(today()).Hours() / 24)
+	if days < 0 {
+		g.Raw = "closed " + t.Closing[:10]
+		return g
+	}
+	g.HasData = true
+	switch {
+	case days <= 7:
+		g.Score = 1
+	case days <= 30:
+		g.Score = 0.8
+	case days <= 90:
+		g.Score = 0.6
+	default:
+		g.Score = 0.35
+	}
+	g.Raw = fmt.Sprintf("closes in %dd", days)
+	return g
+}
+
+// FutureClosing reports whether s closes today or later.
+func FutureClosing(s string) bool {
+	d, ok := closeDate(s)
+	return ok && !d.Before(today())
+}
+
+func today() time.Time {
+	y, m, d := Now().Date()
+	return time.Date(y, m, d, 0, 0, 0, 0, time.UTC)
+}
+
+func closeDate(s string) (time.Time, bool) {
+	if len(s) < 10 {
+		return time.Time{}, false
+	}
+	d, err := time.Parse("2006-01-02", s[:10])
+	if err != nil {
+		return time.Time{}, false
+	}
+	return d, true
 }
 
 func IsStaffing(t model.Tender) (bool, string) {
