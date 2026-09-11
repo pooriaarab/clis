@@ -274,6 +274,7 @@ func (f *tenderFilter) sortTenders(out []model.Tender) error {
 func printTenderFull(t model.Tender) {
 	rows := [][2]string{
 		{"Reference", t.Reference}, {"Solicitation", t.Solicitation},
+		{"Amendment", t.Amendment}, {"Amendment date", t.AmendmentDate},
 		{"Title", t.Title}, {"Title (FR)", t.TitleFR},
 		{"Status", t.Status}, {"Categories", strings.Join(t.Categories, "; ")},
 		{"UNSPSC", strings.Join(t.UNSPSC, "; ")}, {"UNSPSC description", t.UNSPSCDesc},

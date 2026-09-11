@@ -74,6 +74,8 @@ func CategoryShare(supplierCents, categoryCents int64) float64 {
 type Tender struct {
 	Reference       string   `json:"referenceNumber"`
 	Solicitation    string   `json:"solicitationNumber"`
+	Amendment       string   `json:"amendmentNumber"`
+	AmendmentDate   string   `json:"amendmentDate"`
 	Title           string   `json:"title"`
 	TitleFR         string   `json:"titleFR"`
 	Status          string   `json:"status"`
@@ -102,6 +104,8 @@ func Parse(get func(string) string) Tender {
 	return Tender{
 		Reference:       c("referenceNumber-numeroReference"),
 		Solicitation:    c("solicitationNumber-numeroSollicitation"),
+		Amendment:       c("amendmentNumber-numeroModification"),
+		AmendmentDate:   c("amendmentDate-dateModification"),
 		Title:           c("title-titre-eng"),
 		TitleFR:         c("title-titre-fra"),
 		Status:          c("tenderStatus-appelOffresStatut-eng"),

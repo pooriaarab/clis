@@ -34,17 +34,18 @@ type Signal struct {
 	HasData      bool    `json:"hasData"`
 }
 type Opportunity struct {
-	Reference   string   `json:"reference"`
-	Title       string   `json:"title"`
-	Buyer       string   `json:"buyer"`
-	Category    string   `json:"category"`
-	Score       float64  `json:"score"`
-	Signals     []Signal `json:"signals"`
-	AwardBand   string   `json:"awardBand"`
-	Closing     string   `json:"closing"`
-	Incumbent   string   `json:"incumbent,omitempty"`
-	Description string   `json:"-"`
-	Staffing    bool     `json:"staffingVehicle"`
+	Reference    string   `json:"reference"`
+	Solicitation string   `json:"solicitationNumber,omitempty"`
+	Title        string   `json:"title"`
+	Buyer        string   `json:"buyer"`
+	Category     string   `json:"category"`
+	Score        float64  `json:"score"`
+	Signals      []Signal `json:"signals"`
+	AwardBand    string   `json:"awardBand"`
+	Closing      string   `json:"closing"`
+	Incumbent    string   `json:"incumbent,omitempty"`
+	Description  string   `json:"-"`
+	Staffing     bool     `json:"staffingVehicle"`
 }
 type Context struct {
 	GsinUNSPSC map[string]string
@@ -74,7 +75,7 @@ func Score(t model.Tender, c Context) Opportunity {
 	if cat == "" {
 		cat = "unknown"
 	}
-	o := Opportunity{Reference: t.Reference, Title: t.Title, Buyer: t.Org, Category: cat, Score: total, Signals: s, AwardBand: band, Incumbent: inc, Closing: t.Closing, Description: t.Description}
+	o := Opportunity{Reference: t.Reference, Solicitation: t.Solicitation, Title: t.Title, Buyer: t.Org, Category: cat, Score: total, Signals: s, AwardBand: band, Incumbent: inc, Closing: t.Closing, Description: t.Description}
 	o.Staffing, _ = IsStaffing(t)
 	return o
 }
