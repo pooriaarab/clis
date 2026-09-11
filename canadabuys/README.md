@@ -16,6 +16,11 @@ go build -o canadabuys ./cmd/canadabuys
 canadabuys datasets list [--json] [--kind K]
 canadabuys fetch [id...] [--all] [--force] [--kind K]
 canadabuys doctor [--json]
+canadabuys tenders list [--json] [--status S] [--category C] [--unspsc U] [--gsin G]
+                         [--org O] [--region R] [--notice-type N] [--q Q]
+                         [--since D] [--until D] [--closing-after D] [--closing-before D]
+                         [--sort FIELD] [--limit N] [--dataset ID]
+canadabuys tenders show <referenceNumber> [--json] [--dataset ID]
 ```
 
 Kinds: `tenders`, `awards`, `contracts`, `reference`.
