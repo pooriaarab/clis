@@ -327,7 +327,8 @@ incumbency    top share 8%                1       0.92   0.084
 `--llm` enriches the already-ranked shortlist, never the full corpus. It needs
 `CANADABUYS_LLM_API_KEY` or `CEREBRAS_API_KEY`. Override the OpenAI-compatible
 endpoint with `CANADABUYS_LLM_BASE_URL` (default
-`https://api.cerebras.ai/v1`). Replies are cached under
+`https://api.cerebras.ai/v1`). `--llm-concurrency` (default 8, 1 is serial)
+runs ten-notice batches in a bounded worker pool. Replies are cached under
 `$CANADABUYS_CACHE_DIR/llm`.
 
 ## Four things that surprise readers
