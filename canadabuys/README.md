@@ -21,7 +21,12 @@ canadabuys tenders list [--json] [--status S] [--category C] [--unspsc U] [--gsi
                          [--since D] [--until D] [--closing-after D] [--closing-before D]
                          [--sort FIELD] [--limit N] [--dataset ID]
 canadabuys tenders show <referenceNumber> [--json] [--dataset ID]
+canadabuys awards list [--json] [--supplier S] [--org O] [--unspsc U] [--category C]
+                        [--currency C] [--since D] [--until D]
+                        [--min-amount N] [--max-amount N] [--limit N]
 ```
+
+`awards list` reads only the `awards` dataset; `awards-legacy` is fetchable but not yet queryable.
 
 Kinds: `tenders`, `awards`, `contracts`, `reference`.
 

@@ -6,6 +6,7 @@ import (
 	"os"
 	"strings"
 	"text/tabwriter"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -41,6 +42,13 @@ func (f *awardFilter) addFlags(cmd *cobra.Command) {
 }
 
 func (f *awardFilter) boundFlags() error {
+	for _, p := range [][2]string{{"--since", f.since}, {"--until", f.until}} {
+		if p[1] != "" {
+			if _, err := time.Parse("2006-01-02", p[1]); err != nil {
+				return fmt.Errorf("%s: %q is not YYYY-MM-DD", p[0], p[1])
+			}
+		}
+	}
 	for _, b := range []struct {
 		name string
 		raw  string
