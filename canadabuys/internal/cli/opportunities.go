@@ -26,7 +26,7 @@ type oppOut struct {
 func opportunitiesCmd() *cobra.Command {
 	var minAward, maxAward, since, category, explain, llmModel string
 	var minScore float64
-	var limit, llmLimit int
+	var limit, llmLimit, llmConcurrency int
 	var useLLM, noStaffing, groupSimilar bool
 	cmd := &cobra.Command{Use: "opportunities", Short: "Rank tender notices a small software team could win", RunE: func(*cobra.Command, []string) error {
 		ctx, err := buildOppContext()
@@ -102,7 +102,7 @@ func opportunitiesCmd() *cobra.Command {
 		skipped := 0
 		if useLLM {
 			var e error
-			enr, skipped, e = applyLLM(out, llmModel, llmLimit)
+			enr, skipped, e = applyLLM(out, llmModel, llmLimit, llmConcurrency)
 			if e != nil {
 				return e
 			}
@@ -159,6 +159,7 @@ func opportunitiesCmd() *cobra.Command {
 	cmd.Flags().StringVar(&llmModel, "llm-model", "gpt-oss-120b", "LLM model for --llm enrichment")
 	cmd.Flags().IntVar(&limit, "limit", 20, "max rows")
 	cmd.Flags().IntVar(&llmLimit, "llm-limit", 100, "max shortlist notices sent to the LLM")
+	cmd.Flags().IntVar(&llmConcurrency, "llm-concurrency", 8, "parallel LLM batch requests; 1 is serial")
 	cmd.Flags().BoolVar(&useLLM, "llm", false, "enrich the shortlist with the LLM provider")
 	cmd.Flags().BoolVar(&noStaffing, "exclude-staffing", true, "hide staffing supply arrangements")
 	cmd.Flags().BoolVar(&groupSimilar, "group-similar", false, "also collapse notices that share a buyer and title")
@@ -258,7 +259,7 @@ func oppSummary(amendments, similar, staffing, skipped int, groupSimilar, useLLM
 
 // applyLLM sends the first llmLimit shortlist rows to the provider.
 // CANADABUYS_LLM_API_KEY wins over CEREBRAS_API_KEY when both are set.
-func applyLLM(out []score.Opportunity, model string, llmLimit int) ([]*llm.Enrichment, int, error) {
+func applyLLM(out []score.Opportunity, model string, llmLimit, concurrency int) ([]*llm.Enrichment, int, error) {
 	key := os.Getenv("CANADABUYS_LLM_API_KEY")
 	if key == "" {
 		key = os.Getenv("CEREBRAS_API_KEY")
@@ -271,7 +272,7 @@ func applyLLM(out []score.Opportunity, model string, llmLimit int) ([]*llm.Enric
 		return nil, 0, err
 	}
 	n := min(max(llmLimit, 0), len(out))
-	return (&llm.Client{Key: key, CacheDir: filepath.Join(dir, "llm")}).Enrich(out[:n], model)
+	return (&llm.Client{Key: key, CacheDir: filepath.Join(dir, "llm"), Concurrency: concurrency}).Enrich(out[:n], model)
 }
 func buildOppContext() (score.Context, error) {
 	ctx := score.Context{GsinUNSPSC: map[string]string{}, AwardCents: map[string]int64{}, RecurYears: map[string]int{}, CatShare: map[string]float64{}, CatTop: map[string]string{}}
