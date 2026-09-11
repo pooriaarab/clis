@@ -223,9 +223,9 @@ func (f *tenderFilter) match(t model.Tender) bool {
 		return false
 	case len(f.category) > 0 && !anySet(t.Categories, f.category, strings.EqualFold):
 		return false
-	case len(f.unspsc) > 0 && !anySet(model.SplitSet(t.UNSPSC), f.unspsc, strings.EqualFold):
+	case len(f.unspsc) > 0 && !anySet(t.UNSPSC, f.unspsc, strings.EqualFold):
 		return false
-	case len(f.gsin) > 0 && !anySet(model.SplitSet(t.GSIN), f.gsin, strings.EqualFold):
+	case len(f.gsin) > 0 && !anySet(t.GSIN, f.gsin, strings.EqualFold):
 		return false
 	case len(f.org) > 0 && !anyMatch(f.org, t.Org, has):
 		return false
@@ -276,8 +276,8 @@ func printTenderFull(t model.Tender) {
 		{"Reference", t.Reference}, {"Solicitation", t.Solicitation},
 		{"Title", t.Title}, {"Title (FR)", t.TitleFR},
 		{"Status", t.Status}, {"Categories", strings.Join(t.Categories, "; ")},
-		{"UNSPSC", t.UNSPSC}, {"UNSPSC description", t.UNSPSCDesc},
-		{"GSIN", t.GSIN}, {"GSIN description", t.GSINDesc},
+		{"UNSPSC", strings.Join(t.UNSPSC, "; ")}, {"UNSPSC description", t.UNSPSCDesc},
+		{"GSIN", strings.Join(t.GSIN, "; ")}, {"GSIN description", t.GSINDesc},
 		{"Notice type", t.NoticeType}, {"Method", t.Method},
 		{"Contracting entity", t.Org}, {"End user", t.EndUser},
 		{"Regions of delivery", strings.Join(t.Regions, "; ")}, {"Trade agreements", strings.Join(t.TradeAgreements, "; ")},

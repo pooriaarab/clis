@@ -12,9 +12,9 @@ type Tender struct {
 	TitleFR         string   `json:"titleFR"`
 	Status          string   `json:"status"`
 	Categories      []string `json:"categories"`
-	UNSPSC          string   `json:"unspsc"`
+	UNSPSC          []string `json:"unspsc"`
 	UNSPSCDesc      string   `json:"unspscDescription"`
-	GSIN            string   `json:"gsin"`
+	GSIN            []string `json:"gsin"`
 	GSINDesc        string   `json:"gsinDescription"`
 	NoticeType      string   `json:"noticeType"`
 	Method          string   `json:"procurementMethod"`
@@ -39,9 +39,9 @@ func Parse(get func(string) string) Tender {
 		TitleFR:         c("title-titre-fra"),
 		Status:          c("tenderStatus-appelOffresStatut-eng"),
 		Categories:      SplitSet(c("procurementCategory-categorieApprovisionnement")),
-		UNSPSC:          c("unspsc"),
+		UNSPSC:          SplitSet(c("unspsc")),
 		UNSPSCDesc:      c("unspscDescription-eng"),
-		GSIN:            c("gsin-nibs"),
+		GSIN:            SplitSet(c("gsin-nibs")),
 		GSINDesc:        c("gsinDescription-nibsDescription-eng"),
 		NoticeType:      c("noticeType-avisType-eng"),
 		Method:          c("procurementMethod-methodeApprovisionnement-eng"),
