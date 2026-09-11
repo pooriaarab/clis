@@ -76,7 +76,7 @@ func root() *cobra.Command {
 	cmd.PersistentFlags().StringVar(&flagCache, "cache-dir", "", "cache directory")
 	cmd.PersistentFlags().BoolVar(&flagJSON, "json", false, "JSON on stdout")
 	cmd.CompletionOptions.DisableDefaultCmd = true
-	cmd.AddCommand(datasetsCmd(), fetchCmd(), doctorCmd(), tendersCmd(), awardsCmd(), statsCmd())
+	cmd.AddCommand(datasetsCmd(), fetchCmd(), doctorCmd(), tendersCmd(), awardsCmd(), statsCmd(), opportunitiesCmd())
 	return cmd
 }
 
