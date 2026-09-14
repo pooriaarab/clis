@@ -8,8 +8,8 @@ and the agents/fleet design.
   Everything comes from flags / env / `~/.config/buzz-cli/config.toml` at runtime.
 - Match the bundled reference CLI `/Applications/Buzz.app/Contents/MacOS/buzz`
   command tree, flags, JSON output, and exit codes exactly (it is the oracle).
-- Derive every event kind / content / tag from the Rust source at
-  `/Users/parab/code/buzz` — never invent schemas. Preserve struct field order for
+- Derive every event kind / content / tag from the Rust source in the `buzz`
+  workspace — never invent schemas. Preserve struct field order for
   parameterized-replaceable kinds (their content pins the NIP-01 id).
 
 ## Layout (mirror the sibling `soloist` CLI)
