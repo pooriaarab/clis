@@ -2,10 +2,10 @@ package cli
 
 // buzz workflows — YAML-as-code workflow definitions (kind:30620) and their
 // runtime events. Kinds/tags mirror the Rust oracle at
-// /Users/parab/code/buzz/crates/buzz-sdk/src/builders.rs (build_workflow_def,
+// buzz/crates/buzz-sdk/src/builders.rs (build_workflow_def,
 // build_workflow_update, build_workflow_delete, build_workflow_trigger,
 // build_workflow_approval) and the CLI at
-// /Users/parab/code/buzz/crates/buzz-cli/src/commands/workflows.rs.
+// buzz/crates/buzz-cli/src/commands/workflows.rs.
 
 import (
 	"context"

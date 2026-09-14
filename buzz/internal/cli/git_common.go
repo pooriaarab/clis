@@ -2,9 +2,9 @@ package cli
 
 // Shared helpers for the NIP-34 git-collaboration groups (repos, projects,
 // patches, issues, pr). Kinds/tags/validation mirror the Rust oracle at
-// /Users/parab/code/buzz/crates/buzz-sdk/src/builders.rs,
-// /Users/parab/code/buzz/crates/buzz-core/src/git_perms.rs, and the CLI
-// commands under /Users/parab/code/buzz/crates/buzz-cli/src/commands/.
+// buzz/crates/buzz-sdk/src/builders.rs,
+// buzz/crates/buzz-core/src/git_perms.rs, and the CLI
+// commands under buzz/crates/buzz-cli/src/commands/.
 
 import (
 	"context"

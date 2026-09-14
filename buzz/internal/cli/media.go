@@ -3,7 +3,7 @@ package cli
 // buzz media / buzz upload — Blossom media storage (BUD-01 get, BUD-02
 // upload). Auth is a self-signed kind:24242 event (KIND_BLOSSOM_AUTH,
 // buzz-core/src/kind.rs), not NIP-98. Mirrors
-// /Users/parab/code/buzz/crates/buzz-cli/src/client.rs (sign_blossom_get,
+// buzz/crates/buzz-cli/src/client.rs (sign_blossom_get,
 // sign_blossom_upload, media_url_from_input, upload_file, download_media)
 // and crates/buzz-cli/src/commands/upload.rs (dispatch, dispatch_media).
 

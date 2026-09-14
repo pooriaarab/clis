@@ -3,7 +3,7 @@ package cli
 // buzz mem — agent engram memory (NIP-AE). Kind 30174 (KIND_AGENT_ENGRAM,
 // buzz-core/src/kind.rs), NIP-44 v2 encrypted, parameterized-replaceable by
 // an HMAC d-tag. Mirrors
-// /Users/parab/code/buzz/crates/buzz-core/src/engram.rs (conversation_key,
+// buzz/crates/buzz-core/src/engram.rs (conversation_key,
 // d_tag, Body, build_event, validate_and_decrypt, select_head,
 // monotonic_created_at) and crates/buzz-cli/src/commands/mem.rs.
 //
