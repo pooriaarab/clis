@@ -2,7 +2,7 @@ package cli
 
 // buzz pack validate/inspect — LOCAL persona pack operations. No relay
 // connection. Mirrors the directory layout and checks in
-// /Users/parab/code/buzz/crates/buzz-persona/src/{pack,persona,manifest,merge,validate}.rs
+// buzz/crates/buzz-persona/src/{pack,persona,manifest,merge,validate}.rs
 // and the CLI at crates/buzz-cli/src/commands/pack.rs.
 //
 // Directory layout:

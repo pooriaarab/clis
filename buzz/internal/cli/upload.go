@@ -1,7 +1,7 @@
 package cli
 
 // buzz upload file — BUD-02 Blossom upload. Mirrors upload_file in
-// /Users/parab/code/buzz/crates/buzz-cli/src/client.rs: sniff MIME from
+// buzz/crates/buzz-cli/src/client.rs: sniff MIME from
 // magic bytes, enforce the allowed-type/size limits, PUT to /upload with a
 // fresh Blossom auth header, falling back to the legacy /media/upload path
 // on 404/405.

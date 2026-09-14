@@ -5,8 +5,9 @@ by speaking the Buzz relay protocol directly. Home: `pooriaarab/clis/buzz`.
 Sibling binary: an MCP server (`cmd/buzz-mcp`) exposing the same operations as tools
 (mirror the `soloist` layout).
 
-Reference implementation (read these — same machine):
-- Protocol + relay + kinds + SDK: `/Users/parab/code/buzz` (Rust). Event kinds in
+Reference implementation — the `buzz` Rust workspace. Paths below are relative to
+its root:
+- Protocol, relay, kinds and SDK. Event kinds in
   `crates/buzz-core/src/kind.rs`. NIP-OA in `crates/buzz-sdk/src/nip_oa.rs`. Event
   builders in `crates/buzz-sdk/src/builders.rs`. Relay HTTP surface in
   `crates/buzz-relay/src/api`. WS client in `crates/buzz-ws-client`.
