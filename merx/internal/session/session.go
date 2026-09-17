@@ -59,14 +59,25 @@ func Open(path string) (*Jar, error) {
 	return j, nil
 }
 
+// domainMatch reports whether host is within domain per RFC 6265 §5.1.3:
+// an exact match, or a proper subdomain of it.
+func domainMatch(host, domain string) bool {
+	return host == domain || strings.HasSuffix(host, "."+domain)
+}
+
 func (j *Jar) SetCookies(u *url.URL, cs []*http.Cookie) {
 	j.mu.Lock()
 	defer j.mu.Unlock()
 	now := time.Now()
+	reqHost := strings.ToLower(u.Hostname())
 	for _, c := range cs {
 		domain := strings.ToLower(strings.TrimPrefix(c.Domain, "."))
 		if domain == "" {
-			domain = strings.ToLower(u.Hostname())
+			domain = reqHost
+		} else if !domainMatch(reqHost, domain) {
+			// The response can only set cookies for its own host or a
+			// parent of it, never an unrelated domain.
+			continue
 		}
 		path := c.Path
 		if path == "" {
@@ -85,7 +96,11 @@ func (j *Jar) SetCookies(u *url.URL, cs []*http.Cookie) {
 			}
 			continue
 		}
-		sc := storedCookie{c.Name, c.Value, path, domain, c.Expires, c.Secure, c.HttpOnly}
+		expires := c.Expires
+		if expires.IsZero() && c.MaxAge > 0 {
+			expires = now.Add(time.Duration(c.MaxAge) * time.Second)
+		}
+		sc := storedCookie{c.Name, c.Value, path, domain, expires, c.Secure, c.HttpOnly}
 		if keep >= 0 {
 			j.items[keep] = sc
 		} else {

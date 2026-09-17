@@ -118,6 +118,42 @@ func TestSaveDropsExpiredCookies(t *testing.T) {
 	}
 }
 
+func TestSetCookiesRejectsForeignDomain(t *testing.T) {
+	path := filepath.Join(t.TempDir(), JarFile)
+	j, err := Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	portal, err := url.Parse(Production.Portal + "/")
+	if err != nil {
+		t.Fatal(err)
+	}
+	j.SetCookies(portal, []*http.Cookie{{Name: "JSESSIONID", Value: "x", Path: "/", Domain: "evil.example"}})
+	if len(j.items) != 0 {
+		t.Fatalf("items = %+v, want the foreign-domain cookie rejected", j.items)
+	}
+}
+
+func TestSetCookiesMaxAgeOnlyExpires(t *testing.T) {
+	path := filepath.Join(t.TempDir(), JarFile)
+	j, err := Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	portal, err := url.Parse(Production.Portal + "/")
+	if err != nil {
+		t.Fatal(err)
+	}
+	j.SetCookies(portal, []*http.Cookie{{Name: "JSESSIONID", Value: "x", Path: "/", MaxAge: 60}})
+	if len(j.items) != 1 {
+		t.Fatalf("items = %+v, want one stored cookie", j.items)
+	}
+	want := time.Now().Add(60 * time.Second)
+	if got := j.items[0].Expires; got.IsZero() || got.Before(want.Add(-5*time.Second)) || got.After(want.Add(5*time.Second)) {
+		t.Fatalf("expires = %v, want ~%v derived from MaxAge", got, want)
+	}
+}
+
 func cookieValue(cs []*http.Cookie, name string) string {
 	for _, c := range cs {
 		if c.Name == name {
