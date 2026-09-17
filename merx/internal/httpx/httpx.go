@@ -129,11 +129,13 @@ func (c *Client) Do(req *http.Request) (*http.Response, error) {
 			if err := sleep(ctx, backoff); err != nil {
 				return nil, err
 			}
-			body, err := req.GetBody()
-			if err != nil {
-				return nil, err
+			if req.GetBody != nil {
+				body, err := req.GetBody()
+				if err != nil {
+					return nil, err
+				}
+				req.Body = body
 			}
-			req.Body = body
 		}
 		resp, err := c.HTTP.Do(req)
 		if err != nil {
