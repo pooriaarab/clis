@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"golang.org/x/net/html"
 )
@@ -92,6 +93,28 @@ func TestJarRoundTripBothHosts(t *testing.T) {
 	gotIDP := cookieValue(loaded.Cookies(idp), "JSESSIONID")
 	if gotPortal != "portal" || gotIDP != "idp" {
 		t.Fatalf("portal=%q idp=%q", gotPortal, gotIDP)
+	}
+}
+
+func TestSaveDropsExpiredCookies(t *testing.T) {
+	path := filepath.Join(t.TempDir(), JarFile)
+	j, err := Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	j.items = append(j.items,
+		storedCookie{Name: "JSESSIONID", Value: "live", Domain: "www.merx.com", Path: "/"},
+		storedCookie{Name: "stale", Value: "gone", Domain: "www.merx.com", Path: "/", Expires: time.Now().Add(-time.Hour)},
+	)
+	if err := j.Save(); err != nil {
+		t.Fatal(err)
+	}
+	loaded, err := Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(loaded.items) != 1 || loaded.items[0].Name != "JSESSIONID" {
+		t.Fatalf("items after save = %+v, want only the live cookie", loaded.items)
 	}
 }
 
