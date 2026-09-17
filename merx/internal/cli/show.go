@@ -107,18 +107,10 @@ func getNotice(c *httpx.Client, u string) (search.Notice, error) {
 		return search.Notice{}, err
 	}
 	n.DetailURL = final
-	if n.CategoriesPath == "" {
-		return n, nil
-	}
-	cu := n.CategoriesPath
-	if strings.HasPrefix(cu, "/") {
-		cu = search.Host + cu
-	}
-	raw, _, err := getOK(c, cu)
-	if err != nil {
-		return n, nil
-	}
-	n.MERX, n.GSIN, n.UNSPSC, _ = search.ParseCategories(bytes.NewReader(raw))
+	search.LoadCategories(func(cu string) ([]byte, error) {
+		raw, _, err := getOK(c, cu)
+		return raw, err
+	}, &n)
 	return n, nil
 }
 

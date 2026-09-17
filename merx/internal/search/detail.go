@@ -159,12 +159,21 @@ func chrome(node *html.Node, n *Notice) {
 	}
 	for _, a := range node.Attr {
 		set(&n.InternalID, idFromPath(a.Val))
-		if strings.Contains(a.Val, "/abstract/categories") {
+		if a.Key == "data-ajax-url" && strings.HasPrefix(a.Val, "/") && !strings.HasPrefix(a.Val, "//") && strings.Contains(a.Val, "/abstract/categories") {
 			set(&n.CategoriesPath, a.Val)
 		}
 		if a.Key == "rel" && a.Val == "canonical" {
 			set(&n.DetailURL, attr(node, "href"))
 		}
+	}
+}
+
+func LoadCategories(get func(string) ([]byte, error), n *Notice) {
+	if !strings.HasPrefix(n.CategoriesPath, "/") || strings.HasPrefix(n.CategoriesPath, "//") {
+		return
+	}
+	if raw, err := get(Host + n.CategoriesPath); err == nil {
+		n.MERX, n.GSIN, n.UNSPSC, _ = ParseCategories(strings.NewReader(string(raw)))
 	}
 }
 
@@ -217,20 +226,16 @@ func cats(root *html.Node, id string) []Category {
 }
 
 func each(n *html.Node, pred func(*html.Node) bool, visit func(*html.Node)) {
-	var walk func(*html.Node)
-	walk = func(n *html.Node) {
-		if n == nil {
-			return
-		}
-		if pred(n) {
-			visit(n)
-			return
-		}
-		for c := n.FirstChild; c != nil; c = c.NextSibling {
-			walk(c)
-		}
+	if n == nil {
+		return
 	}
-	walk(n)
+	if pred(n) {
+		visit(n)
+		return
+	}
+	for c := n.FirstChild; c != nil; c = c.NextSibling {
+		each(c, pred, visit)
+	}
 }
 
 func set(dst *string, v string) {
