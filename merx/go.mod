@@ -2,7 +2,10 @@ module merx-cli
 
 go 1.22
 
-require github.com/spf13/cobra v1.9.1
+require (
+	github.com/spf13/cobra v1.9.1
+	golang.org/x/net v0.33.0
+)
 
 require (
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
