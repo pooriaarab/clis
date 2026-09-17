@@ -115,13 +115,25 @@ func (c *Client) Do(req *http.Request) (*http.Response, error) {
 	req.Header.Set("User-Agent", UserAgent)
 	c.ensurePaced()
 	ctx := req.Context()
+	// A request body can only be replayed if GetBody can rebuild it; otherwise
+	// the body is consumed by the first attempt and retrying would send it
+	// empty, so don't retry at all.
+	attempts := maxAttempts
+	if req.Body != nil && req.GetBody == nil {
+		attempts = 1
+	}
 	var lastStatus int
-	for attempt := 0; attempt < maxAttempts; attempt++ {
+	for attempt := 0; attempt < attempts; attempt++ {
 		if attempt > 0 {
 			backoff := c.Delay * time.Duration(1<<uint(attempt-1))
 			if err := sleep(ctx, backoff); err != nil {
 				return nil, err
 			}
+			body, err := req.GetBody()
+			if err != nil {
+				return nil, err
+			}
+			req.Body = body
 		}
 		resp, err := c.HTTP.Do(req)
 		if err != nil {
@@ -134,7 +146,7 @@ func (c *Client) Do(req *http.Request) (*http.Response, error) {
 		io.Copy(io.Discard, resp.Body)
 		resp.Body.Close()
 	}
-	return nil, fmt.Errorf("HTTP %d: gave up after %d attempts", lastStatus, maxAttempts)
+	return nil, fmt.Errorf("HTTP %d: gave up after %d attempts", lastStatus, attempts)
 }
 
 func (c *Client) pace(ctx context.Context) error {

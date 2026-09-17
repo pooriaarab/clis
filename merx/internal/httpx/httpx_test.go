@@ -1,6 +1,7 @@
 package httpx
 
 import (
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
@@ -72,6 +73,46 @@ func TestRetryOn429ThenSuccess(t *testing.T) {
 	}
 	if n.Load() != 2 {
 		t.Fatalf("hits %d, want 2", n.Load())
+	}
+}
+
+func TestRetryResendsBody(t *testing.T) {
+	var n atomic.Int32
+	var got []string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			t.Error(err)
+		}
+		got = append(got, string(body))
+		if n.Add(1) == 1 {
+			w.WriteHeader(http.StatusTooManyRequests)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	t.Cleanup(srv.Close)
+
+	c := &Client{HTTP: srv.Client(), Delay: 10 * time.Millisecond}
+	req, err := http.NewRequest(http.MethodPost, srv.URL, strings.NewReader("payload"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp, err := c.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status %d, want 200", resp.StatusCode)
+	}
+	if n.Load() != 2 {
+		t.Fatalf("hits %d, want 2", n.Load())
+	}
+	for i, body := range got {
+		if body != "payload" {
+			t.Fatalf("attempt %d body %q, want %q", i, body, "payload")
+		}
 	}
 }
 
