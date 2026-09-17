@@ -1,7 +1,8 @@
 # MERX CLI
 
-Skeleton for the MERX procurement portal. No auth. Do not scrape.
+Public MERX lists. No auth. `search` parses HTML; there is no JSON API.
 
-Commands: `doctor`. Cache is `$XDG_CACHE_HOME/merx` or `~/.cache/merx`.
+Commands: `doctor`, `search`. Cache is `$XDG_CACHE_HOME/merx` or `~/.cache/merx`.
+Queries that report more than 1,000 results cannot be fully retrieved.
 
 Run `gofmt`, `go vet`, and `go build ./...` before a PR. Stay inside `merx/`.
