@@ -90,15 +90,24 @@ func (j *Jar) SetCookies(u *url.URL, cs []*http.Cookie) {
 				break
 			}
 		}
-		if c.MaxAge < 0 || (!c.Expires.IsZero() && !now.Before(c.Expires)) {
+		// Max-Age takes precedence over Expires per RFC 6265 §5.3: when both
+		// are present, a stale Expires must not override a live Max-Age.
+		var expires time.Time
+		expired := false
+		switch {
+		case c.MaxAge < 0:
+			expired = true
+		case c.MaxAge > 0:
+			expires = now.Add(time.Duration(c.MaxAge) * time.Second)
+		default:
+			expires = c.Expires
+			expired = !expires.IsZero() && !now.Before(expires)
+		}
+		if expired {
 			if keep >= 0 {
 				j.items = append(j.items[:keep], j.items[keep+1:]...)
 			}
 			continue
-		}
-		expires := c.Expires
-		if expires.IsZero() && c.MaxAge > 0 {
-			expires = now.Add(time.Duration(c.MaxAge) * time.Second)
 		}
 		sc := storedCookie{c.Name, c.Value, path, domain, expires, c.Secure, c.HttpOnly}
 		if keep >= 0 {

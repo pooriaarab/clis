@@ -154,6 +154,32 @@ func TestSetCookiesMaxAgeOnlyExpires(t *testing.T) {
 	}
 }
 
+func TestSetCookiesMaxAgeOverridesStaleExpires(t *testing.T) {
+	path := filepath.Join(t.TempDir(), JarFile)
+	j, err := Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	portal, err := url.Parse(Production.Portal + "/")
+	if err != nil {
+		t.Fatal(err)
+	}
+	// RFC 6265 §5.3: Max-Age takes precedence over Expires. A stale
+	// Expires paired with a live Max-Age must not delete the cookie.
+	j.SetCookies(portal, []*http.Cookie{{
+		Name: "JSESSIONID", Value: "x", Path: "/",
+		MaxAge:  60,
+		Expires: time.Now().Add(-time.Hour),
+	}})
+	if len(j.items) != 1 {
+		t.Fatalf("items = %+v, want the cookie kept per Max-Age", j.items)
+	}
+	want := time.Now().Add(60 * time.Second)
+	if got := j.items[0].Expires; got.IsZero() || got.Before(want.Add(-5*time.Second)) || got.After(want.Add(5*time.Second)) {
+		t.Fatalf("expires = %v, want ~%v derived from MaxAge, not the stale Expires", got, want)
+	}
+}
+
 func cookieValue(cs []*http.Cookie, name string) string {
 	for _, c := range cs {
 		if c.Name == name {
