@@ -115,12 +115,22 @@ func (j *Jar) Cookies(u *url.URL) []*http.Cookie {
 }
 
 // Save writes the jar at 0600. Chmod covers a pre-existing file.
+// Expired cookies are dropped so they don't accumulate in the file forever.
 func (j *Jar) Save() error {
 	j.mu.Lock()
 	defer j.mu.Unlock()
 	if err := os.MkdirAll(filepath.Dir(j.Path), 0o755); err != nil {
 		return err
 	}
+	now := time.Now()
+	live := j.items[:0:0]
+	for _, sc := range j.items {
+		if !sc.Expires.IsZero() && !now.Before(sc.Expires) {
+			continue
+		}
+		live = append(live, sc)
+	}
+	j.items = live
 	raw, err := json.Marshal(j.items)
 	if err != nil {
 		return err
