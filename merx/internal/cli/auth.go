@@ -43,7 +43,14 @@ func loginCmd() *cobra.Command {
 		if user == "" || pass == "" {
 			return fmt.Errorf("missing credentials: export MERX_USERNAME and MERX_PASSWORD")
 		}
-		j, c, _, err := openSession()
+		path, err := sessionPath()
+		if err != nil {
+			return err
+		}
+		// Start from an empty jar: a stale-but-still-valid session cookie
+		// makes the portal skip the SAML form entirely, which login can't parse.
+		j := &session.Jar{Path: path}
+		c, err := session.Bind(j)
 		if err != nil {
 			return err
 		}
