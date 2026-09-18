@@ -1,9 +1,13 @@
-// Package session is the MERX SAML cookie jar and form helpers.
+// Package session is the MERX SAML cookie jar and login flow.
+// Credentials are never logged, echoed, or placed in errors or URLs.
+// Login posts the password exactly once.
 package session
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"os"
@@ -24,7 +28,11 @@ type Endpoints struct{ Portal, IDP string }
 var Production = Endpoints{Portal: "https://www.merx.com", IDP: "https://idp.merx.com"}
 
 const (
-	JarFile = "cookies.json" // cookie file under the cache dir
+	JarFile    = "cookies.json" // cookie file under the cache dir
+	anonMarker = `"memberType":"Anonymous"`
+	badCreds   = "The username or password you entered is incorrect."
+	inUse      = "The account provided is currently in use. Only one session is permitted per account."
+	maxHops    = 8
 )
 
 // Jar persists cookies for www.merx.com and idp.merx.com.
@@ -233,4 +241,176 @@ func Bind(j *Jar) (*httpx.Client, error) {
 	c.HTTP.Jar = j
 	c.HTTP.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
 	return c, nil
+}
+
+func resolveURL(base, ref string) string {
+	b, err := url.Parse(base)
+	if err != nil {
+		return ref
+	}
+	r, err := url.Parse(ref)
+	if err != nil {
+		return ref
+	}
+	return b.ResolveReference(r).String()
+}
+
+func readResp(c *httpx.Client, req *http.Request) (int, string, []byte, error) {
+	resp, err := c.Do(req)
+	if err != nil {
+		return 0, "", nil, err
+	}
+	raw, err := io.ReadAll(resp.Body)
+	resp.Body.Close()
+	return resp.StatusCode, resp.Header.Get("Location"), raw, err
+}
+
+func do(c *httpx.Client, method, rawurl string, vals url.Values) (int, []byte, error) {
+	req, err := httpx.NewRequest(method, rawurl)
+	if err != nil {
+		return 0, nil, err
+	}
+	if vals != nil {
+		enc := vals.Encode()
+		req.ContentLength = int64(len(enc))
+		req.Body = io.NopCloser(strings.NewReader(enc))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	}
+	st, loc, body, err := readResp(c, req)
+	if err != nil {
+		return 0, nil, err
+	}
+	return follow(c, rawurl, loc, st, body)
+}
+
+// follow walks 3xx hops. The credential POST commonly answers 302 first;
+// stopping there hid every real failure as "got HTTP 302".
+func follow(c *httpx.Client, current, loc string, status int, body []byte) (int, []byte, error) {
+	for i := 0; status >= 300 && status <= 399 && i < maxHops; i++ {
+		if loc == "" {
+			return status, body, fmt.Errorf("redirect with empty Location (HTTP %d)", status)
+		}
+		current = resolveURL(current, loc)
+		req, err := httpx.NewRequest(http.MethodGet, current)
+		if err != nil {
+			return 0, nil, err
+		}
+		status, loc, body, err = readResp(c, req)
+		if err != nil {
+			return 0, nil, err
+		}
+	}
+	if status >= 300 && status <= 399 {
+		return status, body, fmt.Errorf("too many redirects (HTTP %d)", status)
+	}
+	return status, body, nil
+}
+
+func toValues(m map[string]string) url.Values {
+	v := make(url.Values, len(m))
+	for k, val := range m {
+		v.Set(k, val)
+	}
+	return v
+}
+
+func parseForm(body []byte, want ...string) (string, map[string]string, error) {
+	doc, err := html.Parse(bytes.NewReader(body))
+	if err != nil {
+		return "", nil, fmt.Errorf("parsing HTML: %w", err)
+	}
+	action, fields, ok := FindForm(doc, want...)
+	if !ok || action == "" {
+		return "", nil, fmt.Errorf("form not found")
+	}
+	return action, fields, nil
+}
+
+func step(c *httpx.Client, method, rawurl string, vals url.Values, label string) ([]byte, error) {
+	st, body, err := do(c, method, rawurl, vals)
+	if err != nil {
+		return nil, err
+	}
+	if st < 200 || st >= 300 {
+		return body, fmt.Errorf("%s: got HTTP %d", label, st)
+	}
+	return body, nil
+}
+
+// Valid reports whether the homepage has dropped the anonymous-visitor marker.
+func Valid(c *httpx.Client, portal string) (bool, error) {
+	body, err := step(c, http.MethodGet, strings.TrimRight(portal, "/")+"/", nil, "session check")
+	if err != nil {
+		return false, err
+	}
+	return !strings.Contains(string(body), anonMarker), nil
+}
+
+func outcomeErr(body []byte) error {
+	switch {
+	case strings.Contains(string(body), badCreds):
+		return fmt.Errorf("login failed: bad credentials")
+	case strings.Contains(string(body), inUse):
+		return fmt.Errorf("login failed: the account is currently in use (only one session is permitted). Run merx logout or wait for the existing session to time out")
+	}
+	return nil
+}
+
+// Login runs the SAML flow with exactly one credential attempt.
+func Login(c *httpx.Client, ep Endpoints, user, pass string) error {
+	body, err := step(c, http.MethodGet, ep.Portal+"/public/authentication/login", nil, "SAML login page")
+	if err != nil {
+		return err
+	}
+	idpAction, samlFields, err := parseForm(body, "SAMLRequest")
+	if err != nil {
+		return fmt.Errorf("SAML auto-post form not found")
+	}
+	body, err = step(c, http.MethodPost, resolveURL(ep.Portal, idpAction), toValues(samlFields), "identity provider")
+	if err != nil {
+		return err
+	}
+	loginAction, loginFields, err := parseForm(body, "j_username", "j_password")
+	if err != nil {
+		return fmt.Errorf("IdP username/password form not found")
+	}
+	if _, err := ExecutionToken(loginAction); err != nil {
+		return err
+	}
+	vals := toValues(loginFields)
+	vals.Set("j_username", user)
+	vals.Set("j_password", pass)
+	// Follow the 302, then classify from the landed page text.
+	st, body, err := do(c, http.MethodPost, resolveURL(ep.IDP, loginAction), vals)
+	if err != nil {
+		return err
+	}
+	if err := outcomeErr(body); err != nil {
+		return err
+	}
+	if st != http.StatusOK {
+		return fmt.Errorf("identity provider: got HTTP %d", st)
+	}
+	acsAction, acsFields, err := parseForm(body, "SAMLResponse")
+	if err != nil || !strings.Contains(acsAction, "/saml/SSO") {
+		return fmt.Errorf("login failed: no SAML response from the identity provider")
+	}
+	if _, err = step(c, http.MethodPost, resolveURL(ep.Portal, acsAction), toValues(acsFields), "SAML ACS"); err != nil {
+		return err
+	}
+	ok, err := Valid(c, ep.Portal)
+	if err != nil {
+		return err
+	}
+	if !ok {
+		return fmt.Errorf("login failed: portal still shows an anonymous session")
+	}
+	return nil
+}
+
+// Logout ends the server session. MERX allows one session per account,
+// so skipping this blocks the next login.
+func Logout(c *httpx.Client, portal string) error {
+	_, err := step(c, http.MethodGet, strings.TrimRight(portal, "/")+"/logout", nil, "portal logout")
+	return err
 }

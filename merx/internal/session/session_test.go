@@ -1,7 +1,9 @@
 package session
 
 import (
+	"io"
 	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -10,12 +12,19 @@ import (
 	"time"
 
 	"golang.org/x/net/html"
+
+	"merx-cli/internal/httpx"
 )
 
 const (
 	exe        = "e4s1"
 	idpLogin   = `<html><body><form id="loginForm" action="/idp/SSO?execution=e4s1" method="post"><input type="hidden" name="serviceName" value="MERX"/><input name="j_username"/><input name="j_password"/><input type="hidden" name="_eventId_proceed" value="Proceed"/></form></body></html>`
 	spAutoPost = `<html><body><form action="/idp/SSO" method="post"><input type="hidden" name="SAMLRequest" value="REQ123"/><input type="hidden" name="language" value="en"/></form></body></html>`
+	samlResp   = `<html><body><form action="/saml/SSO/alias/MERX" method="post"><input type="hidden" name="SAMLResponse" value="RESP123"/><input type="hidden" name="RelayState" value="R"/></form></body></html>`
+	homeAnon   = `<html><body><script>_trackMemberDataGA( {"memberType":"Anonymous"} );</script></body></html>`
+	homeAuthed = `<html><body><script>_trackMemberDataGA( {"memberType":"Member"} );</script></body></html>`
+	badPage    = `<html><body><p>The username or password you entered is incorrect.</p></body></html>`
+	inUsePage  = `<html><body><p>The account provided is currently in use. Only one session is permitted per account.</p></body></html>`
 )
 
 func TestFindForm(t *testing.T) {
@@ -187,4 +196,122 @@ func cookieValue(cs []*http.Cookie, name string) string {
 		}
 	}
 	return ""
+}
+
+func fixtureServer(user, pass, outcome string, credPosts, acsPosts, logoutHits *int, lastACS *url.Values) *httptest.Server {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/public/authentication/login", func(w http.ResponseWriter, r *http.Request) {
+		http.SetCookie(w, &http.Cookie{Name: "JSESSIONID", Value: "T.METS", Path: "/"})
+		http.Redirect(w, r, "/saml/login", http.StatusFound)
+	})
+	mux.HandleFunc("/saml/login", func(w http.ResponseWriter, r *http.Request) {
+		io.WriteString(w, spAutoPost)
+	})
+	mux.HandleFunc("/idp/SSO", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPost && r.URL.Query().Get("execution") == exe {
+			*credPosts++
+			r.ParseForm()
+			okCred := r.Form.Get("j_username") == user && r.Form.Get("j_password") == pass &&
+				r.Form.Get("serviceName") == "MERX" && r.Form.Get("_eventId_proceed") != ""
+			switch {
+			case outcome == "bad302":
+				http.Redirect(w, r, "/idp/bad", http.StatusFound)
+			case outcome == "inuse":
+				io.WriteString(w, inUsePage)
+			case okCred:
+				io.WriteString(w, samlResp)
+			default:
+				io.WriteString(w, badPage)
+			}
+			return
+		}
+		io.WriteString(w, idpLogin)
+	})
+	mux.HandleFunc("/idp/bad", func(w http.ResponseWriter, r *http.Request) {
+		io.WriteString(w, badPage)
+	})
+	mux.HandleFunc("/saml/SSO/alias/MERX", func(w http.ResponseWriter, r *http.Request) {
+		r.ParseForm()
+		*acsPosts++
+		*lastACS = r.Form
+		if r.Form.Get("SAMLResponse") == "" {
+			http.Error(w, "missing SAMLResponse", http.StatusBadRequest)
+			return
+		}
+		http.SetCookie(w, &http.Cookie{Name: "MERXSESSION", Value: "1", Path: "/"})
+	})
+	mux.HandleFunc("/logout", func(w http.ResponseWriter, r *http.Request) {
+		*logoutHits++
+		http.SetCookie(w, &http.Cookie{Name: "MERXSESSION", MaxAge: -1, Path: "/"})
+		http.Redirect(w, r, "/", http.StatusFound)
+	})
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		if c, err := r.Cookie("MERXSESSION"); err == nil && c.Value == "1" {
+			io.WriteString(w, homeAuthed)
+			return
+		}
+		io.WriteString(w, homeAnon)
+	})
+	return httptest.NewServer(mux)
+}
+
+func testClient(j *Jar) *httpx.Client {
+	c := &httpx.Client{HTTP: &http.Client{}, Delay: time.Millisecond}
+	c.HTTP.Jar = j
+	c.HTTP.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
+	return c
+}
+
+func TestLoginOutcomes(t *testing.T) {
+	const user, pass = "u", "p"
+	cases := []struct {
+		name, pass, outcome, errSub string
+		wantACS                     int
+	}{
+		{"success posts SAMLResponse to ACS", pass, "ok", "", 1},
+		{"302 then incorrect is bad credentials", "wrong", "bad302", "bad credentials", 0},
+		{"currently in use is session conflict", pass, "inuse", "currently in use", 0},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			var credPosts, acsPosts, logoutHits int
+			var lastACS url.Values
+			srv := fixtureServer(user, pass, tc.outcome, &credPosts, &acsPosts, &logoutHits, &lastACS)
+			t.Cleanup(srv.Close)
+			ep := Endpoints{Portal: srv.URL, IDP: srv.URL}
+			j, err := Open(filepath.Join(t.TempDir(), JarFile))
+			if err != nil {
+				t.Fatal(err)
+			}
+			err = Login(testClient(j), ep, user, tc.pass)
+			if credPosts != 1 {
+				t.Fatalf("credential attempts %d, want 1", credPosts)
+			}
+			if acsPosts != tc.wantACS {
+				t.Fatalf("ACS posts %d, want %d", acsPosts, tc.wantACS)
+			}
+			if tc.errSub == "" {
+				if err != nil {
+					t.Fatal(err)
+				}
+				if lastACS.Get("SAMLResponse") != "RESP123" || lastACS.Get("RelayState") != "R" {
+					t.Fatalf("ACS form %v", lastACS)
+				}
+				ok, err := Valid(testClient(j), ep.Portal)
+				if err != nil || !ok {
+					t.Fatalf("session valid=%v err=%v", ok, err)
+				}
+				if err := Logout(testClient(j), ep.Portal); err != nil || logoutHits != 1 {
+					t.Fatalf("logout err=%v hits=%d", err, logoutHits)
+				}
+				return
+			}
+			if err == nil || !strings.Contains(err.Error(), tc.errSub) {
+				t.Fatalf("error %v, want %q", err, tc.errSub)
+			}
+			if tc.outcome == "inuse" && !strings.Contains(err.Error(), "merx logout") {
+				t.Fatalf("conflict error must mention merx logout: %v", err)
+			}
+		})
+	}
 }
