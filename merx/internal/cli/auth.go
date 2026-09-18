@@ -13,12 +13,19 @@ import (
 	"merx-cli/internal/session"
 )
 
-func openSession() (*session.Jar, *httpx.Client, string, error) {
+func sessionPath() (string, error) {
 	dir, err := cacheDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(dir, session.JarFile), nil
+}
+
+func openSession() (*session.Jar, *httpx.Client, string, error) {
+	path, err := sessionPath()
 	if err != nil {
 		return nil, nil, "", err
 	}
-	path := filepath.Join(dir, session.JarFile)
 	j, err := session.Open(path)
 	if err != nil {
 		return nil, nil, "", err
@@ -80,18 +87,14 @@ func authCmd() *cobra.Command {
 		return cmd.Help()
 	}}
 	g.AddCommand(&cobra.Command{Use: "status", Short: "Show authentication status", RunE: func(*cobra.Command, []string) error {
-		_, _, path, err := openSession()
+		path, err := sessionPath()
 		if err != nil {
 			return err
 		}
 		if _, err := os.Stat(path); os.IsNotExist(err) {
 			return reportAuth(false, path)
 		}
-		j, err := session.Open(path)
-		if err != nil {
-			return err
-		}
-		c, err := session.Bind(j)
+		_, c, path, err := openSession()
 		if err != nil {
 			return err
 		}
