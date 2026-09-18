@@ -120,7 +120,7 @@ func reportAuth(ok bool, path string) error {
 			return err
 		}
 	} else if ok {
-		fmt.Println("Authenticated: MERX session is valid.")
+		fmt.Println("Authenticated: MERX session is valid (source: environment).")
 	} else {
 		fmt.Println("Not authenticated: no valid MERX session.")
 	}
