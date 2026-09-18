@@ -116,13 +116,33 @@ func TestRetryResendsBody(t *testing.T) {
 	}
 }
 
+type recordSendTimes struct {
+	mu    sync.Mutex
+	sends []time.Time
+	base  http.RoundTripper
+}
+
+func (r *recordSendTimes) RoundTrip(req *http.Request) (*http.Response, error) {
+	r.mu.Lock()
+	r.sends = append(r.sends, time.Now())
+	r.mu.Unlock()
+	base := r.base
+	if base == nil {
+		base = http.DefaultTransport
+	}
+	return base.RoundTrip(req)
+}
+
+func (r *recordSendTimes) snapshot() []time.Time {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return append([]time.Time(nil), r.sends...)
+}
+
 func TestRedirectHopsArePaced(t *testing.T) {
-	var mu sync.Mutex
-	var hops []time.Time
+	var n atomic.Int32
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		mu.Lock()
-		hops = append(hops, time.Now())
-		mu.Unlock()
+		n.Add(1)
 		if r.URL.Path != "/b" {
 			http.Redirect(w, r, "/b", http.StatusFound)
 			return
@@ -132,7 +152,10 @@ func TestRedirectHopsArePaced(t *testing.T) {
 	t.Cleanup(srv.Close)
 
 	delay := 40 * time.Millisecond
-	c := &Client{HTTP: srv.Client(), Delay: delay}
+	httpClient := srv.Client()
+	rec := &recordSendTimes{base: httpClient.Transport}
+	httpClient.Transport = rec
+	c := &Client{HTTP: httpClient, Delay: delay}
 	req, err := NewRequest(http.MethodGet, srv.URL+"/a")
 	if err != nil {
 		t.Fatal(err)
@@ -146,15 +169,22 @@ func TestRedirectHopsArePaced(t *testing.T) {
 		t.Fatalf("status %d", resp.StatusCode)
 	}
 
-	mu.Lock()
-	got := append([]time.Time(nil), hops...)
-	mu.Unlock()
-	if len(got) != 2 {
-		t.Fatalf("hops %d, want 2", len(got))
+	if n.Load() != 2 {
+		t.Fatalf("hops %d, want 2", n.Load())
 	}
-	gap := got[1].Sub(got[0])
-	if gap < delay {
-		t.Fatalf("gap between hops %s, want at least %s", gap, delay)
+	// Send times are recorded client-side in the RoundTripper wrapped
+	// beneath pacedTransport, so each stamp is taken after the pacing
+	// sleep for that hop and before the request hits the wire. Transport
+	// latency can only push a server-side stamp later, never an earlier
+	// send stamp, so the gaps cannot drift under the delay.
+	got := rec.snapshot()
+	if len(got) != 2 {
+		t.Fatalf("sends %d, want 2", len(got))
+	}
+	for i := 1; i < len(got); i++ {
+		if gap := got[i].Sub(got[i-1]); gap < delay {
+			t.Fatalf("gap between hops %d and %d %s, want at least %s", i-1, i, gap, delay)
+		}
 	}
 }
 
