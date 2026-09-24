@@ -269,6 +269,39 @@ func TestResumeMidSliceLosesNothing(t *testing.T) {
 	}
 }
 
+func TestDetailFailureIsRetriedOnResume(t *testing.T) {
+	dir, failB := t.TempDir(), true
+	page := func(_ Slice, _ int) (search.Page, error) {
+		return search.Page{Total: 2, Records: recs("a", "b")}, nil
+	}
+	detail := func(u string) error {
+		if failB && strings.HasSuffix(u, "/b") {
+			return fmt.Errorf("boom")
+		}
+		return nil
+	}
+	deps := harvestDeps{dir: dir, status: "open",
+		slices: []Slice{{Status: "open", Start: "2020-01-01", End: "2020-01-31"}},
+		count:  func(Slice) (int, error) { return 2, nil }, page: page, detail: detail}
+	sum, err := executePlan(deps)
+	if err != nil {
+		t.Fatal(err)
+	}
+	store, manifest := harvestPaths(dir, "open")
+	known, _ := loadIDs(store)
+	man, _ := loadManifest(manifest)
+	if sum.Captured != 1 || len(known) != 1 || !known["a"] || len(man.Slices) != 0 {
+		t.Fatalf("first run captured %d store %v manifest %+v (a failed detail must not mark the slice done)", sum.Captured, known, man.Slices)
+	}
+	failB, deps.resume = false, true
+	sum, err = executePlan(deps)
+	known, _ = loadIDs(store)
+	man, _ = loadManifest(manifest)
+	if err != nil || sum.Captured != 1 || len(known) != 2 || !known["b"] || len(man.Slices) != 1 {
+		t.Fatalf("resume captured %d store %v manifest %+v err %v (the failed record must be retried)", sum.Captured, known, man.Slices, err)
+	}
+}
+
 func TestCSRFTokenFromPage(t *testing.T) {
 	raw, err := os.ReadFile("testdata/search_form.golden")
 	if err != nil {

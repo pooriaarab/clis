@@ -81,6 +81,7 @@ func executePlan(d harvestDeps) (Summary, error) {
 			pages = search.MaxPage
 		}
 		got := 0
+		failed := false
 		for p := 1; p <= pages; p++ {
 			pg, err := d.page(leaf, p)
 			if err != nil {
@@ -92,6 +93,7 @@ func executePlan(d harvestDeps) (Summary, error) {
 				}
 				if err := d.detail(r.DetailURL); err != nil {
 					fmt.Fprintf(os.Stderr, "detail %s: %v\n", r.InternalID, err)
+					failed = true
 					continue
 				}
 				if err := appendRecord(f, r); err != nil {
@@ -110,6 +112,14 @@ func executePlan(d harvestDeps) (Summary, error) {
 		if e.Incomplete {
 			sum.Incomplete++
 			fmt.Fprintf(os.Stderr, "harvest %s %s..%s incomplete: reported %d, captured %d\n", d.status, leaf.Start, leaf.End, rep, got)
+		}
+		if failed {
+			// A detail fetch failed for at least one record: leave the leaf
+			// out of the manifest so a later --resume retries the records
+			// that were not stored, instead of marking the slice done with
+			// a permanent gap.
+			fmt.Fprintf(os.Stderr, "harvest %s %s..%s not recorded: a detail fetch failed, rerun with --resume to retry\n", d.status, leaf.Start, leaf.End)
+			continue
 		}
 		man.Slices = append(man.Slices, e)
 		if err := saveManifest(manifest, man); err != nil {
