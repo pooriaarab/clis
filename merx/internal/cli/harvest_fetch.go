@@ -129,39 +129,46 @@ func executePlan(d harvestDeps) (Summary, error) {
 	return sum, nil
 }
 
-func loadSearchForm(c *httpx.Client, portal string) (url.Values, error) {
+func loadSearchForm(c *httpx.Client, portal string) (url.Values, string, error) {
 	req, err := httpx.NewRequest(http.MethodGet, strings.TrimRight(portal, "/")+privateSearchPath)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	resp, err := c.Do(req)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	defer resp.Body.Close()
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("search page: got HTTP %d", resp.StatusCode)
+		return nil, "", fmt.Errorf("search page: got HTTP %d", resp.StatusCode)
 	}
 	doc, err := html.Parse(strings.NewReader(string(body)))
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
-	_, fields, ok := session.FindForm(doc, "_csrf", "searchAction")
-	if !ok || fields["_csrf"] == "" {
-		return nil, fmt.Errorf("search page has no _csrf field")
+	// Four forms share the search action. The one that holds the search
+	// fields has no _csrf. Match the fields, then take the token from the page.
+	fields, ok := searchFormFields(doc)
+	if !ok {
+		return nil, "", fmt.Errorf("search page has no form with fields status and publishedDate.dateType")
 	}
-	v := make(url.Values, len(fields))
+	token, header, err := pageCSRF(doc)
+	if err != nil {
+		return nil, "", err
+	}
+	v := make(url.Values, len(fields)+1)
 	for k, val := range fields {
 		v.Set(k, val)
 	}
-	return v, nil
+	v.Set("_csrf", token)
+	return v, header, nil
 }
 
-func postSlice(c *httpx.Client, portal string, form url.Values, priv string, s Slice, page int) (search.Page, error) {
+func postSlice(c *httpx.Client, portal string, form url.Values, csrfHeader, priv string, s Slice, page int) (search.Page, error) {
 	v := make(url.Values, len(form))
 	for k, vs := range form {
 		v[k] = append([]string(nil), vs...)
@@ -181,6 +188,12 @@ func postSlice(c *httpx.Client, portal string, form url.Values, priv string, s S
 	req.Body = io.NopCloser(strings.NewReader(enc))
 	req.GetBody = func() (io.ReadCloser, error) { return io.NopCloser(strings.NewReader(enc)), nil }
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	if v.Get("_csrf") == "" {
+		return search.Page{}, fmt.Errorf("refusing to post search: _csrf token is empty")
+	}
+	if csrfHeader != "" {
+		req.Header.Set(csrfHeader, v.Get("_csrf"))
+	}
 	resp, err := c.Do(req)
 	if err != nil {
 		return search.Page{}, err
@@ -273,7 +286,7 @@ func runHarvest(status, since, until string, resume bool, seeds []Slice) error {
 		logoutOnce(&once, c, portal)
 		os.Remove(jarPath)
 	}()
-	form, err := loadSearchForm(c, portal)
+	form, csrfHeader, err := loadSearchForm(c, portal)
 	if err != nil {
 		return err
 	}
@@ -282,8 +295,11 @@ func runHarvest(status, since, until string, resume bool, seeds []Slice) error {
 		return err
 	}
 	sum, err := executePlan(harvestDeps{dir: dir, status: status, since: since, until: until, slices: seeds, resume: resume,
-		count:  func(s Slice) (int, error) { pg, err := postSlice(c, portal, form, priv, s, 1); return pg.Total, err },
-		page:   func(s Slice, p int) (search.Page, error) { return postSlice(c, portal, form, priv, s, p) },
+		count: func(s Slice) (int, error) {
+			pg, err := postSlice(c, portal, form, csrfHeader, priv, s, 1)
+			return pg.Total, err
+		},
+		page:   func(s Slice, p int) (search.Page, error) { return postSlice(c, portal, form, csrfHeader, priv, s, p) },
 		detail: func(u string) error { return fetchDetail(c, u) }})
 	if err != nil {
 		return err
@@ -293,4 +309,145 @@ func runHarvest(status, since, until string, resume bool, seeds []Slice) error {
 	}
 	fmt.Printf("%s: %d slices, reported %d, captured %d, incomplete %d\n", sum.Status, sum.Slices, sum.Reported, sum.Captured, sum.Incomplete)
 	return nil
+}
+
+// pageCSRF reads the session token from <meta name="_csrf">, then from any
+// _csrf input. The header name is <meta name="_csrf_header">.
+func pageCSRF(doc *html.Node) (string, string, error) {
+	token := tagAttr(doc, "meta", "name", "_csrf", "content")
+	if token == "" {
+		token = tagAttr(doc, "input", "name", "_csrf", "value")
+	}
+	if token == "" {
+		return "", "", fmt.Errorf("search page has no CSRF token: missing <meta name=\"_csrf\"> and no _csrf input")
+	}
+	return token, tagAttr(doc, "meta", "name", "_csrf_header", "content"), nil
+}
+
+// searchFormFields returns controls from the form that contains status and
+// publishedDate.dateType. The form id is not used.
+func searchFormFields(doc *html.Node) (map[string]string, bool) {
+	var fields map[string]string
+	found := walkHTML(doc, func(n *html.Node) bool {
+		if n.Type != html.ElementNode || n.Data != "form" {
+			return false
+		}
+		got := formControls(n)
+		if _, ok := got["status"]; !ok {
+			return false
+		}
+		if _, ok := got["publishedDate.dateType"]; !ok {
+			return false
+		}
+		fields = got
+		return true
+	})
+	return fields, found
+}
+
+func formControls(form *html.Node) map[string]string {
+	got := map[string]string{}
+	var walk func(*html.Node, bool)
+	walk = func(n *html.Node, root bool) {
+		if n.Type == html.ElementNode && n.Data == "form" && !root {
+			return
+		}
+		if n.Type == html.ElementNode && (n.Data == "input" || n.Data == "select" || n.Data == "textarea") {
+			if name := nodeAttr(n, "name"); name != "" {
+				got[name] = controlValue(n)
+			}
+		}
+		for c := n.FirstChild; c != nil; c = c.NextSibling {
+			walk(c, false)
+		}
+	}
+	walk(form, true)
+	return got
+}
+
+func controlValue(n *html.Node) string {
+	if n.Data != "select" {
+		if n.Data == "textarea" {
+			return directText(n)
+		}
+		return nodeAttr(n, "value")
+	}
+	first, chosen := "", ""
+	seen, picked := false, false
+	walkHTML(n, func(o *html.Node) bool {
+		if o.Type != html.ElementNode || o.Data != "option" {
+			return false
+		}
+		val := nodeAttr(o, "value")
+		if val == "" {
+			val = directText(o)
+		}
+		if !seen {
+			first, seen = val, true
+		}
+		if _, ok := attrPresent(o, "selected"); ok {
+			chosen, picked = val, true
+		}
+		return false
+	})
+	if picked {
+		return chosen
+	}
+	return first
+}
+
+func directText(n *html.Node) string {
+	var b strings.Builder
+	for c := n.FirstChild; c != nil; c = c.NextSibling {
+		if c.Type == html.TextNode {
+			b.WriteString(c.Data)
+		}
+	}
+	return strings.TrimSpace(b.String())
+}
+
+func tagAttr(root *html.Node, tag, key, want, out string) string {
+	var v string
+	walkHTML(root, func(n *html.Node) bool {
+		if n.Type != html.ElementNode || n.Data != tag || nodeAttr(n, key) != want {
+			return false
+		}
+		got := strings.TrimSpace(nodeAttr(n, out))
+		if got == "" {
+			return false
+		}
+		v = got
+		return true
+	})
+	return v
+}
+
+func nodeAttr(n *html.Node, key string) string {
+	v, _ := attrPresent(n, key)
+	return v
+}
+
+func attrPresent(n *html.Node, key string) (string, bool) {
+	for _, a := range n.Attr {
+		if a.Key == key {
+			return a.Val, true
+		}
+	}
+	return "", false
+}
+
+// walkHTML visits n, then its children. It stops when visit returns true.
+func walkHTML(n *html.Node, visit func(*html.Node) bool) bool {
+	if n == nil {
+		return false
+	}
+	if visit(n) {
+		return true
+	}
+	for c := n.FirstChild; c != nil; c = c.NextSibling {
+		if walkHTML(c, visit) {
+			return true
+		}
+	}
+	return false
 }
