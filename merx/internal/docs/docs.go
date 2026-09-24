@@ -114,7 +114,7 @@ func acceptOrSkip(c *httpx.Client, portal, page, id, dest string, man *Manifest)
 	}
 	ts := time.Now().UTC().Format(time.RFC3339)
 	ack, err := search.ParseAck(bytes.NewReader(body))
-	if err != nil {
+	if err != nil || ack.AcceptName == "" {
 		man.SkippedGates = append(man.SkippedGates, Skip{id, gateSkip, "unparseable acknowledgement page", ts})
 		fmt.Fprintf(os.Stderr, "merx: gated-and-skipped %s at %s (acknowledgement page could not be parsed)\n", id, ts)
 		return true, writeManifest(dest, man)
@@ -236,8 +236,11 @@ func hop(c *httpx.Client, method, rawurl string, vals url.Values, xhr bool, max 
 func loadManifest(dir string) (Manifest, error) {
 	var man Manifest
 	raw, err := os.ReadFile(filepath.Join(dir, manFile))
-	if err != nil {
+	if os.IsNotExist(err) {
 		return man, nil
+	}
+	if err != nil {
+		return man, err
 	}
 	return man, json.Unmarshal(raw, &man)
 }
