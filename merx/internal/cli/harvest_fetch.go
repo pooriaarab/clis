@@ -563,6 +563,9 @@ func selectValues(n *html.Node) ([]string, bool) {
 		return nil, false
 	}
 	if len(chosen) == 0 {
+		if multiple {
+			return nil, false
+		}
 		return []string{first}, true
 	}
 	if !multiple && len(chosen) > 1 {

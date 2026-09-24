@@ -473,6 +473,26 @@ func TestCSRFTokenMissing(t *testing.T) {
 	}
 }
 
+func TestMultiSelectWithNoSelectionIsOmitted(t *testing.T) {
+	const page = `<html><head><meta name="_csrf" content="TOK"></head><body>` +
+		`<form action="/private/supplier/solicitations/search">` +
+		`<input type="radio" name="status" value="OPEN">` +
+		`<input name="publishedDate.dateType" value="ANYTIME">` +
+		`<select name="region" multiple>` +
+		`<option value="EAST">East</option>` +
+		`<option value="WEST">West</option>` +
+		`</select>` +
+		`</form></body></html>`
+	c, portal := csrfPage(t, page)
+	form, _, err := loadSearchForm(c, portal)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := form["region"]; ok {
+		t.Fatalf("multi-select with no selection was submitted: %q, want it omitted like a browser would", form["region"])
+	}
+}
+
 func csrfPage(t *testing.T, page string) (*httpx.Client, string) {
 	t.Helper()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
