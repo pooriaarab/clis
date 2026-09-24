@@ -292,3 +292,37 @@ func ParseDocList(r io.Reader) ([]Doc, error) {
 	})
 	return out, nil
 }
+
+type Ack struct {
+	Action, AcceptName, AcceptValue, Filename string
+	Fields                                    map[string]string
+}
+
+func ParseAck(r io.Reader) (Ack, error) {
+	root, err := html.Parse(r)
+	if err != nil {
+		return Ack{}, err
+	}
+	form := find(root, func(n *html.Node) bool { return n.Data == "form" })
+	if form == nil {
+		if strings.Contains(strings.ToLower(text(root)), "agreement") {
+			err = fmt.Errorf("unparseable acknowledgement page")
+		}
+		return Ack{}, err
+	}
+	a := Ack{Action: attr(form, "action"), Fields: map[string]string{}}
+	each(form, func(n *html.Node) bool { return n.Data == "input" || n.Data == "button" || n.Data == "a" }, func(n *html.Node) {
+		name, val := attr(n, "name"), attr(n, "value")
+		if n.Data == "a" && a.Filename == "" {
+			a.Filename = filepath.Base(text(n))
+		} else if name != "" && strings.Contains(strings.ToLower(name+" "+val+" "+text(n)), "accept") {
+			a.AcceptName, a.AcceptValue = name, val
+		} else if n.Data == "input" && name != "" && attr(n, "type") != "submit" {
+			a.Fields[name] = val
+		}
+	})
+	if a.AcceptName == "" || a.Action == "" || a.Filename == "" {
+		return Ack{}, fmt.Errorf("unparseable acknowledgement page")
+	}
+	return a, nil
+}

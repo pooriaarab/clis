@@ -48,6 +48,19 @@ func TestParseDocList(t *testing.T) {
 	}
 }
 
+func TestParseAck(t *testing.T) {
+	a, err := ParseAck(strings.NewReader(string(readGolden(t, "testdata/req-ack.golden"))))
+	if err != nil || a.Action != "/private/supplier/solicitations/99/req-ack" || a.AcceptName != "_eventId_accept" || a.AcceptValue != "Accept" || a.Filename != "Confidentiality-NDA.pdf" || a.Fields["_csrf"] != "tok" {
+		t.Fatalf("%+v %v", a, err)
+	}
+	if _, err := ParseAck(strings.NewReader(string(readGolden(t, "testdata/req-ack-bad.golden")))); err == nil {
+		t.Fatal("unparseable")
+	}
+	if n, err := ParseAck(strings.NewReader("<p>open documents</p>")); err != nil || n.AcceptName != "" {
+		t.Fatalf("no gate %+v %v", n, err)
+	}
+}
+
 func mustParseDocs(t *testing.T, path string) []Doc {
 	t.Helper()
 	docs, err := ParseDocList(strings.NewReader(string(readGolden(t, path))))
