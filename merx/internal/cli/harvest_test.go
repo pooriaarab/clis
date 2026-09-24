@@ -1,12 +1,19 @@
 package cli
 
 import (
+	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"strings"
+	"sync"
+	"syscall"
 	"testing"
 	"time"
 
+	"merx-cli/internal/httpx"
 	"merx-cli/internal/search"
 )
 
@@ -198,5 +205,153 @@ func TestHarvestSincePlansFrom2015(t *testing.T) {
 	got := buf.String()
 	if !strings.HasPrefix(got, "closed 2015-01-01") || strings.Contains(got, "2020-01") {
 		t.Fatalf("got %q", got)
+	}
+}
+
+func recs(ids ...string) []search.Record {
+	out := make([]search.Record, len(ids))
+	for i, id := range ids {
+		out[i] = search.Record{InternalID: id, DetailURL: "https://www.merx.com/d/" + id}
+	}
+	return out
+}
+
+func TestSlicePagedToExhaustion(t *testing.T) {
+	dir, pages, total := t.TempDir(), []int{}, 51
+	sum, err := executePlan(harvestDeps{dir: dir, status: "open",
+		slices: []Slice{{Status: "open", Start: "2020-01-01", End: "2020-01-31"}},
+		count:  func(Slice) (int, error) { return total, nil },
+		page: func(_ Slice, p int) (search.Page, error) {
+			pages = append(pages, p)
+			ids := make([]string, 0, search.PageSize)
+			for i := (p-1)*search.PageSize + 1; i <= total && i <= p*search.PageSize; i++ {
+				ids = append(ids, fmt.Sprintf("n-%d", i))
+			}
+			return search.Page{Total: total, Records: recs(ids...)}, nil
+		},
+		detail: func(string) error { return nil }})
+	store, _ := harvestPaths(dir, "open")
+	known, e2 := loadIDs(store)
+	if err != nil || e2 != nil || len(pages) != 3 || pages[2] != 3 || sum.Captured != total || len(known) != total || !known["n-1"] || !known["n-51"] {
+		t.Fatalf("pages %v cap %d store %d %v %v", pages, sum.Captured, len(known), err, e2)
+	}
+}
+
+func TestResumeMidSliceLosesNothing(t *testing.T) {
+	dir, fail, detailed := t.TempDir(), true, []string{}
+	page := func(_ Slice, p int) (search.Page, error) {
+		if p == 1 {
+			return search.Page{Total: 26, Records: recs("a", "b")}, nil
+		}
+		if fail {
+			return search.Page{}, fmt.Errorf("killed")
+		}
+		return search.Page{Total: 26, Records: recs("c", "d")}, nil
+	}
+	deps := harvestDeps{dir: dir, status: "open",
+		slices: []Slice{{Status: "open", Start: "2020-01-01", End: "2020-01-31"}},
+		count:  func(Slice) (int, error) { return 26, nil }, page: page,
+		detail: func(u string) error { detailed = append(detailed, u); return nil }}
+	if _, err := executePlan(deps); err == nil {
+		t.Fatal("first run should stop mid-slice")
+	}
+	store, manifest := harvestPaths(dir, "open")
+	known, _ := loadIDs(store)
+	man, _ := loadManifest(manifest)
+	if len(known) != 2 || !known["a"] || len(man.Slices) != 0 {
+		t.Fatalf("after kill store %v manifest %+v", known, man.Slices)
+	}
+	fail, detailed, deps.resume = false, nil, true
+	sum, err := executePlan(deps)
+	known, _ = loadIDs(store)
+	if err != nil || len(detailed) != 2 || detailed[0] != "https://www.merx.com/d/c" || sum.Captured != 2 || len(known) != 4 || !known["c"] || !known["d"] {
+		t.Fatalf("resume details %v cap %d store %v %v", detailed, sum.Captured, known, err)
+	}
+}
+
+func TestDetailFailureIsRetriedOnResume(t *testing.T) {
+	dir, failB := t.TempDir(), true
+	page := func(_ Slice, _ int) (search.Page, error) {
+		return search.Page{Total: 2, Records: recs("a", "b")}, nil
+	}
+	detail := func(u string) error {
+		if failB && strings.HasSuffix(u, "/b") {
+			return fmt.Errorf("boom")
+		}
+		return nil
+	}
+	deps := harvestDeps{dir: dir, status: "open",
+		slices: []Slice{{Status: "open", Start: "2020-01-01", End: "2020-01-31"}},
+		count:  func(Slice) (int, error) { return 2, nil }, page: page, detail: detail}
+	sum, err := executePlan(deps)
+	if err != nil {
+		t.Fatal(err)
+	}
+	store, manifest := harvestPaths(dir, "open")
+	known, _ := loadIDs(store)
+	man, _ := loadManifest(manifest)
+	if sum.Captured != 1 || len(known) != 1 || !known["a"] || len(man.Slices) != 0 {
+		t.Fatalf("first run captured %d store %v manifest %+v (a failed detail must not mark the slice done)", sum.Captured, known, man.Slices)
+	}
+	failB, deps.resume = false, true
+	sum, err = executePlan(deps)
+	known, _ = loadIDs(store)
+	man, _ = loadManifest(manifest)
+	if err != nil || sum.Captured != 1 || len(known) != 2 || !known["b"] || len(man.Slices) != 1 {
+		t.Fatalf("resume captured %d store %v manifest %+v err %v (the failed record must be retried)", sum.Captured, known, man.Slices, err)
+	}
+}
+
+func TestCSRFTokenFromPage(t *testing.T) {
+	raw, err := os.ReadFile("testdata/search_form.golden")
+	if err != nil {
+		t.Fatal(err)
+	}
+	const results = `<span class="simpleSolResultsNumResults">1</span>` +
+		`<table><tr class="mets-table-row"><td><a id="searchResultSol_notice_7" href="/d/7" class="solicitation-link"><span class="rowTitle">T</span></a></td></tr></table>`
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet {
+			w.Write(raw)
+			return
+		}
+		_ = r.ParseForm()
+		if r.Form.Get("_csrf") != "SEARCH-TOKEN-9f3" || r.Form.Get("searchAction") != "search" {
+			t.Errorf("posted %v", r.Form)
+		}
+		w.Write([]byte(results))
+	}))
+	t.Cleanup(srv.Close)
+	c := &httpx.Client{HTTP: srv.Client()}
+	form, err := loadSearchForm(c, srv.URL)
+	if err != nil || form.Get("_csrf") != "SEARCH-TOKEN-9f3" {
+		t.Fatalf("csrf %q err %v (must come from the page, not a hardcoded string)", form.Get("_csrf"), err)
+	}
+	pg, err := postSlice(c, srv.URL, form, "OPEN", Slice{Start: "2020-01-01", End: "2020-01-15"}, 2)
+	if err != nil || pg.Total != 1 || len(pg.Records) != 1 || pg.Records[0].InternalID != "7" {
+		t.Fatalf("page %+v err %v", pg, err)
+	}
+}
+
+func TestSignalHandlerLogsOut(t *testing.T) {
+	var hits int
+	srv := httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
+		if strings.HasSuffix(r.URL.Path, "/logout") {
+			hits++
+		}
+	}))
+	old, exited := exitFunc, make(chan struct{})
+	exitFunc = func(int) { close(exited) }
+	t.Cleanup(func() { srv.Close(); exitFunc = old; signal.Reset(os.Interrupt, syscall.SIGTERM) })
+	installLogout(&sync.Once{}, &httpx.Client{HTTP: srv.Client()}, srv.URL)
+	if err := syscall.Kill(syscall.Getpid(), syscall.SIGINT); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case <-exited:
+	case <-time.After(5 * time.Second):
+		t.Fatal("signal handler did not exit")
+	}
+	if hits != 1 {
+		t.Fatalf("logout requests %d, want 1", hits)
 	}
 }

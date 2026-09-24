@@ -243,7 +243,7 @@ func capturedCount(reported int) int {
 
 func harvestCmd() *cobra.Command {
 	var status, since, until string
-	var dry bool
+	var resume, dry bool
 	cmd := &cobra.Command{Use: "harvest", Short: "Build a resumable notice corpus for one status (--since / --until bound the window)", RunE: func(cmd *cobra.Command, _ []string) error {
 		if !harvestStatus[status] {
 			return fmt.Errorf("unknown --status %q (open, awarded, bid-results, closed)", status)
@@ -262,10 +262,10 @@ func harvestCmd() *cobra.Command {
 		if start.After(end) {
 			return fmt.Errorf("--since %s is after --until %s", since, until)
 		}
-		if !dry {
-			return fmt.Errorf("harvest fetch is not implemented; pass --dry-run to print the slice plan")
-		}
 		seeds := monthSlices(status, start, end)
+		if !dry {
+			return runHarvest(status, since, until, resume, seeds)
+		}
 		// Zero count: every calendar month is already a leaf. No network.
 		leaves, _, err := plan(seeds, func(Slice) (int, error) { return 0, nil }, nil)
 		if err != nil {
@@ -280,6 +280,7 @@ func harvestCmd() *cobra.Command {
 		return nil
 	}}
 	cmd.Flags().StringVar(&status, "status", "open", "harvest: open, awarded, bid-results, closed")
+	cmd.Flags().BoolVar(&resume, "resume", false, "continue without refetching stored records")
 	cmd.Flags().BoolVar(&dry, "dry-run", false, "print planned slices without fetching")
 	cmd.Flags().StringVar(&since, "since", harvestEpoch, "first published date YYYY-MM-DD")
 	cmd.Flags().StringVar(&until, "until", "", "last published date YYYY-MM-DD (default today)")
