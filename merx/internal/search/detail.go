@@ -4,6 +4,7 @@ package search
 import (
 	"fmt"
 	"io"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -117,7 +118,7 @@ func ParseCategories(r io.Reader) (merx, gsin, unspsc []Category, err error) {
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	root, err := html.Parse(strings.NewReader(unwrap(string(raw))))
+	root, err := html.Parse(strings.NewReader(Unwrap(string(raw))))
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -193,7 +194,9 @@ func idFromPath(s string) string {
 	return ""
 }
 
-func unwrap(s string) string {
+// Unwrap pulls the HTML fragment out of a MERX tab's text/javascript
+// response. Tabs inject markup with $("#innerTabContent").html('...').
+func Unwrap(s string) string {
 	const p = `$("#innerTabContent").html('`
 	i := strings.Index(s, p)
 	if i < 0 {
@@ -254,4 +257,38 @@ func phone(s string) bool {
 		}
 	}
 	return d >= 7
+}
+
+// Doc is one attachment-preview-* link from a docs-items tab.
+type Doc struct{ ID, Filename, URL string }
+
+// ParseDocList reads attachment-preview-* anchors from a docs-items tab
+// (JS-wrapped or already unwrapped HTML). Other links are ignored.
+func ParseDocList(r io.Reader) ([]Doc, error) {
+	raw, err := io.ReadAll(r)
+	if err != nil {
+		return nil, err
+	}
+	root, err := html.Parse(strings.NewReader(Unwrap(string(raw))))
+	if err != nil {
+		return nil, err
+	}
+	var out []Doc
+	each(root, func(n *html.Node) bool { return n.Type == html.ElementNode && n.Data == "a" }, func(n *html.Node) {
+		href := attr(n, "href")
+		i := strings.Index(href, "/docs-items/")
+		if i < 0 || !strings.Contains(href, "attachment-preview-") {
+			return
+		}
+		id := href[i+len("/docs-items/"):]
+		if j := strings.IndexAny(id, "/?#"); j > 0 {
+			id = id[:j]
+		}
+		name := text(n)
+		if name == "" {
+			name = id
+		}
+		out = append(out, Doc{id, filepath.Base(name), href})
+	})
+	return out, nil
 }
