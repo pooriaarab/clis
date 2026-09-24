@@ -1,10 +1,10 @@
 module merx-cli
 
-go 1.22
+go 1.25.0
 
 require (
 	github.com/spf13/cobra v1.9.1
-	golang.org/x/net v0.33.0
+	golang.org/x/net v0.55.0
 )
 
 require (
