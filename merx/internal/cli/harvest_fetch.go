@@ -1,8 +1,6 @@
-// Fetch loop for merx harvest. Single worker. Every request goes through httpx.
 package cli
 
 import (
-	"bytes"
 	"fmt"
 	"io"
 	"net/http"
@@ -25,12 +23,10 @@ import (
 
 const privateSearchPath = "/private/supplier/solicitations/search"
 
-// privateStatus is what the authenticated search form posts.
 var privateStatus = map[string]string{
 	"open": "OPEN", "closed": "CLOSED", "awarded": "AWARD", "bid-results": "AWARD",
 }
 
-// harvestDeps wires the plan loop to live HTTP or to test fakes.
 type harvestDeps struct {
 	dir, status, since, until string
 	slices                    []Slice
@@ -77,8 +73,7 @@ func executePlan(d harvestDeps) (Summary, error) {
 		return sum, err
 	}
 	defer f.Close()
-	// Append each record, then checkpoint the slice. The reverse loses
-	// rows if the process dies between the two writes.
+	// Append the record, then checkpoint. Reverse order loses rows on crash.
 	for _, leaf := range leaves {
 		rep := totals[key(leaf)]
 		pages := (rep + search.PageSize - 1) / search.PageSize
@@ -107,8 +102,7 @@ func executePlan(d harvestDeps) (Summary, error) {
 			}
 			fmt.Fprintf(os.Stderr, "harvest %s %s..%s page %d/%d\n", d.status, leaf.Start, leaf.End, p, pages)
 		}
-		e := Entry{Status: d.status, Start: leaf.Start, End: leaf.End,
-			Reported: rep, Captured: got,
+		e := Entry{Status: d.status, Start: leaf.Start, End: leaf.End, Reported: rep, Captured: got,
 			CompletedAt: time.Now().UTC().Format(time.RFC3339), Incomplete: incomplete(leaf, rep)}
 		sum.Slices++
 		sum.Reported += rep
@@ -123,49 +117,6 @@ func executePlan(d harvestDeps) (Summary, error) {
 		}
 	}
 	return sum, nil
-}
-
-func htmlAttr(n *html.Node, key string) string {
-	for _, a := range n.Attr {
-		if a.Key == key {
-			return a.Val
-		}
-	}
-	return ""
-}
-
-// parseSearchForm reads every named <input> from the private search form.
-func parseSearchForm(r io.Reader) (url.Values, error) {
-	doc, err := html.Parse(r)
-	if err != nil {
-		return nil, err
-	}
-	v := url.Values{}
-	var take, walk func(*html.Node)
-	take = func(n *html.Node) {
-		if n.Type == html.ElementNode && n.Data == "input" {
-			if name := htmlAttr(n, "name"); name != "" {
-				v.Set(name, htmlAttr(n, "value"))
-			}
-		}
-		for c := n.FirstChild; c != nil; c = c.NextSibling {
-			take(c)
-		}
-	}
-	walk = func(n *html.Node) {
-		if n.Type == html.ElementNode && n.Data == "form" && strings.Contains(htmlAttr(n, "action"), "solicitations/search") {
-			take(n)
-			return
-		}
-		for c := n.FirstChild; c != nil && v.Get("_csrf") == ""; c = c.NextSibling {
-			walk(c)
-		}
-	}
-	walk(doc)
-	if v.Get("_csrf") == "" {
-		return nil, fmt.Errorf("search page has no _csrf field")
-	}
-	return v, nil
 }
 
 func loadSearchForm(c *httpx.Client, portal string) (url.Values, error) {
@@ -185,29 +136,26 @@ func loadSearchForm(c *httpx.Client, portal string) (url.Values, error) {
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("search page: got HTTP %d", resp.StatusCode)
 	}
-	return parseSearchForm(bytes.NewReader(body))
-}
-
-// csrfToken reads the _csrf field off the authenticated search page.
-func csrfToken(c *httpx.Client, portal string) (string, error) {
-	v, err := loadSearchForm(c, portal)
+	doc, err := html.Parse(strings.NewReader(string(body)))
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	return v.Get("_csrf"), nil
+	_, fields, ok := session.FindForm(doc, "_csrf", "searchAction")
+	if !ok || fields["_csrf"] == "" {
+		return nil, fmt.Errorf("search page has no _csrf field")
+	}
+	v := make(url.Values, len(fields))
+	for k, val := range fields {
+		v.Set(k, val)
+	}
+	return v, nil
 }
 
-func cloneValues(in url.Values) url.Values {
-	out := make(url.Values, len(in))
-	for k, vs := range in {
-		out[k] = append([]string(nil), vs...)
-	}
-	return out
-}
-
-// postSlice runs one RANGE query page, starting from the page's own form.
 func postSlice(c *httpx.Client, portal string, form url.Values, priv string, s Slice, page int) (search.Page, error) {
-	v := cloneValues(form)
+	v := make(url.Values, len(form))
+	for k, vs := range form {
+		v[k] = append([]string(nil), vs...)
+	}
 	v.Set("status", priv)
 	v.Set("publishedDate.dateType", "RANGE")
 	v.Set("publishedDate.localRangeStart", s.Start)
@@ -215,8 +163,7 @@ func postSlice(c *httpx.Client, portal string, form url.Values, priv string, s S
 	v.Set("pageNumber", strconv.Itoa(page))
 	v.Set("pageSize", strconv.Itoa(search.PageSize))
 	enc := v.Encode()
-	dest := strings.TrimRight(portal, "/") + privateSearchPath
-	req, err := httpx.NewRequest(http.MethodPost, dest)
+	req, err := httpx.NewRequest(http.MethodPost, strings.TrimRight(portal, "/")+privateSearchPath)
 	if err != nil {
 		return search.Page{}, err
 	}
@@ -236,7 +183,7 @@ func postSlice(c *httpx.Client, portal string, form url.Values, priv string, s S
 	if resp.StatusCode != http.StatusOK {
 		return search.Page{}, fmt.Errorf("slice %s..%s page %d: got HTTP %d", s.Start, s.End, page, resp.StatusCode)
 	}
-	return search.Parse(bytes.NewReader(body))
+	return search.Parse(strings.NewReader(string(body)))
 }
 
 func fetchDetail(c *httpx.Client, detailURL string) error {
@@ -261,8 +208,8 @@ func fetchDetail(c *httpx.Client, detailURL string) error {
 
 var exitFunc = os.Exit
 
-// logoutOnce runs Logout at most once: the signal handler and the deferred
-// cleanup in runHarvest can otherwise both fire it for the same session.
+// logoutOnce runs Logout at most once so the signal handler and runHarvest's
+// deferred cleanup cannot both fire it for the same session.
 func logoutOnce(once *sync.Once, c *httpx.Client, portal string) {
 	once.Do(func() {
 		if err := session.Logout(c, portal); err != nil {
@@ -271,8 +218,9 @@ func logoutOnce(once *sync.Once, c *httpx.Client, portal string) {
 	})
 }
 
-// installLogout ends the server session on SIGINT/SIGTERM. #96 is unverified.
-func installLogout(once *sync.Once, c *httpx.Client, portal string) {
+// installLogout logs out on SIGINT/SIGTERM. Caller must stop() on success or a
+// later signal still overrides the exit code. #96 is unverified.
+func installLogout(once *sync.Once, c *httpx.Client, portal string) func() {
 	ch := make(chan os.Signal, 2)
 	signal.Notify(ch, os.Interrupt, syscall.SIGTERM)
 	go func() {
@@ -281,6 +229,7 @@ func installLogout(once *sync.Once, c *httpx.Client, portal string) {
 		logoutOnce(once, c, portal)
 		exitFunc(1)
 	}()
+	return func() { signal.Stop(ch) }
 }
 
 func runHarvest(status, since, until string, resume bool, seeds []Slice) error {
@@ -308,8 +257,9 @@ func runHarvest(status, since, until string, resume bool, seeds []Slice) error {
 	}
 	portal := session.Production.Portal
 	var once sync.Once
-	installLogout(&once, c, portal)
+	stop := installLogout(&once, c, portal)
 	defer func() {
+		stop()
 		logoutOnce(&once, c, portal)
 		os.Remove(jarPath)
 	}()
