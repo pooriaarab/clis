@@ -1,9 +1,1 @@
-<!DOCTYPE html><html><body>
-<form action="/logout" method="post"><input type="hidden" name="_csrf" value="LOGOUT-CSRF"/></form>
-<form id="searchForm" action="/private/supplier/solicitations/search" method="post">
-<input type="hidden" name="_csrf" value="SEARCH-TOKEN-9f3"/>
-<input type="hidden" name="searchAction" value="search"/>
-<input type="hidden" name="publishedDate.dateType" value="RANGE"/>
-<input name="publishedDate.localRangeStart"/><input name="publishedDate.localRangeEnd"/>
-<input type="hidden" name="pageNumber" value="1"/><input type="hidden" name="pageSize" value="25"/>
-</form></body></html>
+<!DOCTYPE html><html><body><form action="/logout" method="post"><input type="hidden" name="_csrf" value="LOGOUT-CSRF"/></form><form id="searchForm" action="/private/supplier/solicitations/search" method="post"><input type="hidden" name="_csrf" value="SEARCH-TOKEN-9f3"/><input type="hidden" name="searchAction" value="search"/><input type="hidden" name="publishedDate.dateType" value="RANGE"/><input name="publishedDate.localRangeStart"/><input name="publishedDate.localRangeEnd"/><input type="hidden" name="pageNumber" value="1"/><input type="hidden" name="pageSize" value="25"/></form></body></html>

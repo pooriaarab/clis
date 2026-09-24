@@ -216,50 +216,29 @@ func recs(ids ...string) []search.Record {
 	return out
 }
 
-func pageIDs(total, p int) []string {
-	start := (p-1)*search.PageSize + 1
-	end := start + search.PageSize - 1
-	if end > total {
-		end = total
-	}
-	ids := make([]string, 0, end-start+1)
-	for i := start; i <= end; i++ {
-		ids = append(ids, fmt.Sprintf("n-%d", i))
-	}
-	return ids
-}
-
 func TestSlicePagedToExhaustion(t *testing.T) {
-	dir := t.TempDir()
-	const total = 51
-	var pages []int
+	dir, pages, total := t.TempDir(), []int{}, 51
 	sum, err := executePlan(harvestDeps{dir: dir, status: "open",
 		slices: []Slice{{Status: "open", Start: "2020-01-01", End: "2020-01-31"}},
 		count:  func(Slice) (int, error) { return total, nil },
 		page: func(_ Slice, p int) (search.Page, error) {
 			pages = append(pages, p)
-			return search.Page{Total: total, Records: recs(pageIDs(total, p)...)}, nil
+			ids := make([]string, 0, search.PageSize)
+			for i := (p-1)*search.PageSize + 1; i <= total && i <= p*search.PageSize; i++ {
+				ids = append(ids, fmt.Sprintf("n-%d", i))
+			}
+			return search.Page{Total: total, Records: recs(ids...)}, nil
 		},
 		detail: func(string) error { return nil }})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(pages) != 3 || pages[2] != 3 || sum.Captured != total {
-		t.Fatalf("pages %v captured %d", pages, sum.Captured)
-	}
 	store, _ := harvestPaths(dir, "open")
-	known, err := loadIDs(store)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(known) != total || !known["n-1"] || !known["n-51"] {
-		t.Fatalf("store %d ids", len(known))
+	known, e2 := loadIDs(store)
+	if err != nil || e2 != nil || len(pages) != 3 || pages[2] != 3 || sum.Captured != total || len(known) != total || !known["n-1"] || !known["n-51"] {
+		t.Fatalf("pages %v cap %d store %d %v %v", pages, sum.Captured, len(known), err, e2)
 	}
 }
 
 func TestResumeMidSliceLosesNothing(t *testing.T) {
-	dir := t.TempDir()
-	fail, detailed := true, []string{}
+	dir, fail, detailed := t.TempDir(), true, []string{}
 	page := func(_ Slice, p int) (search.Page, error) {
 		if p == 1 {
 			return search.Page{Total: 26, Records: recs("a", "b")}, nil
@@ -284,15 +263,9 @@ func TestResumeMidSliceLosesNothing(t *testing.T) {
 	}
 	fail, detailed, deps.resume = false, nil, true
 	sum, err := executePlan(deps)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(detailed) != 2 || detailed[0] != "https://www.merx.com/d/c" || sum.Captured != 2 {
-		t.Fatalf("resume details %v captured %d", detailed, sum.Captured)
-	}
 	known, _ = loadIDs(store)
-	if len(known) != 4 || !known["c"] || !known["d"] {
-		t.Fatalf("store after resume %v", known)
+	if err != nil || len(detailed) != 2 || detailed[0] != "https://www.merx.com/d/c" || sum.Captured != 2 || len(known) != 4 || !known["c"] || !known["d"] {
+		t.Fatalf("resume details %v cap %d store %v %v", detailed, sum.Captured, known, err)
 	}
 }
 
@@ -301,16 +274,14 @@ func TestCSRFTokenFromPage(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	const results = `<html><body><span class="simpleSolResultsNumResults">1</span>` +
-		`<table><tr class="mets-table-row"><td><a id="searchResultSol_notice_7" href="/d/7" class="solicitation-link"><span class="rowTitle">T</span></a></td></tr></table></body></html>`
+	const results = `<span class="simpleSolResultsNumResults">1</span>` +
+		`<table><tr class="mets-table-row"><td><a id="searchResultSol_notice_7" href="/d/7" class="solicitation-link"><span class="rowTitle">T</span></a></td></tr></table>`
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodGet {
 			w.Write(raw)
 			return
 		}
-		if err := r.ParseForm(); err != nil {
-			t.Fatal(err)
-		}
+		_ = r.ParseForm()
 		if r.Form.Get("_csrf") != "SEARCH-TOKEN-9f3" || r.Form.Get("searchAction") != "search" {
 			t.Errorf("posted %v", r.Form)
 		}
@@ -318,13 +289,9 @@ func TestCSRFTokenFromPage(t *testing.T) {
 	}))
 	t.Cleanup(srv.Close)
 	c := &httpx.Client{HTTP: srv.Client()}
-	tok, err := csrfToken(c, srv.URL)
-	if err != nil || tok != "SEARCH-TOKEN-9f3" {
-		t.Fatalf("csrf %q err %v (must come from the page, not a hardcoded string)", tok, err)
-	}
 	form, err := loadSearchForm(c, srv.URL)
-	if err != nil {
-		t.Fatal(err)
+	if err != nil || form.Get("_csrf") != "SEARCH-TOKEN-9f3" {
+		t.Fatalf("csrf %q err %v (must come from the page, not a hardcoded string)", form.Get("_csrf"), err)
 	}
 	pg, err := postSlice(c, srv.URL, form, "OPEN", Slice{Start: "2020-01-01", End: "2020-01-15"}, 2)
 	if err != nil || pg.Total != 1 || len(pg.Records) != 1 || pg.Records[0].InternalID != "7" {
@@ -334,15 +301,14 @@ func TestCSRFTokenFromPage(t *testing.T) {
 
 func TestSignalHandlerLogsOut(t *testing.T) {
 	var hits int
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
 		if strings.HasSuffix(r.URL.Path, "/logout") {
 			hits++
 		}
 	}))
-	t.Cleanup(srv.Close)
 	old, exited := exitFunc, make(chan struct{})
 	exitFunc = func(int) { close(exited) }
-	t.Cleanup(func() { exitFunc = old; signal.Reset(os.Interrupt, syscall.SIGTERM) })
+	t.Cleanup(func() { srv.Close(); exitFunc = old; signal.Reset(os.Interrupt, syscall.SIGTERM) })
 	installLogout(&sync.Once{}, &httpx.Client{HTTP: srv.Client()}, srv.URL)
 	if err := syscall.Kill(syscall.Getpid(), syscall.SIGINT); err != nil {
 		t.Fatal(err)
