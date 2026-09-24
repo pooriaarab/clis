@@ -28,7 +28,8 @@ func TestAcceptRecordsFilenameAndTime(t *testing.T) {
 	posts, dest := 0, t.TempDir()
 	got, err := Fetch(testClient(), docsServer(t, read(t, "../search/testdata/req-ack.golden"), true, &posts, nil, []byte("pdf"), "application/pdf", "", nil).URL, "99", dest)
 	raw, _ := os.ReadFile(filepath.Join(dest, "spec.pdf"))
-	if err != nil || posts != 1 || got.Acceptances[0].Filename != "Confidentiality-NDA.pdf" || loadManifest(dest).Acceptances[0] != got.Acceptances[0] {
+	saved, loadErr := loadManifest(dest)
+	if err != nil || posts != 1 || got.Acceptances[0].Filename != "Confidentiality-NDA.pdf" || loadErr != nil || saved.Acceptances[0] != got.Acceptances[0] {
 		t.Fatalf("%d %+v %v", posts, got, err)
 	} else if _, e := time.Parse(time.RFC3339, got.Acceptances[0].AcceptedAt); e != nil || string(raw) != "pdf" {
 		t.Fatalf("time/file %v %q", e, raw)

@@ -55,7 +55,10 @@ func Fetch(c *httpx.Client, portal, id, dest string) (*Manifest, error) {
 	if err := os.MkdirAll(dest, 0o755); err != nil {
 		return nil, err
 	}
-	man := loadManifest(dest)
+	man, err := loadManifest(dest)
+	if err != nil {
+		return nil, err
+	}
 	man.SolicitationID = id
 	list, err := abs(portal, "/public/solicitations/"+id+"/abstract/docs-items")
 	if err != nil {
@@ -125,7 +128,7 @@ func acceptOrSkip(c *httpx.Client, portal, page, id, dest string, man *Manifest)
 	if err != nil {
 		return false, err
 	}
-	if st, _, _, _, _, err = hop(c, http.MethodPost, target, vals, false, 1); err != nil {
+	if st, _, _, _, _, err = hop(c, http.MethodPost, target, vals, false, 8); err != nil {
 		return false, err
 	} else if st >= 400 {
 		return false, fmt.Errorf("accept POST %s: HTTP %d", target, st)
@@ -230,12 +233,13 @@ func hop(c *httpx.Client, method, rawurl string, vals url.Values, xhr bool, max 
 	return 0, "", nil, "", "", fmt.Errorf("too many redirects")
 }
 
-func loadManifest(dir string) Manifest {
+func loadManifest(dir string) (Manifest, error) {
 	var man Manifest
-	if raw, err := os.ReadFile(filepath.Join(dir, manFile)); err == nil {
-		json.Unmarshal(raw, &man)
+	raw, err := os.ReadFile(filepath.Join(dir, manFile))
+	if err != nil {
+		return man, nil
 	}
-	return man
+	return man, json.Unmarshal(raw, &man)
 }
 func writeManifest(dir string, man *Manifest) error {
 	man.Acceptances, man.Documents = append([]Acceptance{}, man.Acceptances...), append([]File{}, man.Documents...)
