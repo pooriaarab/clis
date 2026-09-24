@@ -265,10 +265,14 @@ func readResp(c *httpx.Client, req *http.Request) (int, string, []byte, error) {
 	return resp.StatusCode, resp.Header.Get("Location"), raw, err
 }
 
-func do(c *httpx.Client, method, rawurl string, vals url.Values) (int, []byte, error) {
+// do returns the URL it finally landed on (after following any 3xx
+// chain) along with the status and body, so callers resolving a
+// relative URL out of the response (e.g. a form action) use the right
+// base instead of the URL that was originally requested.
+func do(c *httpx.Client, method, rawurl string, vals url.Values) (string, int, []byte, error) {
 	req, err := httpx.NewRequest(method, rawurl)
 	if err != nil {
-		return 0, nil, err
+		return rawurl, 0, nil, err
 	}
 	if vals != nil {
 		enc := vals.Encode()
@@ -278,32 +282,33 @@ func do(c *httpx.Client, method, rawurl string, vals url.Values) (int, []byte, e
 	}
 	st, loc, body, err := readResp(c, req)
 	if err != nil {
-		return 0, nil, err
+		return rawurl, 0, nil, err
 	}
 	return follow(c, rawurl, loc, st, body)
 }
 
 // follow walks 3xx hops. The credential POST commonly answers 302 first;
-// stopping there hid every real failure as "got HTTP 302".
-func follow(c *httpx.Client, current, loc string, status int, body []byte) (int, []byte, error) {
+// stopping there hid every real failure as "got HTTP 302". It returns
+// the URL of the final hop alongside the status and body.
+func follow(c *httpx.Client, current, loc string, status int, body []byte) (string, int, []byte, error) {
 	for i := 0; status >= 300 && status <= 399 && i < maxHops; i++ {
 		if loc == "" {
-			return status, body, fmt.Errorf("redirect with empty Location (HTTP %d)", status)
+			return current, status, body, fmt.Errorf("redirect with empty Location (HTTP %d)", status)
 		}
 		current = resolveURL(current, loc)
 		req, err := httpx.NewRequest(http.MethodGet, current)
 		if err != nil {
-			return 0, nil, err
+			return current, 0, nil, err
 		}
 		status, loc, body, err = readResp(c, req)
 		if err != nil {
-			return 0, nil, err
+			return current, 0, nil, err
 		}
 	}
 	if status >= 300 && status <= 399 {
-		return status, body, fmt.Errorf("too many redirects (HTTP %d)", status)
+		return current, status, body, fmt.Errorf("too many redirects (HTTP %d)", status)
 	}
-	return status, body, nil
+	return current, status, body, nil
 }
 
 func toValues(m map[string]string) url.Values {
@@ -327,14 +332,20 @@ func parseForm(body []byte, want ...string) (string, map[string]string, error) {
 }
 
 func step(c *httpx.Client, method, rawurl string, vals url.Values, label string) ([]byte, error) {
-	st, body, err := do(c, method, rawurl, vals)
+	_, body, err := stepURL(c, method, rawurl, vals, label)
+	return body, err
+}
+
+// stepURL is step, plus the URL the request finally landed on.
+func stepURL(c *httpx.Client, method, rawurl string, vals url.Values, label string) (string, []byte, error) {
+	finalURL, st, body, err := do(c, method, rawurl, vals)
 	if err != nil {
-		return nil, err
+		return finalURL, nil, err
 	}
 	if st < 200 || st >= 300 {
-		return body, fmt.Errorf("%s: got HTTP %d", label, st)
+		return finalURL, body, fmt.Errorf("%s: got HTTP %d", label, st)
 	}
-	return body, nil
+	return finalURL, body, nil
 }
 
 // Valid reports whether the homepage has dropped the anonymous-visitor marker.
@@ -381,7 +392,7 @@ func Login(c *httpx.Client, ep Endpoints, user, pass string) error {
 	vals.Set("j_username", user)
 	vals.Set("j_password", pass)
 	// Follow the 302, then classify from the landed page text.
-	st, body, err := do(c, http.MethodPost, resolveURL(ep.IDP, loginAction), vals)
+	_, st, body, err := do(c, http.MethodPost, resolveURL(ep.IDP, loginAction), vals)
 	if err != nil {
 		return err
 	}
@@ -431,12 +442,12 @@ func submitSAMLForms(c *httpx.Client, current string, body []byte) error {
 		if !ok {
 			return nil
 		}
-		current = resolveURL(current, action)
-		next, err := step(c, http.MethodPost, current, toValues(fields), "SAML logout")
+		target := resolveURL(current, action)
+		landed, next, err := stepURL(c, http.MethodPost, target, toValues(fields), "SAML logout")
 		if err != nil {
 			return err
 		}
-		body = next
+		current, body = landed, next
 	}
 	return fmt.Errorf("SAML logout: too many form posts")
 }
@@ -459,9 +470,9 @@ func Logout(c *httpx.Client, portal string) error {
 	}
 
 	logoutURL := portal + "/public/authentication/logout"
-	body, reqErr := step(c, http.MethodGet, logoutURL, nil, "portal logout")
+	landed, body, reqErr := stepURL(c, http.MethodGet, logoutURL, nil, "portal logout")
 	if reqErr == nil {
-		reqErr = submitSAMLForms(c, logoutURL, body)
+		reqErr = submitSAMLForms(c, landed, body)
 	}
 
 	authed, err = Valid(c, portal)

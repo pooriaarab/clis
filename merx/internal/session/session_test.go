@@ -478,3 +478,39 @@ func TestLogoutDoesNotClaimSuccessWhenSessionRemains(t *testing.T) {
 		t.Fatalf("error should say the session remains: %v", err)
 	}
 }
+
+// A relative form action must resolve against the page it came from, not
+// the URL that was originally requested. /public/authentication/logout
+// redirects to /saml/logout, whose form action is relative ("SLO"): the
+// right target is /saml/SLO, not /public/authentication/SLO.
+func TestLogoutResolvesRelativeSAMLFormActionAgainstLandedURL(t *testing.T) {
+	var sloHits int
+	mux := http.NewServeMux()
+	mux.HandleFunc("/public/authentication/logout", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/saml/logout", http.StatusFound)
+	})
+	mux.HandleFunc("/saml/logout", func(w http.ResponseWriter, r *http.Request) {
+		io.WriteString(w, `<html><body><form action="SLO" method="post"><input type="hidden" name="SAMLRequest" value="LOREQ"/></form></body></html>`)
+	})
+	mux.HandleFunc("/saml/SLO", func(w http.ResponseWriter, r *http.Request) {
+		sloHits++
+		http.SetCookie(w, &http.Cookie{Name: "MERXSESSION", MaxAge: -1, Path: "/"})
+		http.Redirect(w, r, "/", http.StatusFound)
+	})
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		if c, err := r.Cookie("MERXSESSION"); err == nil && c.Value == "1" {
+			io.WriteString(w, homeAuthed)
+			return
+		}
+		io.WriteString(w, homeAnon)
+	})
+	srv := httptest.NewServer(mux)
+	t.Cleanup(srv.Close)
+
+	if err := Logout(testClient(seedSession(t, srv.URL, true)), srv.URL); err != nil {
+		t.Fatal(err)
+	}
+	if sloHits != 1 {
+		t.Fatalf("hits on /saml/SLO = %d, want 1", sloHits)
+	}
+}
