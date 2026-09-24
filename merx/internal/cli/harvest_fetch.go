@@ -60,7 +60,14 @@ func executePlan(d harvestDeps) (Summary, error) {
 		man.Until = d.until
 	}
 	if d.undated != nil {
-		man.Undated = mergeUndated(man.Undated, d.undated)
+		// Merge everything except FacetPassRan now: Looked/Exists/Reported
+		// come from the probe, which already ran to completion. FacetPassRan
+		// itself is only true once the leaf loop below finishes without
+		// error, so a crash or early return mid-pass can't leave the
+		// manifest claiming a facet pass completed when it did not.
+		pending := *d.undated
+		pending.FacetPassRan = false
+		man.Undated = mergeUndated(man.Undated, &pending)
 	} else if man.Undated == nil {
 		man.Undated = defaultUndated()
 	}
@@ -132,6 +139,12 @@ func executePlan(d harvestDeps) (Summary, error) {
 			continue
 		}
 		man.Slices = append(man.Slices, e)
+		if err := saveManifest(manifest, man); err != nil {
+			return sum, err
+		}
+	}
+	if d.undated != nil && d.undated.FacetPassRan {
+		man.Undated = mergeUndated(man.Undated, d.undated)
 		if err := saveManifest(manifest, man); err != nil {
 			return sum, err
 		}
