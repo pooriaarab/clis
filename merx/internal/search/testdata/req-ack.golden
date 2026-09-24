@@ -1,0 +1,1 @@
+<html><body><form action="/private/supplier/solicitations/99/req-ack" method="post"><input type="hidden" name="_csrf" value="tok"/><a href="/files/Confidentiality-NDA.pdf">Confidentiality-NDA.pdf</a><button type="submit" name="_eventId_accept" value="Accept">Accept</button><button type="submit" name="_eventId_decline" value="Decline">Decline</button></form></body></html>

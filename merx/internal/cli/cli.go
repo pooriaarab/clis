@@ -8,7 +8,9 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"merx-cli/internal/docs"
 	"merx-cli/internal/httpx"
+	"merx-cli/internal/session"
 )
 
 const portal = "https://www.merx.com/"
@@ -25,7 +27,7 @@ func root() *cobra.Command {
 	cmd.PersistentFlags().StringVar(&flagCache, "cache-dir", "", "cache directory")
 	cmd.PersistentFlags().BoolVar(&flagJSON, "json", false, "JSON on stdout")
 	cmd.CompletionOptions.DisableDefaultCmd = true
-	cmd.AddCommand(doctorCmd(), searchCmd(), showCmd(), harvestCmd(), loginCmd(), logoutCmd(), authCmd())
+	cmd.AddCommand(doctorCmd(), searchCmd(), showCmd(), harvestCmd(), documentsCmd(), loginCmd(), logoutCmd(), authCmd())
 	return cmd
 }
 
@@ -117,4 +119,32 @@ func emit(v any) error {
 	enc := json.NewEncoder(os.Stdout)
 	enc.SetIndent("", "  ")
 	return enc.Encode(v)
+}
+
+func documentsCmd() *cobra.Command {
+	return &cobra.Command{Use: "documents <internal-id>", Short: "Download attachments for one solicitation", Args: cobra.ExactArgs(1), RunE: func(_ *cobra.Command, args []string) error {
+		dir, err := cacheDir()
+		if err != nil {
+			return err
+		}
+		j, c, _, err := openSession()
+		if err != nil {
+			return err
+		}
+		man, err := docs.Fetch(c, session.Production.Portal, args[0], filepath.Join(dir, "documents", args[0]))
+		if err != nil {
+			return err
+		}
+		if err := j.Save(); err != nil {
+			return err
+		}
+		if flagJSON {
+			return emit(man)
+		}
+		fmt.Printf("solicitation %s\n", man.SolicitationID)
+		for _, a := range man.Acceptances {
+			fmt.Printf("accepted %s at %s\n", a.Filename, a.AcceptedAt)
+		}
+		return nil
+	}}
 }
