@@ -240,10 +240,16 @@ func fixtureServer(user, pass, outcome string, credPosts, acsPosts, logoutHits *
 		}
 		http.SetCookie(w, &http.Cookie{Name: "MERXSESSION", Value: "1", Path: "/"})
 	})
-	mux.HandleFunc("/logout", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/public/authentication/logout", func(w http.ResponseWriter, r *http.Request) {
 		*logoutHits++
+		http.Redirect(w, r, "/saml/logout", http.StatusFound)
+	})
+	mux.HandleFunc("/saml/logout", func(w http.ResponseWriter, r *http.Request) {
 		http.SetCookie(w, &http.Cookie{Name: "MERXSESSION", MaxAge: -1, Path: "/"})
 		http.Redirect(w, r, "/", http.StatusFound)
+	})
+	mux.HandleFunc("/logout", func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "wrong logout path", http.StatusNotFound)
 	})
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		if c, err := r.Cookie("MERXSESSION"); err == nil && c.Value == "1" {
@@ -313,5 +319,198 @@ func TestLoginOutcomes(t *testing.T) {
 				t.Fatalf("conflict error must mention merx logout: %v", err)
 			}
 		})
+	}
+}
+
+func seedSession(t *testing.T, portal string, authed bool) *Jar {
+	t.Helper()
+	j, err := Open(filepath.Join(t.TempDir(), JarFile))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !authed {
+		return j
+	}
+	u, err := url.Parse(portal + "/")
+	if err != nil {
+		t.Fatal(err)
+	}
+	j.SetCookies(u, []*http.Cookie{{Name: "MERXSESSION", Value: "1", Path: "/"}})
+	return j
+}
+
+func TestLogoutTargetsPublicAuthenticationPath(t *testing.T) {
+	var right, wrong int
+	mux := http.NewServeMux()
+	mux.HandleFunc("/public/authentication/logout", func(w http.ResponseWriter, r *http.Request) {
+		right++
+		http.SetCookie(w, &http.Cookie{Name: "MERXSESSION", MaxAge: -1, Path: "/"})
+		http.Redirect(w, r, "/", http.StatusFound)
+	})
+	mux.HandleFunc("/logout", func(w http.ResponseWriter, r *http.Request) {
+		wrong++
+		http.Error(w, "old path", http.StatusNotFound)
+	})
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		if c, err := r.Cookie("MERXSESSION"); err == nil && c.Value == "1" {
+			io.WriteString(w, homeAuthed)
+			return
+		}
+		io.WriteString(w, homeAnon)
+	})
+	srv := httptest.NewServer(mux)
+	t.Cleanup(srv.Close)
+
+	if err := Logout(testClient(seedSession(t, srv.URL, true)), srv.URL); err != nil {
+		t.Fatal(err)
+	}
+	if right != 1 {
+		t.Fatalf("hits on /public/authentication/logout = %d, want 1", right)
+	}
+	if wrong != 0 {
+		t.Fatalf("hits on /logout = %d, want 0", wrong)
+	}
+}
+
+func TestLogoutFollowsRedirectChainAndSAMLForms(t *testing.T) {
+	var hops []string
+	var samlReq, samlResp string
+	mux := http.NewServeMux()
+	mux.HandleFunc("/public/authentication/logout", func(w http.ResponseWriter, r *http.Request) {
+		hops = append(hops, r.Method+" "+r.URL.Path)
+		http.Redirect(w, r, "/saml/logout", http.StatusFound)
+	})
+	mux.HandleFunc("/saml/logout", func(w http.ResponseWriter, r *http.Request) {
+		hops = append(hops, r.Method+" "+r.URL.Path)
+		io.WriteString(w, `<html><body><form action="/idp/SLO" method="post"><input type="hidden" name="SAMLRequest" value="LOREQ"/><input type="hidden" name="RelayState" value="out"/></form></body></html>`)
+	})
+	mux.HandleFunc("/idp/SLO", func(w http.ResponseWriter, r *http.Request) {
+		if err := r.ParseForm(); err != nil {
+			t.Errorf("parse form: %v", err)
+		}
+		samlReq = r.Form.Get("SAMLRequest")
+		hops = append(hops, r.Method+" "+r.URL.Path)
+		io.WriteString(w, `<html><body><form action="/saml/SingleLogout" method="post"><input type="hidden" name="SAMLResponse" value="LORESP"/><input type="hidden" name="RelayState" value="out"/></form></body></html>`)
+	})
+	mux.HandleFunc("/saml/SingleLogout", func(w http.ResponseWriter, r *http.Request) {
+		if err := r.ParseForm(); err != nil {
+			t.Errorf("parse form: %v", err)
+		}
+		samlResp = r.Form.Get("SAMLResponse")
+		hops = append(hops, r.Method+" "+r.URL.Path)
+		http.SetCookie(w, &http.Cookie{Name: "MERXSESSION", MaxAge: -1, Path: "/"})
+		http.Redirect(w, r, "/", http.StatusFound)
+	})
+	mux.HandleFunc("/logout", func(w http.ResponseWriter, r *http.Request) {
+		t.Errorf("old /logout path was requested")
+	})
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		if c, err := r.Cookie("MERXSESSION"); err == nil && c.Value == "1" {
+			io.WriteString(w, homeAuthed)
+			return
+		}
+		io.WriteString(w, homeAnon)
+	})
+	srv := httptest.NewServer(mux)
+	t.Cleanup(srv.Close)
+
+	if err := Logout(testClient(seedSession(t, srv.URL, true)), srv.URL); err != nil {
+		t.Fatal(err)
+	}
+	want := []string{
+		"GET /public/authentication/logout",
+		"GET /saml/logout",
+		"POST /idp/SLO",
+		"POST /saml/SingleLogout",
+	}
+	if strings.Join(hops, ",") != strings.Join(want, ",") {
+		t.Fatalf("hops %v, want %v", hops, want)
+	}
+	if samlReq != "LOREQ" || samlResp != "LORESP" {
+		t.Fatalf("SAMLRequest=%q SAMLResponse=%q", samlReq, samlResp)
+	}
+}
+
+func TestLogoutWhenNotLoggedInIsNoop(t *testing.T) {
+	var logoutHits int
+	mux := http.NewServeMux()
+	mux.HandleFunc("/public/authentication/logout", func(w http.ResponseWriter, r *http.Request) {
+		logoutHits++
+		http.Error(w, "should not be called when already anonymous", http.StatusInternalServerError)
+	})
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		io.WriteString(w, homeAnon)
+	})
+	srv := httptest.NewServer(mux)
+	t.Cleanup(srv.Close)
+
+	if err := Logout(testClient(seedSession(t, srv.URL, false)), srv.URL); err != nil {
+		t.Fatalf("logout when not logged in must not error: %v", err)
+	}
+	if logoutHits != 0 {
+		t.Fatalf("noop logout hit the logout path %d times", logoutHits)
+	}
+}
+
+func TestLogoutDoesNotClaimSuccessWhenSessionRemains(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/public/authentication/logout", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/saml/logout", http.StatusFound)
+	})
+	mux.HandleFunc("/saml/logout", func(w http.ResponseWriter, r *http.Request) {
+		// Redirects complete, but the session cookie is left in place.
+		http.Redirect(w, r, "/", http.StatusFound)
+	})
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		io.WriteString(w, homeAuthed)
+	})
+	srv := httptest.NewServer(mux)
+	t.Cleanup(srv.Close)
+
+	err := Logout(testClient(seedSession(t, srv.URL, true)), srv.URL)
+	if err == nil {
+		t.Fatal("Logout returned success while the session still looks authenticated")
+	}
+	if strings.Contains(err.Error(), "Logged out.") {
+		t.Fatalf("must not report plain success: %v", err)
+	}
+	if !strings.Contains(err.Error(), "authenticated") {
+		t.Fatalf("error should say the session remains: %v", err)
+	}
+}
+
+// A relative form action must resolve against the page it came from, not
+// the URL that was originally requested. /public/authentication/logout
+// redirects to /saml/logout, whose form action is relative ("SLO"): the
+// right target is /saml/SLO, not /public/authentication/SLO.
+func TestLogoutResolvesRelativeSAMLFormActionAgainstLandedURL(t *testing.T) {
+	var sloHits int
+	mux := http.NewServeMux()
+	mux.HandleFunc("/public/authentication/logout", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/saml/logout", http.StatusFound)
+	})
+	mux.HandleFunc("/saml/logout", func(w http.ResponseWriter, r *http.Request) {
+		io.WriteString(w, `<html><body><form action="SLO" method="post"><input type="hidden" name="SAMLRequest" value="LOREQ"/></form></body></html>`)
+	})
+	mux.HandleFunc("/saml/SLO", func(w http.ResponseWriter, r *http.Request) {
+		sloHits++
+		http.SetCookie(w, &http.Cookie{Name: "MERXSESSION", MaxAge: -1, Path: "/"})
+		http.Redirect(w, r, "/", http.StatusFound)
+	})
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		if c, err := r.Cookie("MERXSESSION"); err == nil && c.Value == "1" {
+			io.WriteString(w, homeAuthed)
+			return
+		}
+		io.WriteString(w, homeAnon)
+	})
+	srv := httptest.NewServer(mux)
+	t.Cleanup(srv.Close)
+
+	if err := Logout(testClient(seedSession(t, srv.URL, true)), srv.URL); err != nil {
+		t.Fatal(err)
+	}
+	if sloHits != 1 {
+		t.Fatalf("hits on /saml/SLO = %d, want 1", sloHits)
 	}
 }
