@@ -408,9 +408,74 @@ func Login(c *httpx.Client, ep Endpoints, user, pass string) error {
 	return nil
 }
 
+// samlForm finds a SAML auto-post form. Logout uses the same HTTP-POST
+// binding as login: an HTML form with SAMLRequest or SAMLResponse. We
+// parse the page instead of guessing the action URL.
+func samlForm(body []byte) (string, map[string]string, bool) {
+	doc, err := html.Parse(bytes.NewReader(body))
+	if err != nil {
+		return "", nil, false
+	}
+	if action, fields, ok := FindForm(doc, "SAMLResponse"); ok {
+		return action, fields, true
+	}
+	return FindForm(doc, "SAMLRequest")
+}
+
+// submitSAMLForms posts each SAML auto-post form in turn, the same way
+// login posts SAMLRequest then SAMLResponse. follow() only walks 3xx
+// hops; it does not submit these forms.
+func submitSAMLForms(c *httpx.Client, current string, body []byte) error {
+	for i := 0; i < maxHops; i++ {
+		action, fields, ok := samlForm(body)
+		if !ok {
+			return nil
+		}
+		current = resolveURL(current, action)
+		next, err := step(c, http.MethodPost, current, toValues(fields), "SAML logout")
+		if err != nil {
+			return err
+		}
+		body = next
+	}
+	return fmt.Errorf("SAML logout: too many form posts")
+}
+
 // Logout ends the server session. MERX allows one session per account,
 // so skipping this blocks the next login.
+//
+// The UI's own control is GET /public/authentication/logout, which
+// redirects through /saml/logout (SAML single logout). After that chain
+// we check the homepage for the Anonymous memberType marker. If the
+// session still looks authenticated, this returns an error so merx
+// logout cannot print a bare "Logged out."
+//
+// Already-anonymous is success: logout is a no-op when not logged in.
 func Logout(c *httpx.Client, portal string) error {
-	_, err := step(c, http.MethodGet, strings.TrimRight(portal, "/")+"/logout", nil, "portal logout")
-	return err
+	portal = strings.TrimRight(portal, "/")
+	authed, err := Valid(c, portal)
+	if err == nil && !authed {
+		return nil
+	}
+
+	logoutURL := portal + "/public/authentication/logout"
+	body, reqErr := step(c, http.MethodGet, logoutURL, nil, "portal logout")
+	if reqErr == nil {
+		reqErr = submitSAMLForms(c, logoutURL, body)
+	}
+
+	authed, err = Valid(c, portal)
+	if err != nil {
+		if reqErr != nil {
+			return fmt.Errorf("logout could not confirm the session ended: %v (request: %w)", err, reqErr)
+		}
+		return fmt.Errorf("logout could not confirm the session ended: %w", err)
+	}
+	if authed {
+		if reqErr != nil {
+			return fmt.Errorf("logout did not end the server session: portal still shows an authenticated session (%w)", reqErr)
+		}
+		return fmt.Errorf("logout did not end the server session: portal still shows an authenticated session")
+	}
+	return nil
 }

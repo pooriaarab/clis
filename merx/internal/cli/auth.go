@@ -74,12 +74,14 @@ func logoutCmd() *cobra.Command {
 		if err != nil {
 			return err
 		}
-		reqErr := session.Logout(c, session.Production.Portal)
+		// Only print "Logged out." after Logout confirms the homepage
+		// is anonymous. Keep the local jar on failure so a retry can
+		// still present the session cookie.
+		if err := session.Logout(c, session.Production.Portal); err != nil {
+			return fmt.Errorf("%w (local session kept so you can retry merx logout)", err)
+		}
 		if rmErr := os.Remove(path); rmErr != nil && !os.IsNotExist(rmErr) {
 			return rmErr
-		}
-		if reqErr != nil {
-			return fmt.Errorf("portal logout request failed (local session cleared): %w", reqErr)
 		}
 		if flagJSON {
 			return emit(map[string]any{"cleared": true})
