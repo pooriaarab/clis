@@ -8,6 +8,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"strings"
+	"sync"
 	"syscall"
 	"testing"
 	"time"
@@ -342,7 +343,7 @@ func TestSignalHandlerLogsOut(t *testing.T) {
 	old, exited := exitFunc, make(chan struct{})
 	exitFunc = func(int) { close(exited) }
 	t.Cleanup(func() { exitFunc = old; signal.Reset(os.Interrupt, syscall.SIGTERM) })
-	installLogout(&httpx.Client{HTTP: srv.Client()}, srv.URL)
+	installLogout(&sync.Once{}, &httpx.Client{HTTP: srv.Client()}, srv.URL)
 	if err := syscall.Kill(syscall.Getpid(), syscall.SIGINT); err != nil {
 		t.Fatal(err)
 	}
