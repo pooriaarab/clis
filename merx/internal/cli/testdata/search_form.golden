@@ -8,7 +8,7 @@
 <form id="loginMessageInterceptionForm" action="/private/supplier/interception" method="post">
 <input type="hidden" name="_csrf" value="SEARCH-TOKEN-9f3">
 </form>
-<form id="frmSearch" action="/private/supplier/solicitations/search" method="post">
+<form id="decoyFrm" action="/private/supplier/solicitations/search" method="post">
 <input type="hidden" name="_csrf" value="SEARCH-TOKEN-9f3">
 <input type="hidden" name="decoyFrm" value="wrong-form">
 </form>
@@ -17,18 +17,46 @@
 <input type="hidden" name="_csrf" value="SEARCH-TOKEN-9f3">
 <input type="hidden" name="decoyCommand" value="wrong-form">
 </form>
-<form id="noticeFilters" action="/private/supplier/solicitations/search" method="post">
-<input type="radio" name="status" value="OPEN">
+<form id="frmSearch" action="/private/supplier/solicitations/search" method="post">
+<input type="hidden" name="keywords" value="">
+<textarea name="keywords">
+ bridge</textarea>
+<input type="radio" name="status" value="OPEN" checked="checked">
 <input type="radio" name="status" value="CLOSED">
-<input type="hidden" name="publishedDate.timeZoneOffset" value="-240">
-<select name="publishedDate.dateType">
-<option value="ANYTIME">Anytime</option>
-<option value="RANGE" selected>Date range</option>
+<input type="radio" name="status" value="AWARD">
+<input type="checkbox" name="g_617" value="SERVICE">
+<input type="hidden" name="regionId" value="[null-null]{}">
+<input type="hidden" name="publishedDate.timeZoneOffset" value="-14400000">
+<input type="checkbox" name="publishedDate.dateType" value="SINCE_LAST_LOGIN">
+<input type="hidden" name="_publishedDate.dateType" value="on">
+<input type="checkbox" name="publishedDate.dateType" value="DAY">
+<input type="hidden" name="_publishedDate.dateType" value="on">
+<input type="checkbox" name="publishedDate.dateType" value="WITHIN">
+<input type="hidden" name="_publishedDate.dateType" value="on">
+<select name="publishedDate.within" disabled="disabled">
+<option value="DAY" selected="selected">One Day</option>
+<option value="WEEK">One Week</option>
 </select>
-<input type="hidden" name="publishedDate.localDay" value="">
-<input type="hidden" name="publishedDate.within" value="">
-<input name="publishedDate.localRangeStart">
-<input name="publishedDate.localRangeEnd">
+<input type="checkbox" name="publishedDate.dateType" value="RANGE">
+<input type="hidden" name="_publishedDate.dateType" value="on">
+<input type="hidden" name="publishedDate.localRangeStart" value="">
+<input type="hidden" name="publishedDate.localRangeEnd" value="">
+<select name="dynamicSort[0].fieldName">
+<option value="noticeTitle">Solicitation Title</option>
+<option value="buyerOrganization">Organization</option>
+<option value="region">Location</option>
+<option value="publicationDate" selected="selected">Published Date</option>
+<option value="closingDate">Closing Date</option>
+</select>
+<select name="dynamicSort[1].fieldName">
+<option></option>
+<option value="noticeTitle">Solicitation Title</option>
+</select>
+<select name="selectedSavedSearch">
+<option value="">- My Searches -</option>
+</select>
+<input type="hidden" name="pageNumber" value="1">
+<input type="hidden" name="pageSize" value="25">
 </form>
 <form id="solicitationActionForm" action="/private/supplier/solicitations/search" method="post">
 <input type="hidden" name="_csrf" value="SEARCH-TOKEN-9f3">

@@ -4,9 +4,11 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"os/signal"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"syscall"
@@ -323,7 +325,7 @@ func TestCSRFTokenFromPage(t *testing.T) {
 		}
 		// Witness that the body came from the form that holds the date fields.
 		// That form has no _csrf. The decoy forms share its action.
-		if r.Form.Get("publishedDate.timeZoneOffset") != "-240" || r.Form.Get("decoyFrm") != "" || r.Form.Get("decoyCommand") != "" || r.Form.Get("decoyCriteria") != "" {
+		if r.Form.Get("publishedDate.timeZoneOffset") != "-14400000" || r.Form.Get("decoyFrm") != "" || r.Form.Get("decoyCommand") != "" || r.Form.Get("decoyCriteria") != "" {
 			t.Errorf("posted fields %v", r.Form)
 		}
 		w.Write([]byte(results))
@@ -334,12 +336,91 @@ func TestCSRFTokenFromPage(t *testing.T) {
 	if err != nil || form.Get("_csrf") != "SEARCH-TOKEN-9f3" || header != "X-CSRF-TOKEN" {
 		t.Fatalf("csrf %q header %q err %v (token must come from the page)", form.Get("_csrf"), header, err)
 	}
-	if form.Get("publishedDate.dateType") != "RANGE" || form.Get("publishedDate.timeZoneOffset") != "-240" || form.Get("decoyFrm") != "" {
+	if form.Get("publishedDate.timeZoneOffset") != "-14400000" || form.Get("decoyFrm") != "" {
 		t.Fatalf("form fields %v", form)
 	}
 	pg, err := postSlice(c, srv.URL, form, header, "OPEN", Slice{Start: "2020-01-01", End: "2020-01-15"}, 2)
 	if err != nil || pg.Total != 1 || len(pg.Records) != 1 || pg.Records[0].InternalID != "7" {
 		t.Fatalf("page %+v err %v", pg, err)
+	}
+}
+
+func TestSearchFormSerializesLikeBrowser(t *testing.T) {
+	raw, err := os.ReadFile("testdata/search_form.golden")
+	if err != nil {
+		t.Fatal(err)
+	}
+	const results = `<span class="simpleSolResultsNumResults">1</span>` +
+		`<table><tr class="mets-table-row"><td><a id="searchResultSol_notice_7" href="/d/7" class="solicitation-link"><span class="rowTitle">T</span></a></td></tr></table>`
+	var posted url.Values
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet {
+			w.Write(raw)
+			return
+		}
+		if err := r.ParseForm(); err != nil {
+			t.Errorf("parse form: %v", err)
+			return
+		}
+		posted = r.PostForm
+		w.Write([]byte(results))
+	}))
+	t.Cleanup(srv.Close)
+	c := &httpx.Client{HTTP: srv.Client()}
+	form, header, err := loadSearchForm(c, srv.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Equal(form["status"], []string{"OPEN"}) {
+		t.Fatalf("status = %q, want the checked OPEN radio", form["status"])
+	}
+	if _, ok := form["publishedDate.dateType"]; ok {
+		t.Fatalf("unchecked date type was submitted: %q", form["publishedDate.dateType"])
+	}
+	if _, ok := form["g_617"]; ok {
+		t.Fatalf("unchecked checkbox was submitted: %q", form["g_617"])
+	}
+	if _, ok := form["publishedDate.within"]; ok {
+		t.Fatalf("disabled select was submitted: %q", form["publishedDate.within"])
+	}
+	if form.Get("dynamicSort[0].fieldName") != "publicationDate" {
+		t.Fatalf("sort field = %q, want the selected option", form.Get("dynamicSort[0].fieldName"))
+	}
+	if !slices.Equal(form["dynamicSort[1].fieldName"], []string{""}) {
+		t.Fatalf("unset sort = %q, want the first option", form["dynamicSort[1].fieldName"])
+	}
+	if !slices.Equal(form["selectedSavedSearch"], []string{""}) {
+		t.Fatalf("saved search = %q, want the empty option value", form["selectedSavedSearch"])
+	}
+	if !slices.Equal(form["_publishedDate.dateType"], []string{"on", "on", "on", "on"}) {
+		t.Fatalf("spring marker = %q, want four values", form["_publishedDate.dateType"])
+	}
+	if !slices.Equal(form["keywords"], []string{"", " bridge"}) {
+		t.Fatalf("keywords = %q", form["keywords"])
+	}
+	if form.Get("regionId") != "[null-null]{}" {
+		t.Fatalf("regionId = %q", form.Get("regionId"))
+	}
+	if _, err := postSlice(c, srv.URL, form, header, "CLOSED", Slice{Start: "2026-09-20", End: "2026-09-22"}, 3); err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Equal(posted["status"], []string{"CLOSED"}) {
+		t.Fatalf("posted status = %q, want the overlay to replace OPEN", posted["status"])
+	}
+	if !slices.Equal(posted["publishedDate.dateType"], []string{"RANGE"}) {
+		t.Fatalf("posted date type = %q, want RANGE once", posted["publishedDate.dateType"])
+	}
+	if !slices.Equal(posted["publishedDate.localRangeStart"], []string{"2026-09-20"}) || !slices.Equal(posted["publishedDate.localRangeEnd"], []string{"2026-09-22"}) {
+		t.Fatalf("posted range start %q end %q", posted["publishedDate.localRangeStart"], posted["publishedDate.localRangeEnd"])
+	}
+	if !slices.Equal(posted["pageNumber"], []string{"3"}) {
+		t.Fatalf("posted page = %q", posted["pageNumber"])
+	}
+	if !slices.Equal(posted["_publishedDate.dateType"], []string{"on", "on", "on", "on"}) {
+		t.Fatalf("posted spring marker = %q", posted["_publishedDate.dateType"])
+	}
+	if _, ok := form["publishedDate.dateType"]; ok || !slices.Equal(form["status"], []string{"OPEN"}) {
+		t.Fatalf("overlay mutated the cached form: %v", form)
 	}
 }
 
@@ -402,6 +483,72 @@ func csrfPage(t *testing.T, page string) (*httpx.Client, string) {
 	}))
 	t.Cleanup(srv.Close)
 	return &httpx.Client{HTTP: srv.Client()}, srv.URL
+}
+
+func noFollow(t *testing.T, h http.HandlerFunc) (*httpx.Client, string) {
+	t.Helper()
+	srv := httptest.NewServer(h)
+	t.Cleanup(srv.Close)
+	hc := srv.Client()
+	hc.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
+	return &httpx.Client{HTTP: hc}, srv.URL
+}
+
+func TestPostSliceFollowsRedirect(t *testing.T) {
+	const page = `<span class="simpleSolResultsNumResults">1</span>` +
+		`<table><tr class="mets-table-row"><td><a id="searchResultSol_notice_7" href="/d/7" class="solicitation-link"><span class="rowTitle">T</span></a></td></tr></table>`
+	for _, code := range []int{http.StatusFound, http.StatusSeeOther} {
+		var method, host, uri string
+		c, portal := noFollow(t, func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path == privateSearchPath {
+				w.Header().Set("Location", "results?page=1")
+				w.WriteHeader(code)
+				return
+			}
+			method, host, uri = r.Method, r.Host, r.URL.RequestURI()
+			w.Write([]byte(page))
+		})
+		pg, err := postSlice(c, portal, url.Values{"_csrf": {"tok"}}, "", "OPEN", Slice{Start: "2026-09-20", End: "2026-09-22"}, 1)
+		u, _ := url.Parse(portal)
+		if err != nil || pg.Total != 1 || len(pg.Records) != 1 || pg.Records[0].InternalID != "7" || method != http.MethodGet || host != u.Host || uri != "/private/supplier/solicitations/results?page=1" {
+			t.Fatalf("HTTP %d page %+v err %v %s %s %s", code, pg, err, method, host, uri)
+		}
+	}
+}
+
+func TestPostSliceLoginIsSessionError(t *testing.T) {
+	c, portal := noFollow(t, func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == privateSearchPath {
+			w.Header().Set("Location", "/public/authentication/login")
+			w.WriteHeader(http.StatusFound)
+			return
+		}
+		w.Write([]byte(`<span class="simpleSolResultsNumResults">0</span>`))
+	})
+	pg, err := postSlice(c, portal, url.Values{"_csrf": {"tok"}}, "", "OPEN", Slice{Start: "2026-09-20", End: "2026-09-22"}, 1)
+	if err == nil || !strings.Contains(err.Error(), "session") || pg.Total != 0 || len(pg.Records) != 0 {
+		t.Fatalf("page %+v err %v", pg, err)
+	}
+}
+
+func TestPostSliceTooManyRedirects(t *testing.T) {
+	if maxSearchRedirects != 10 {
+		t.Fatalf("cap %d, want 10", maxSearchRedirects)
+	}
+	seen := 0
+	c, portal := noFollow(t, func(w http.ResponseWriter, r *http.Request) {
+		seen++
+		if seen > maxSearchRedirects {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		w.Header().Set("Location", "/hop")
+		w.WriteHeader(http.StatusFound)
+	})
+	pg, err := postSlice(c, portal, url.Values{"_csrf": {"tok"}}, "", "OPEN", Slice{Start: "2026-09-20", End: "2026-09-22"}, 1)
+	if err == nil || seen != maxSearchRedirects || !strings.Contains(err.Error(), "too many redirects") {
+		t.Fatalf("page %+v err %v requests %d", pg, err, seen)
+	}
 }
 
 func TestSignalHandlerLogsOut(t *testing.T) {
