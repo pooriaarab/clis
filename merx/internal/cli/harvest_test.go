@@ -315,21 +315,93 @@ func TestCSRFTokenFromPage(t *testing.T) {
 			return
 		}
 		_ = r.ParseForm()
-		if r.Form.Get("_csrf") != "SEARCH-TOKEN-9f3" || r.Form.Get("searchAction") != "search" {
-			t.Errorf("posted %v", r.Form)
+		if r.Form.Get("_csrf") != "SEARCH-TOKEN-9f3" {
+			t.Errorf("csrf field %q", r.Form.Get("_csrf"))
+		}
+		if r.Header.Get("X-CSRF-TOKEN") != "SEARCH-TOKEN-9f3" {
+			t.Errorf("csrf header %q", r.Header.Get("X-CSRF-TOKEN"))
+		}
+		// Witness that the body came from the form that holds the date fields.
+		// That form has no _csrf. The decoy forms share its action.
+		if r.Form.Get("publishedDate.timeZoneOffset") != "-240" || r.Form.Get("decoyFrm") != "" || r.Form.Get("decoyCommand") != "" || r.Form.Get("decoyCriteria") != "" {
+			t.Errorf("posted fields %v", r.Form)
 		}
 		w.Write([]byte(results))
 	}))
 	t.Cleanup(srv.Close)
 	c := &httpx.Client{HTTP: srv.Client()}
-	form, err := loadSearchForm(c, srv.URL)
-	if err != nil || form.Get("_csrf") != "SEARCH-TOKEN-9f3" {
-		t.Fatalf("csrf %q err %v (must come from the page, not a hardcoded string)", form.Get("_csrf"), err)
+	form, header, err := loadSearchForm(c, srv.URL)
+	if err != nil || form.Get("_csrf") != "SEARCH-TOKEN-9f3" || header != "X-CSRF-TOKEN" {
+		t.Fatalf("csrf %q header %q err %v (token must come from the page)", form.Get("_csrf"), header, err)
 	}
-	pg, err := postSlice(c, srv.URL, form, "OPEN", Slice{Start: "2020-01-01", End: "2020-01-15"}, 2)
+	if form.Get("publishedDate.dateType") != "RANGE" || form.Get("publishedDate.timeZoneOffset") != "-240" || form.Get("decoyFrm") != "" {
+		t.Fatalf("form fields %v", form)
+	}
+	pg, err := postSlice(c, srv.URL, form, header, "OPEN", Slice{Start: "2020-01-01", End: "2020-01-15"}, 2)
 	if err != nil || pg.Total != 1 || len(pg.Records) != 1 || pg.Records[0].InternalID != "7" {
 		t.Fatalf("page %+v err %v", pg, err)
 	}
+}
+
+func TestCSRFTokenPrefersMeta(t *testing.T) {
+	const page = `<html><head>` +
+		`<meta name="_csrf" content="META-TOKEN">` +
+		`<meta name="_csrf_header" content="X-Page-CSRF">` +
+		`</head><body>` +
+		`<form action="/private/supplier/solicitations/search">` +
+		`<input type="hidden" name="_csrf" value="INPUT-TOKEN">` +
+		`<input type="hidden" name="decoy" value="1">` +
+		`</form>` +
+		`<form action="/private/supplier/solicitations/search">` +
+		`<input type="radio" name="status" value="OPEN">` +
+		`<input name="publishedDate.dateType" value="ANYTIME">` +
+		`<input name="publishedDate.timeZoneOffset" value="0">` +
+		`</form></body></html>`
+	c, portal := csrfPage(t, page)
+	form, header, err := loadSearchForm(c, portal)
+	if err != nil || form.Get("_csrf") != "META-TOKEN" || header != "X-Page-CSRF" || form.Get("decoy") != "" {
+		t.Fatalf("csrf %q header %q fields %v err %v", form.Get("_csrf"), header, form, err)
+	}
+}
+
+func TestCSRFTokenFallsBackToInput(t *testing.T) {
+	const page = `<html><head><meta name="_csrf_header" content="X-CSRF-TOKEN"></head><body>` +
+		`<form action="/private/supplier/solicitations/search">` +
+		`<input type="hidden" name="_csrf" value="INPUT-TOKEN">` +
+		`</form>` +
+		`<form action="/private/supplier/solicitations/search">` +
+		`<input type="radio" name="status" value="OPEN">` +
+		`<input name="publishedDate.dateType" value="ANYTIME">` +
+		`</form></body></html>`
+	c, portal := csrfPage(t, page)
+	form, header, err := loadSearchForm(c, portal)
+	if err != nil || form.Get("_csrf") != "INPUT-TOKEN" || header != "X-CSRF-TOKEN" {
+		t.Fatalf("csrf %q header %q err %v", form.Get("_csrf"), header, err)
+	}
+}
+
+func TestCSRFTokenMissing(t *testing.T) {
+	const page = `<html><body><form action="/private/supplier/solicitations/search">` +
+		`<input type="radio" name="status" value="OPEN">` +
+		`<input name="publishedDate.dateType" value="ANYTIME">` +
+		`</form></body></html>`
+	c, portal := csrfPage(t, page)
+	_, _, err := loadSearchForm(c, portal)
+	if err == nil || !strings.Contains(err.Error(), `meta name="_csrf"`) || !strings.Contains(err.Error(), "no _csrf input") {
+		t.Fatalf("err %v", err)
+	}
+}
+
+func csrfPage(t *testing.T, page string) (*httpx.Client, string) {
+	t.Helper()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			t.Errorf("posted without a token: %s", r.Method)
+		}
+		w.Write([]byte(page))
+	}))
+	t.Cleanup(srv.Close)
+	return &httpx.Client{HTTP: srv.Client()}, srv.URL
 }
 
 func TestSignalHandlerLogsOut(t *testing.T) {

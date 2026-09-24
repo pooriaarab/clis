@@ -1,1 +1,41 @@
-<!DOCTYPE html><html><body><form action="/logout" method="post"><input type="hidden" name="_csrf" value="LOGOUT-CSRF"/></form><form id="searchForm" action="/private/supplier/solicitations/search" method="post"><input type="hidden" name="_csrf" value="SEARCH-TOKEN-9f3"/><input type="hidden" name="searchAction" value="search"/><input type="hidden" name="publishedDate.dateType" value="RANGE"/><input name="publishedDate.localRangeStart"/><input name="publishedDate.localRangeEnd"/><input type="hidden" name="pageNumber" value="1"/><input type="hidden" name="pageSize" value="25"/></form></body></html>
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="_csrf" content="SEARCH-TOKEN-9f3">
+<meta name="_csrf_header" content="X-CSRF-TOKEN">
+</head>
+<body>
+<form id="loginMessageInterceptionForm" action="/private/supplier/interception" method="post">
+<input type="hidden" name="_csrf" value="SEARCH-TOKEN-9f3">
+</form>
+<form id="frmSearch" action="/private/supplier/solicitations/search" method="post">
+<input type="hidden" name="_csrf" value="SEARCH-TOKEN-9f3">
+<input type="hidden" name="decoyFrm" value="wrong-form">
+</form>
+<form id="command" action="/private/supplier/solicitations/search" method="post">
+<input type="hidden" name="_csrf" value="SEARCH-TOKEN-9f3">
+<input type="hidden" name="_csrf" value="SEARCH-TOKEN-9f3">
+<input type="hidden" name="decoyCommand" value="wrong-form">
+</form>
+<form id="noticeFilters" action="/private/supplier/solicitations/search" method="post">
+<input type="radio" name="status" value="OPEN">
+<input type="radio" name="status" value="CLOSED">
+<input type="hidden" name="publishedDate.timeZoneOffset" value="-240">
+<select name="publishedDate.dateType">
+<option value="ANYTIME">Anytime</option>
+<option value="RANGE" selected>Date range</option>
+</select>
+<input type="hidden" name="publishedDate.localDay" value="">
+<input type="hidden" name="publishedDate.within" value="">
+<input name="publishedDate.localRangeStart">
+<input name="publishedDate.localRangeEnd">
+</form>
+<form id="solicitationActionForm" action="/private/supplier/solicitations/search" method="post">
+<input type="hidden" name="_csrf" value="SEARCH-TOKEN-9f3">
+</form>
+<form id="searchCriteria" action="/private/supplier/solicitations/search" method="post">
+<input type="hidden" name="_csrf" value="SEARCH-TOKEN-9f3">
+<input type="hidden" name="decoyCriteria" value="wrong-form">
+</form>
+</body>
+</html>
