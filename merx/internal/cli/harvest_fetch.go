@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -251,25 +252,33 @@ func fetchDetail(c *httpx.Client, detailURL string) error {
 		return err
 	}
 	defer resp.Body.Close()
-	io.Copy(io.Discard, resp.Body)
+	_, copyErr := io.Copy(io.Discard, resp.Body)
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("GET %s: HTTP %d", detailURL, resp.StatusCode)
 	}
-	return nil
+	return copyErr
 }
 
 var exitFunc = os.Exit
 
+// logoutOnce runs Logout at most once: the signal handler and the deferred
+// cleanup in runHarvest can otherwise both fire it for the same session.
+func logoutOnce(once *sync.Once, c *httpx.Client, portal string) {
+	once.Do(func() {
+		if err := session.Logout(c, portal); err != nil {
+			fmt.Fprintln(os.Stderr, "logout:", err)
+		}
+	})
+}
+
 // installLogout ends the server session on SIGINT/SIGTERM. #96 is unverified.
-func installLogout(c *httpx.Client, portal string) {
+func installLogout(once *sync.Once, c *httpx.Client, portal string) {
 	ch := make(chan os.Signal, 2)
 	signal.Notify(ch, os.Interrupt, syscall.SIGTERM)
 	go func() {
 		<-ch
 		fmt.Fprintln(os.Stderr, "interrupted: logging out")
-		if err := session.Logout(c, portal); err != nil {
-			fmt.Fprintln(os.Stderr, "logout:", err)
-		}
+		logoutOnce(once, c, portal)
 		exitFunc(1)
 	}()
 }
@@ -298,11 +307,10 @@ func runHarvest(status, since, until string, resume bool, seeds []Slice) error {
 		return err
 	}
 	portal := session.Production.Portal
-	installLogout(c, portal)
+	var once sync.Once
+	installLogout(&once, c, portal)
 	defer func() {
-		if err := session.Logout(c, portal); err != nil {
-			fmt.Fprintln(os.Stderr, "logout:", err)
-		}
+		logoutOnce(&once, c, portal)
 		os.Remove(jarPath)
 	}()
 	form, err := loadSearchForm(c, portal)
