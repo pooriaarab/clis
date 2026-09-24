@@ -34,12 +34,14 @@ type harvestDeps struct {
 	page                      func(Slice, int) (search.Page, error)
 	detail                    func(string) error
 	resume                    bool
+	keepStore                 bool
+	undated                   *Undated
 }
 
 func executePlan(d harvestDeps) (Summary, error) {
 	sum := Summary{Status: d.status}
 	store, manifest := harvestPaths(d.dir, d.status)
-	if !d.resume {
+	if !d.resume && !d.keepStore {
 		os.Remove(store)
 		os.Remove(manifest)
 	}
@@ -57,15 +59,23 @@ func executePlan(d harvestDeps) (Summary, error) {
 	if man.Until == "" {
 		man.Until = d.until
 	}
+	if d.undated != nil {
+		man.Undated = mergeUndated(man.Undated, d.undated)
+	} else if man.Undated == nil {
+		man.Undated = defaultUndated()
+	}
 	done := map[string]bool{}
 	for _, e := range man.Slices {
-		done[e.Start+"\x00"+e.End] = true
+		done[entryKey(e)] = true
 	}
 	leaves, totals, err := plan(d.slices, d.count, done)
 	if err != nil {
 		return sum, err
 	}
 	if err := os.MkdirAll(filepath.Dir(store), 0o755); err != nil {
+		return sum, err
+	}
+	if err := saveManifest(manifest, man); err != nil {
 		return sum, err
 	}
 	f, err := os.OpenFile(store, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644)
@@ -102,23 +112,23 @@ func executePlan(d harvestDeps) (Summary, error) {
 				known[r.InternalID] = true
 				got++
 			}
-			fmt.Fprintf(os.Stderr, "harvest %s %s..%s page %d/%d\n", d.status, leaf.Start, leaf.End, p, pages)
+			fmt.Fprintf(os.Stderr, "harvest %s %s page %d/%d\n", d.status, sliceLabel(leaf), p, pages)
 		}
-		e := Entry{Status: d.status, Start: leaf.Start, End: leaf.End, Reported: rep, Captured: got,
-			CompletedAt: time.Now().UTC().Format(time.RFC3339), Incomplete: incomplete(leaf, rep)}
+		e := Entry{Status: d.status, Start: leaf.Start, End: leaf.End, Category: leaf.Category, Location: leaf.Location,
+			Reported: rep, Captured: got, CompletedAt: time.Now().UTC().Format(time.RFC3339), Incomplete: incomplete(leaf, rep)}
 		sum.Slices++
 		sum.Reported += rep
 		sum.Captured += got
 		if e.Incomplete {
 			sum.Incomplete++
-			fmt.Fprintf(os.Stderr, "harvest %s %s..%s incomplete: reported %d, captured %d\n", d.status, leaf.Start, leaf.End, rep, got)
+			fmt.Fprintf(os.Stderr, "harvest %s %s incomplete: reported %d, captured %d\n", d.status, sliceLabel(leaf), rep, got)
 		}
 		if failed {
 			// A detail fetch failed for at least one record: leave the leaf
 			// out of the manifest so a later --resume retries the records
 			// that were not stored, instead of marking the slice done with
 			// a permanent gap.
-			fmt.Fprintf(os.Stderr, "harvest %s %s..%s not recorded: a detail fetch failed, rerun with --resume to retry\n", d.status, leaf.Start, leaf.End)
+			fmt.Fprintf(os.Stderr, "harvest %s %s not recorded: a detail fetch failed, rerun with --resume to retry\n", d.status, sliceLabel(leaf))
 			continue
 		}
 		man.Slices = append(man.Slices, e)
@@ -294,7 +304,7 @@ func runHarvest(status, since, until string, resume bool, seeds []Slice) error {
 	if err != nil {
 		return err
 	}
-	sum, err := executePlan(harvestDeps{dir: dir, status: status, since: since, until: until, slices: seeds, resume: resume,
+	sum, err := executePlan(harvestDeps{dir: dir, status: status, since: since, until: until, slices: seeds, resume: resume, undated: defaultUndated(),
 		count: func(s Slice) (int, error) {
 			pg, err := postSlice(c, portal, form, csrfHeader, priv, s, 1)
 			return pg.Total, err
