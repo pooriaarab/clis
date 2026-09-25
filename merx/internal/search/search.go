@@ -53,6 +53,16 @@ type Record struct {
 	Published     string `json:"published"`
 	Closing       string `json:"closing"`
 	DaysRemaining string `json:"days_remaining"`
+	// Description is set for an authenticated row. omitempty leaves public JSON unchanged.
+	Description     string   `json:"description,omitempty"`
+	ReferenceNumber string   `json:"reference_number,omitempty"`
+	ContactName     string   `json:"contact_name,omitempty"`
+	ContactPhone    string   `json:"contact_phone,omitempty"`
+	ContactEmail    string   `json:"contact_email,omitempty"`
+	AgreementTypes  []string `json:"agreement_types,omitempty"`
+	// DetailFetched is false when the detail page was not requested.
+	// An empty reference number then does not mean the notice has none.
+	DetailFetched bool `json:"detail_fetched,omitempty"`
 }
 
 // Page is the reported total plus this page's rows.
