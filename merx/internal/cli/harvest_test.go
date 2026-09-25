@@ -309,8 +309,8 @@ func TestCSRFTokenFromPage(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	const results = `<span class="simpleSolResultsNumResults">1</span>` +
-		`<table><tr class="mets-table-row"><td><a id="searchResultSol_notice_7" href="/d/7" class="solicitation-link"><span class="rowTitle">T</span></a></td></tr></table>`
+	const results = `<span class="mets-total-elements-display">1 - 1 of 1 results found</span>` +
+		`<table><tr class="mets-table-row"><td><a id="title7" href="/private/supplier/interception/open-solicitation/7?target=view" class="solicitationsTitleLink">T</a></td></tr></table>`
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodGet {
 			w.Write(raw)
@@ -350,8 +350,7 @@ func TestSearchFormSerializesLikeBrowser(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	const results = `<span class="simpleSolResultsNumResults">1</span>` +
-		`<table><tr class="mets-table-row"><td><a id="searchResultSol_notice_7" href="/d/7" class="solicitation-link"><span class="rowTitle">T</span></a></td></tr></table>`
+	results := privateResultsPage(t)
 	var posted url.Values
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodGet {
@@ -363,7 +362,7 @@ func TestSearchFormSerializesLikeBrowser(t *testing.T) {
 			return
 		}
 		posted = r.PostForm
-		w.Write([]byte(results))
+		w.Write(results)
 	}))
 	t.Cleanup(srv.Close)
 	c := &httpx.Client{HTTP: srv.Client()}
@@ -505,6 +504,16 @@ func csrfPage(t *testing.T, page string) (*httpx.Client, string) {
 	return &httpx.Client{HTTP: srv.Client()}, srv.URL
 }
 
+// privateResultsPage is the authenticated results page ParsePrivate already reads.
+func privateResultsPage(t *testing.T) []byte {
+	t.Helper()
+	raw, err := os.ReadFile("../search/testdata/private_list.golden")
+	if err != nil {
+		t.Fatal(err)
+	}
+	return raw
+}
+
 func noFollow(t *testing.T, h http.HandlerFunc) (*httpx.Client, string) {
 	t.Helper()
 	srv := httptest.NewServer(h)
@@ -515,8 +524,7 @@ func noFollow(t *testing.T, h http.HandlerFunc) (*httpx.Client, string) {
 }
 
 func TestPostSliceFollowsRedirect(t *testing.T) {
-	const page = `<span class="simpleSolResultsNumResults">1</span>` +
-		`<table><tr class="mets-table-row"><td><a id="searchResultSol_notice_7" href="/d/7" class="solicitation-link"><span class="rowTitle">T</span></a></td></tr></table>`
+	page := privateResultsPage(t)
 	for _, code := range []int{http.StatusFound, http.StatusSeeOther} {
 		var method, host, uri string
 		c, portal := noFollow(t, func(w http.ResponseWriter, r *http.Request) {
@@ -526,11 +534,11 @@ func TestPostSliceFollowsRedirect(t *testing.T) {
 				return
 			}
 			method, host, uri = r.Method, r.Host, r.URL.RequestURI()
-			w.Write([]byte(page))
+			w.Write(page)
 		})
 		pg, err := postSlice(c, portal, url.Values{"_csrf": {"tok"}}, "", "OPEN", Slice{Start: "2026-09-20", End: "2026-09-22"}, 1)
 		u, _ := url.Parse(portal)
-		if err != nil || pg.Total != 1 || len(pg.Records) != 1 || pg.Records[0].InternalID != "7" || method != http.MethodGet || host != u.Host || uri != "/private/supplier/solicitations/results?page=1" {
+		if err != nil || pg.Total != 3332 || len(pg.Records) != 3 || pg.Records[0].InternalID != "4103112608" || method != http.MethodGet || host != u.Host || uri != "/private/supplier/solicitations/results?page=1" {
 			t.Fatalf("HTTP %d page %+v err %v %s %s %s", code, pg, err, method, host, uri)
 		}
 	}
@@ -593,4 +601,78 @@ func TestSignalHandlerLogsOut(t *testing.T) {
 	if hits != 1 {
 		t.Fatalf("logout requests %d, want 1", hits)
 	}
+}
+
+func TestDetailRedirectMergeAndOptionalFetch(t *testing.T) {
+	const page = `<div class="mets-field"><span class="mets-field-label">Reference Number</span><div class="mets-field-body">REF1</div></div>` +
+		`<div class="mets-field"><span class="mets-field-label">Title</span><div class="mets-field-body">From detail</div></div>` +
+		`<div class="mets-field"><span class="mets-field-label">Agreement Types</span><span class="agreementLine">CFTA</span></div>` +
+		`<div class="mets-field"><span class="mets-field-label"></span><div class="mets-field-body">Ada</div></div>` +
+		`<div class="mets-field"><span class="mets-field-label"></span><div class="mets-field-body">ada@ex.com</div></div>` +
+		`<div class="mets-field"><span class="mets-field-label"></span><div class="mets-field-body">555-0100</div></div>`
+	var hits int
+	c, portal := noFollow(t, func(w http.ResponseWriter, r *http.Request) {
+		hits++
+		switch r.URL.Path {
+		case "/d":
+			http.Redirect(w, r, "/landed", http.StatusFound)
+		case "/to-login":
+			http.Redirect(w, r, "/public/authentication/login", http.StatusFound)
+		default:
+			w.Write([]byte(page))
+		}
+	})
+	if f := harvestCmd().Flags().Lookup("details"); f == nil || f.DefValue != "false" {
+		t.Fatalf("details default %v", f)
+	}
+	if err := fetchDetail(c, portal+"/d"); err != nil || fetchedNotice.ReferenceNumber != "REF1" || fetchedNotice.ContactName != "Ada" || fetchedNotice.ContactEmail != "ada@ex.com" || fetchedNotice.ContactPhone != "555-0100" || len(fetchedNotice.AgreementTypes) != 1 {
+		t.Fatalf("followed detail %+v %v", fetchedNotice, err)
+	}
+	row := search.Record{InternalID: "9", DetailURL: portal + "/d", Title: "List title", Buyer: "Buyer", Location: "BC", Published: "2026/01/01", Closing: "2026/02/01", Description: "List desc"}
+	run := func(details bool, u string) (string, Summary, error) {
+		t.Helper()
+		harvestDetails = details
+		dir := t.TempDir()
+		sum, err := executePlan(harvestDeps{dir: dir, status: "open",
+			slices: []Slice{{Status: "open", Start: "2020-01-01", End: "2020-01-01"}},
+			count:  func(Slice) (int, error) { return 1, nil },
+			page: func(Slice, int) (search.Page, error) {
+				row.DetailURL = u
+				return search.Page{Total: 1, Records: []search.Record{row}}, nil
+			},
+			detail: func(u string) error { return fetchDetail(c, u) }})
+		return dir, sum, err
+	}
+	t.Cleanup(func() { harvestDetails = true })
+	dir, sum, err := run(true, portal+"/d")
+	raw, _ := os.ReadFile(storePath(dir))
+	body := string(raw)
+	man, _ := loadManifest(manifestPath(dir))
+	if err != nil || sum.Captured != 1 || len(man.Slices) != 1 || !man.Slices[0].Details || !strings.Contains(body, "List title") || strings.Contains(body, "From detail") || !strings.Contains(body, "REF1") || !strings.Contains(body, "Ada") || !strings.Contains(body, "ada@ex.com") || !strings.Contains(body, "555-0100") || !strings.Contains(body, "CFTA") || !strings.Contains(body, `"detail_fetched":true`) {
+		t.Fatalf("merged %q manifest %+v cap %d err %v", body, man.Slices, sum.Captured, err)
+	}
+	seen := hits
+	dir, sum, err = run(false, portal+"/d")
+	raw, _ = os.ReadFile(storePath(dir))
+	body = string(raw)
+	man, _ = loadManifest(manifestPath(dir))
+	if err != nil || hits != seen || sum.Captured != 1 || len(man.Slices) != 1 || man.Slices[0].Details || !strings.Contains(body, "List title") || strings.Contains(body, "REF1") || strings.Contains(body, "detail_fetched") {
+		t.Fatalf("list-only hits %d->%d %q manifest %+v err %v", seen, hits, body, man.Slices, err)
+	}
+	dir, sum, err = run(true, portal+"/to-login")
+	known, _ := loadIDs(storePath(dir))
+	man, _ = loadManifest(manifestPath(dir))
+	if err == nil || !strings.Contains(err.Error(), "session expired") || len(known) != 0 || sum.Captured != 0 || len(man.Slices) != 0 {
+		t.Fatalf("login store %v manifest %+v cap %d err %v", known, man.Slices, sum.Captured, err)
+	}
+}
+
+func storePath(dir string) string {
+	store, _ := harvestPaths(dir, "open")
+	return store
+}
+
+func manifestPath(dir string) string {
+	_, manifest := harvestPaths(dir, "open")
+	return manifest
 }

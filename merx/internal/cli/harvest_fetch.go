@@ -25,6 +25,18 @@ const privateSearchPath = "/private/supplier/solicitations/search"
 
 const maxSearchRedirects = 10
 
+// harvestDetails defaults true so executePlan tests keep fetching details.
+// The harvest command sets it from --details before the first request.
+var harvestDetails = true
+
+// fetchedNotice is the page openDetail just parsed. mergeDetail copies it
+// only after fetchedSet is set, so a mocked detail func cannot smear a
+// previous page onto the next row.
+var (
+	fetchedNotice search.Notice
+	fetchedSet    bool
+)
+
 var privateStatus = map[string]string{
 	"open": "OPEN", "closed": "CLOSED", "awarded": "AWARD", "bid-results": "AWARD",
 }
@@ -93,8 +105,11 @@ func executePlan(d harvestDeps) (Summary, error) {
 				if known[r.InternalID] {
 					continue
 				}
-				if err := d.detail(r.DetailURL); err != nil {
+				if err := mergeDetail(d, &r); err != nil {
 					fmt.Fprintf(os.Stderr, "detail %s: %v\n", r.InternalID, err)
+					if strings.Contains(err.Error(), "session expired") {
+						return sum, err
+					}
 					failed = true
 					continue
 				}
@@ -107,7 +122,7 @@ func executePlan(d harvestDeps) (Summary, error) {
 			fmt.Fprintf(os.Stderr, "harvest %s %s..%s page %d/%d\n", d.status, leaf.Start, leaf.End, p, pages)
 		}
 		e := Entry{Status: d.status, Start: leaf.Start, End: leaf.End, Reported: rep, Captured: got,
-			CompletedAt: time.Now().UTC().Format(time.RFC3339), Incomplete: incomplete(leaf, rep)}
+			CompletedAt: time.Now().UTC().Format(time.RFC3339), Incomplete: incomplete(leaf, rep), Details: harvestDetails}
 		sum.Slices++
 		sum.Reported += rep
 		sum.Captured += got
@@ -200,7 +215,7 @@ func postSlice(c *httpx.Client, portal string, form url.Values, csrfHeader, priv
 	if err != nil {
 		return search.Page{}, fmt.Errorf("slice %s..%s page %d: %w", s.Start, s.End, page, err)
 	}
-	return search.Parse(strings.NewReader(string(body)))
+	return search.ParsePrivate(strings.NewReader(string(body)))
 }
 
 // followSearch walks Post/Redirect/Get. 301, 302 and 303 become GET. 307 and 308 keep the method. A login URL is a session error.
@@ -295,6 +310,38 @@ func loginLanding(raw string) bool {
 	return strings.Contains(u.Path, "/authentication/login") || strings.Contains(u.Path, "/saml/login")
 }
 
+// mergeDetail stores the list row as-is when --details is false.
+// It does not call the detail func, so the detail host sees no request.
+func mergeDetail(d harvestDeps, r *search.Record) error {
+	if !harvestDetails {
+		return nil
+	}
+	fetchedSet = false
+	if err := d.detail(r.DetailURL); err != nil {
+		return err
+	}
+	if !fetchedSet {
+		return nil
+	}
+	n := fetchedNotice
+	r.ReferenceNumber, r.ContactName, r.ContactPhone, r.ContactEmail, r.AgreementTypes, r.DetailFetched = n.ReferenceNumber, n.ContactName, n.ContactPhone, n.ContactEmail, n.AgreementTypes, true
+	return nil
+}
+
+// openDetail follows the same Post/Redirect/Get chain as search.
+func openDetail(c *httpx.Client, req *http.Request) (*http.Response, error) {
+	body, err := followSearch(c, req)
+	if err != nil {
+		return nil, err
+	}
+	fetchedNotice, err = search.ParseDetail(strings.NewReader(string(body)))
+	if err != nil {
+		return nil, err
+	}
+	fetchedSet = true
+	return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader(string(body))), Request: req}, nil
+}
+
 func fetchDetail(c *httpx.Client, detailURL string) error {
 	if detailURL == "" {
 		return fmt.Errorf("empty detail URL")
@@ -303,7 +350,7 @@ func fetchDetail(c *httpx.Client, detailURL string) error {
 	if err != nil {
 		return err
 	}
-	resp, err := c.Do(req)
+	resp, err := openDetail(c, req)
 	if err != nil {
 		return err
 	}

@@ -44,6 +44,9 @@ type Entry struct {
 	Captured    int    `json:"captured"`
 	CompletedAt string `json:"completed_at"`
 	Incomplete  bool   `json:"incomplete"`
+	// Details is true when this slice merged detail pages.
+	// False means list rows only: a missing reference number was not fetched.
+	Details bool `json:"details"`
 }
 
 // Summary is the machine-readable harvest result.
@@ -243,7 +246,7 @@ func capturedCount(reported int) int {
 
 func harvestCmd() *cobra.Command {
 	var status, since, until string
-	var resume, dry bool
+	var resume, dry, details bool
 	cmd := &cobra.Command{Use: "harvest", Short: "Build a resumable notice corpus for one status (--since / --until bound the window)", RunE: func(cmd *cobra.Command, _ []string) error {
 		if !harvestStatus[status] {
 			return fmt.Errorf("unknown --status %q (open, awarded, bid-results, closed)", status)
@@ -264,6 +267,7 @@ func harvestCmd() *cobra.Command {
 		}
 		seeds := monthSlices(status, start, end)
 		if !dry {
+			harvestDetails = details
 			return runHarvest(status, since, until, resume, seeds)
 		}
 		// Zero count: every calendar month is already a leaf. No network.
@@ -281,6 +285,7 @@ func harvestCmd() *cobra.Command {
 	}}
 	cmd.Flags().StringVar(&status, "status", "open", "harvest: open, awarded, bid-results, closed")
 	cmd.Flags().BoolVar(&resume, "resume", false, "continue without refetching stored records")
+	cmd.Flags().BoolVar(&details, "details", false, "fetch each detail page and merge reference, contact, and agreement types")
 	cmd.Flags().BoolVar(&dry, "dry-run", false, "print planned slices without fetching")
 	cmd.Flags().StringVar(&since, "since", harvestEpoch, "first published date YYYY-MM-DD")
 	cmd.Flags().StringVar(&until, "until", "", "last published date YYYY-MM-DD (default today)")
