@@ -27,7 +27,8 @@ rotations are picked up automatically.
 
 `auth import`, `doctor`, and the `orders list` request shape against
 walmart.ca's live `PurchaseHistoryV2` operation; pagination follows
-`pageInfo.nextPageCursor` (up to 5 pages per call).
+`pageInfo.nextPageCursor`, fetching pages of up to 20 orders until `--limit`
+is reached or the cursor runs out.
 
 ## Gaps
 
