@@ -13,7 +13,7 @@ const bingKeyEnv = "BING_WEBMASTER_API_KEY"
 
 func bingCmd(env *Env) *cobra.Command {
 	cmd := &cobra.Command{Use: "bing", Short: "Verify a domain and submit URLs in Bing Webmaster Tools"}
-	cmd.AddCommand(bingVerifyCmd(env), bingQuotaCmd(env))
+	cmd.AddCommand(bingVerifyCmd(env), bingSitemapCmd(env), bingQuotaCmd(env))
 	return cmd
 }
 
