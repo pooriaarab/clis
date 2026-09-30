@@ -11,12 +11,14 @@ import (
 
 // Ways `auth google` can fail, listed before the code was written:
 //  1. No client id or secret: the flow must stop with a message, not open a browser.
-//  2. The callback state differs from ours (CSRF) and the CLI accepts the code.
-//  3. The saved file is readable by other users (must be 0600, dir 0700).
-//  4. The token or secret leaks to stdout or stderr.
-//  5. --dry-run opens a browser or sends a request (it is refused, exit 2).
-//  6. The PKCE verifier or redirect URI is wrong, so Google refuses the code.
-// Denied consent, a missing refresh token and a timeout come in the next PR.
+//  2. The user denies consent (error=access_denied) and the CLI waits forever.
+//  3. The callback state differs from ours (CSRF) and the CLI accepts the code.
+//  4. Google returns no refresh token, and the CLI saves an unusable login.
+//  5. Nobody completes the consent and the CLI never exits (exit 4 on timeout).
+//  6. The saved file is readable by other users (must be 0600, dir 0700).
+//  7. The token or secret leaks to stdout or stderr.
+//  8. --dry-run opens a browser or sends a request (it is refused, exit 2).
+//  9. The PKCE verifier or redirect URI is wrong, so Google refuses the code.
 
 func authSandbox(t *testing.T) (*Sandbox, *fakes.OAuth) {
 	sb := newSandbox(t)
@@ -29,7 +31,7 @@ func authSandbox(t *testing.T) (*Sandbox, *fakes.OAuth) {
 }
 
 func login(sb *Sandbox, extra ...string) Result {
-	args := append([]string{"auth", "google", "--client-id", "cid", "--client-secret", "csecret"}, extra...)
+	args := append([]string{"auth", "google", "--client-id", "cid", "--client-secret", "csecret", "--timeout", "10s"}, extra...)
 	return sb.Run(args...)
 }
 
@@ -61,18 +63,37 @@ func TestAuthGoogleMissingClient(t *testing.T) {
 	wantContains(t, "stderr", r.Stderr, "GOOGLE_CLIENT_ID")
 }
 
-func TestAuthGoogleBadState(t *testing.T) {
-	sb, oauth := authSandbox(t)
-	oauth.Mode = "badstate"
-	r := login(sb)
-	wantExit(t, r, 1)
-	wantContains(t, "stderr", r.Stderr, "state")
-	if oauth.TokenHits() != 0 {
-		t.Fatal("the CLI exchanged a code it should have refused")
+func TestAuthGoogleFailedConsent(t *testing.T) {
+	cases := []struct{ mode, want string }{
+		{"deny", "access_denied"},
+		{"badstate", "state"},
+		{"norefresh", "refresh token"},
 	}
-	if _, err := os.Stat(filepath.Join(sb.ConfigDir, "google.json")); err == nil {
-		t.Fatal("config file was saved after a failed login")
+	for _, c := range cases {
+		t.Run(c.mode, func(t *testing.T) {
+			sb, oauth := authSandbox(t)
+			oauth.Mode = c.mode
+			r := login(sb)
+			wantExit(t, r, 1)
+			wantContains(t, "stderr", r.Stderr, c.want)
+			if c.mode == "deny" || c.mode == "badstate" {
+				if oauth.TokenHits() != 0 {
+					t.Fatal("the CLI exchanged a code it should have refused")
+				}
+			}
+			if _, err := os.Stat(filepath.Join(sb.ConfigDir, "google.json")); err == nil {
+				t.Fatal("config file was saved after a failed login")
+			}
+		})
 	}
+}
+
+func TestAuthGoogleTimeout(t *testing.T) {
+	sb, _ := authSandbox(t)
+	sb.Env["BROWSER"] = "true" // a browser that never completes the consent
+	r := login(sb, "--timeout", "1s")
+	wantExit(t, r, 4)
+	wantContains(t, "stderr", r.Stderr, "timed out")
 }
 
 func TestAuthGoogleRejectsDryRun(t *testing.T) {

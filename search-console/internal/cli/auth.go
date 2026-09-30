@@ -6,6 +6,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -36,6 +37,7 @@ func envOr(getenv func(string) string, name, def string) string {
 
 func authGoogleCmd(env *Env) *cobra.Command {
 	var cred google.Credentials
+	var timeout time.Duration
 	cmd := &cobra.Command{
 		Use:   "google",
 		Short: "Log in to Google with the browser loopback flow",
@@ -56,10 +58,14 @@ expires after 7 days.`,
 				return errors.New("no OAuth client: pass --client-id and --client-secret, or set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET")
 			}
 			opts := google.LoginOpts{
-				Notify: func(url string) { env.P.Warnf("Open this URL to give consent:\n%s", url) },
+				Timeout: timeout,
+				Notify:  func(url string) { env.P.Warnf("Open this URL to give consent:\n%s", url) },
 			}
 			opts.Open = func(url string) error { return openBrowser(env.Getenv("BROWSER"), url) }
 			refresh, err := env.oauth().Login(context.Background(), cred, opts)
+			if errors.Is(err, google.ErrTimeout) {
+				return &ExitError{Code: ExitTimeout, Err: err}
+			}
 			if err != nil {
 				return err
 			}
@@ -77,6 +83,7 @@ expires after 7 days.`,
 			})
 		}),
 	}
+	cmd.Flags().DurationVar(&timeout, "timeout", 5*time.Minute, "how long to wait for the consent")
 	cmd.Flags().StringVar(&cred.ClientID, "client-id", "", "OAuth client id (or GOOGLE_CLIENT_ID)")
 	cmd.Flags().StringVar(&cred.ClientSecret, "client-secret", "", "OAuth client secret (or GOOGLE_CLIENT_SECRET)")
 	return cmd
