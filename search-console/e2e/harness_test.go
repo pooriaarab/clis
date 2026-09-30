@@ -121,3 +121,15 @@ func wantContains(t *testing.T, label, got, want string) {
 		t.Fatalf("%s does not contain %q:\n%s", label, want, got)
 	}
 }
+
+// Browser installs a BROWSER script that follows the URL it is given, the way a
+// person would after clicking Allow.
+func (sb *Sandbox) Browser() {
+	sb.t.Helper()
+	path := filepath.Join(sb.t.TempDir(), "browser.sh")
+	script := "#!/bin/sh\ncurl -s -L -o /dev/null \"$1\"\n"
+	if err := os.WriteFile(path, []byte(script), 0o755); err != nil {
+		sb.t.Fatal(err)
+	}
+	sb.Env["BROWSER"] = path
+}

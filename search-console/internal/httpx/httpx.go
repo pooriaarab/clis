@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"time"
 )
 
@@ -51,7 +52,7 @@ func (r *Response) Decode(v any) error {
 	return nil
 }
 
-// Do sends one request. body is nil, raw JSON ([]byte) or any value to encode
+// Do sends one request. body is nil, raw JSON ([]byte), a form (url.Values) or any value to encode
 // as JSON. Any HTTP status comes back as a Response.
 // Only a transport failure returns an error.
 func (c *Client) Do(ctx context.Context, method, rawURL string, header map[string]string, body any) (*Response, error) {
@@ -61,6 +62,8 @@ func (c *Client) Do(ctx context.Context, method, rawURL string, header map[strin
 	case nil:
 	case []byte:
 		payload, contentType = b, "application/json"
+	case url.Values:
+		payload, contentType = []byte(b.Encode()), "application/x-www-form-urlencoded"
 	default:
 		enc, err := json.Marshal(b)
 		if err != nil {
