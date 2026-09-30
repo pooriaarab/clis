@@ -1,0 +1,196 @@
+# Every E2E test
+--- PASS: TestAuthGoogleLoginStoresRefreshToken
+--- PASS: TestAuthGoogleMissingClient
+--- PASS: TestAuthGoogleFailedConsent
+--- PASS: TestAuthGoogleTimeout
+--- PASS: TestAuthGoogleRejectsDryRun
+--- PASS: TestAuthStatusCheckRefreshesSavedLogin
+--- PASS: TestAuthExpiredRefreshTokenExplainsFix
+--- PASS: TestAuthEnvWinsOverSavedLogin
+--- PASS: TestAuthStatusNotConfigured
+--- PASS: TestAuthStatusBadConfigFile
+--- PASS: TestAuthStatusPartialLogin
+--- PASS: TestAuthStatusDryRunHidesSecrets
+--- PASS: TestBingSitemapSubmitThenStatus
+--- PASS: TestBingSitemapResubmitKeepsOneFeed
+--- PASS: TestBingSitemapSubmitBeforeBingListsIt
+--- PASS: TestBingSitemapProblemsAreNotSubmitted
+--- PASS: TestBingSitemapNeedsVerifiedSite
+--- PASS: TestBingSitemapSubmitErrorInBothShapes
+--- PASS: TestBingSitemapStatusOfUnknownSitemap
+--- PASS: TestBingSitemapErrorStatusExits3
+--- PASS: TestBingSitemapMissingKey
+--- PASS: TestBingSitemapDryRun
+--- PASS: TestAuthBingChecksTheKey
+--- PASS: TestAuthBingKeyMissing
+--- PASS: TestBingRejectsKeyInBothErrorShapes
+--- PASS: TestBingTransportErrorHidesKey
+--- PASS: TestBingQuota
+--- PASS: TestBingQuotaUnknownSite
+--- PASS: TestBingDryRunHidesKey
+--- PASS: TestAuthStatusShowsBing
+--- PASS: TestBingVerifyCreatesUnproxiedCNAME
+--- PASS: TestBingVerifyFixesProxiedCNAME
+--- PASS: TestBingVerifyIsIdempotent
+--- PASS: TestBingVerifyRetriesUntilDNSIsReady
+--- PASS: TestBingVerifyTimesOut
+--- PASS: TestBingVerifyErrorsAreNotRetried
+--- PASS: TestBingVerifyPrintsRecordWithoutCloudflare
+--- PASS: TestBingVerifyMissingSecrets
+--- PASS: TestBingVerifyDryRun
+--- PASS: TestCloudflareZoneAutoCreatesTXTThenVerifies
+--- PASS: TestCloudflareExplicitZoneSkipsLookup
+--- PASS: TestCloudflareRerunDoesNotDuplicateTXT
+--- PASS: TestCloudflareKeepsOtherTXTRecords
+--- PASS: TestCloudflareTokenMissing
+--- PASS: TestCloudflareNoZoneForDomain
+--- PASS: TestCloudflareSubdomainUsesParentZone
+--- PASS: TestCloudflareRefused
+--- PASS: TestCloudflareDryRun
+--- PASS: TestGoogleSitemapSubmitPollsUntilRead
+--- PASS: TestGoogleSitemapSubmitStopsWhenStillPending
+--- PASS: TestGoogleSitemapProblemsAreNotSubmitted
+--- PASS: TestGoogleSitemapNeedsVerifiedSite
+--- PASS: TestGoogleSitemapErrorsExitThree
+--- PASS: TestGoogleSitemapSubmitRefused
+--- PASS: TestGoogleSitemapStatusNeverSubmitted
+--- PASS: TestGoogleSitemapDryRun
+--- PASS: TestGoogleVerifyNotLoggedIn
+--- PASS: TestGoogleVerifyRejectsBadDomains
+--- PASS: TestGoogleVerifyRetriesUntilDNSIsReady
+--- PASS: TestGoogleVerifyTimesOutWhenDNSNeverReady
+--- PASS: TestGoogleVerifyDoesNotRetryOtherErrors
+--- PASS: TestGoogleVerifyTokenRefused
+--- PASS: TestGoogleVerifyNormalizesDomain
+--- PASS: TestGoogleVerifyDryRun
+--- PASS: TestGoogleVerifyIsIdempotent
+--- PASS: TestGoogleVerifyIgnoresOtherVerifiedDomains
+--- PASS: TestGoogleVerifyAddSiteRefused
+--- PASS: TestGoogleVerifyRequiresSiteOwner
+--- PASS: TestIndexNowSubmitCleansTheList
+--- PASS: TestIndexNowNeedsOneSource
+--- PASS: TestIndexNowRejectsOtherHosts
+--- PASS: TestIndexNowKeepsOneKeyAndStopsWhenUnreachable
+--- PASS: TestIndexNowSoftNotFoundKeyFile
+--- PASS: TestIndexNowSplitsIntoBatchesOf10000
+--- PASS: TestIndexNowAcceptedAndRefusedAnswers
+--- PASS: TestIndexNowDryRunWritesAndSendsNothing
+--- PASS: TestIndexNowMissingKeyDir
+--- PASS: TestIndexNowFromSitemapIndex
+--- PASS: TestIndexNowUnreadableSitemap
+--- PASS: TestIndexNowDefaultSitemapInDryRun
+--- PASS: TestLaunchPassesThenRerunsWithoutRepeating
+--- PASS: TestLaunchKeepsGoingAfterAFailure
+--- PASS: TestLaunchNamesAMissingBingKey
+--- PASS: TestLaunchSkipsAProvider
+--- PASS: TestLaunchUsageErrorsRunNothing
+--- PASS: TestLaunchDoesNotSubmitABrokenSitemap
+--- PASS: TestLaunchShowsAnUnreachableIndexNowKey
+--- PASS: TestLaunchDryRunChangesNothing
+--- PASS: TestVersion
+--- PASS: TestUnknownCommandIsUsageError
+--- PASS: TestJSONErrorIsOneObjectOnStdout
+--- PASS: TestHelpDoesNotExitNonZero
+--- PASS: TestSitemapCheckGood
+--- PASS: TestSitemapCheckProblems
+--- PASS: TestSitemapCheckRelativeURL
+--- PASS: TestSitemapCheckServerDown
+--- PASS: TestSitemapCheckDryRunSendsNothing
+--- PASS: TestSitemapCheckURLRules
+--- PASS: TestSitemapCheckIndexFollowsChildren
+--- PASS: TestSitemapCheckIndexChildProblems
+ok e2e
+
+# One launch, then a rerun that changes nothing
+    launch_test.go:55: $ search-console launch example.com --sitemap http://site.fake/sitemap.xml --cloudflare-zone auto --interval 20ms --wait 400ms --key-dir $KEYDIR --key-location http://site.fake/abcdef0123456789abcdef0123456789.txt --indexnow-urls $WORK/urls.txt --json
+    launch_test.go:55: {
+          "domain": "example.com",
+          "ok": true,
+          "steps": [
+            {
+              "detail": "verified after 1 attempt(s)",
+              "exit": 0,
+              "result": "pass",
+              "step": "google verify"
+            },
+            {
+              "detail": "done",
+              "exit": 0,
+              "result": "pass",
+              "step": "google sitemap"
+            },
+            {
+              "detail": "verified after 1 attempt(s)",
+              "exit": 0,
+              "result": "pass",
+              "step": "bing verify"
+            },
+            {
+              "detail": "status Pending",
+              "exit": 0,
+              "result": "pass",
+              "step": "bing sitemap"
+            },
+            {
+              "detail": "2 URL(s) sent",
+              "exit": 0,
+              "result": "pass",
+              "step": "indexnow"
+            }
+          ]
+        }
+    launch_test.go:55: stderr: Cloudflare TXT record for example.com (created: true).
+        Cloudflare CNAME 0123456789abcdef0123456789abcdef.example.com -> verify.bing.com, not proxied (changed: true).
+        Key file: $KEYDIR/abcdef0123456789abcdef0123456789.txt
+        Serve it at: http://site.fake/abcdef0123456789abcdef0123456789.txt
+    launch_test.go:55: -> exit 0
+    launch_test.go:55: $ search-console launch example.com --sitemap http://site.fake/sitemap.xml --cloudflare-zone auto --interval 20ms --wait 400ms --key-dir $KEYDIR --key-location http://site.fake/abcdef0123456789abcdef0123456789.txt --indexnow-urls $WORK/urls.txt --json
+    launch_test.go:55: {
+          "domain": "example.com",
+          "ok": true,
+          "steps": [
+            {
+              "detail": "already verified",
+              "exit": 0,
+              "result": "pass",
+              "step": "google verify"
+            },
+            {
+              "detail": "done",
+              "exit": 0,
+              "result": "pass",
+              "step": "google sitemap"
+            },
+            {
+              "detail": "already verified",
+              "exit": 0,
+              "result": "pass",
+              "step": "bing verify"
+            },
+            {
+              "detail": "status Pending",
+              "exit": 0,
+              "result": "pass",
+              "step": "bing sitemap"
+            },
+            {
+              "detail": "2 URL(s) sent",
+              "exit": 0,
+              "result": "pass",
+              "step": "indexnow"
+            }
+          ]
+        }
+    launch_test.go:55: stderr: Key file: $KEYDIR/abcdef0123456789abcdef0123456789.txt
+        Serve it at: http://site.fake/abcdef0123456789abcdef0123456789.txt
+    launch_test.go:55: -> exit 0
+    launch_test.go:55: $ search-console launch example.com --sitemap http://site.fake/sitemap.xml --cloudflare-zone auto --interval 20ms --wait 400ms --key-dir $KEYDIR --key-location http://site.fake/abcdef0123456789abcdef0123456789.txt --indexnow-urls $WORK/urls.txt
+    launch_test.go:55: STEP            RESULT  DETAIL
+        google verify   pass    already verified
+        google sitemap  pass    done
+        bing verify     pass    already verified
+        bing sitemap    pass    status Pending
+        indexnow        pass    2 URL(s) sent
+    launch_test.go:55: stderr: Key file: $KEYDIR/abcdef0123456789abcdef0123456789.txt
+        Serve it at: http://site.fake/abcdef0123456789abcdef0123456789.txt
+    launch_test.go:55: -> exit 0
