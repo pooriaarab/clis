@@ -42,7 +42,7 @@ search-console launch example.com --sitemap https://example.com/sitemap.xml --cl
 The command prints one table:
 
 ```text
-STEP            RESULT  DETAIL
+STEP            STATUS  DETAIL
 google verify   pass    verified after 1 attempt(s)
 google sitemap  pass    done
 bing verify     pass    verified after 1 attempt(s)
@@ -51,6 +51,12 @@ indexnow        pass    2 URL(s) sent
 ```
 
 A failed step does not stop the others. A sitemap step is skipped when its verify step failed. The exit code is the code of the first failed step. Use `--skip google,bing,indexnow` to leave out a service.
+
+### Dry run
+
+`launch --dry-run` runs no step. Every step shows `skipped (dry-run)` and what it would do. The last line is `dry run: nothing was changed or verified`. In `--json`, each step has `"status": "skipped"`, and the top level has `"verified": false`.
+
+A dry run still runs the read-only checks for real: the Google login, the Bing key, the Cloudflare token, and a request for the IndexNow key file. A failed check shows `fail` for its step and exits 1, the same as the real run. The key file check waits for the first real run, because the key does not exist before then.
 
 ## Commands
 
@@ -68,7 +74,7 @@ A failed step does not stop the others. A sitemap step is skipped when its verif
 | `sitemap check <sitemap-url>` | Check a sitemap before you submit it. |
 | `launch <domain> --sitemap <url>` | Run all the steps above in order. |
 
-Every command accepts `--json` and `--dry-run`. With `--dry-run`, the CLI prints the HTTP calls and sends none of them. Secrets do not appear in the output.
+Every command accepts `--json` and `--dry-run`. With `--dry-run`, the CLI prints the HTTP calls and sends none of them. A dry run never reports a pass for work it did not do. Secrets do not appear in the output.
 
 ## Environment
 

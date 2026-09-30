@@ -1,7 +1,9 @@
 package e2e
 
 import (
+	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/pooriaarab/clis/search-console/e2e/fakes"
@@ -17,6 +19,13 @@ import (
 //  7. The sitemap has problems and a submit step sends it anyway.
 //  8. --dry-run changes DNS, adds a site or posts URLs.
 //  9. The table does not show each step, or a secret leaks into it.
+// 10. A dry-run step shows pass for work it did not do, verify included.
+// 11. The dry run exits 0 when the real run would fail: a missing login or key,
+//     or an unreachable IndexNow key file.
+// 12. The --json output says ok, or status pass, for a step that was skipped.
+// 13. The dry run does not say that nothing was verified, or says it before the table ends.
+// 14. A read-only check is faked instead of run: the credential check or the key file request.
+// 15. A step skipped by --skip is labelled as a dry-run skip.
 
 type launchRig struct {
 	sb     *Sandbox
@@ -76,8 +85,8 @@ func results(t *testing.T, r Result) map[string]map[string]any {
 func wantSteps(t *testing.T, got map[string]map[string]any, want map[string]string) {
 	t.Helper()
 	for step, result := range want {
-		if got[step]["result"] != result {
-			t.Fatalf("%s = %v (%v), want %s", step, got[step]["result"], got[step]["detail"], result)
+		if got[step]["status"] != result {
+			t.Fatalf("%s = %v (%v), want %s", step, got[step]["status"], got[step]["detail"], result)
 		}
 	}
 }
@@ -108,7 +117,7 @@ func TestLaunchKeepsGoingAfterAFailure(t *testing.T) {
 	l.g.Ready = func(string, string) bool { return false } // DNS never shows the TXT record
 	r := l.run("--json")
 	wantExit(t, r, 4)
-	wantSteps(t, results(t, r), map[string]string{"google verify": "fail", "google sitemap": "skip", "bing verify": "pass", "bing sitemap": "pass", "indexnow": "pass"})
+	wantSteps(t, results(t, r), map[string]string{"google verify": "fail", "google sitemap": "skipped", "bing verify": "pass", "bing sitemap": "pass", "indexnow": "pass"})
 	if len(l.g.Sitemaps()) != 0 {
 		t.Fatal("google sitemap ran after its verify step failed")
 	}
@@ -120,7 +129,7 @@ func TestLaunchNamesAMissingBingKey(t *testing.T) {
 	r := l.run("--json")
 	wantExit(t, r, 1)
 	got := results(t, r)
-	wantSteps(t, got, map[string]string{"google verify": "pass", "google sitemap": "pass", "bing verify": "fail", "bing sitemap": "skip", "indexnow": "pass"})
+	wantSteps(t, got, map[string]string{"google verify": "pass", "google sitemap": "pass", "bing verify": "fail", "bing sitemap": "skipped", "indexnow": "pass"})
 	wantContains(t, "detail", got["bing verify"]["detail"].(string), "BING_WEBMASTER_API_KEY")
 }
 
@@ -128,7 +137,7 @@ func TestLaunchSkipsAProvider(t *testing.T) {
 	l := newLaunchRig(t)
 	r := l.run("--json", "--skip", "bing,indexnow")
 	wantExit(t, r, 0)
-	wantSteps(t, results(t, r), map[string]string{"google verify": "pass", "google sitemap": "pass", "bing verify": "skip", "bing sitemap": "skip", "indexnow": "skip"})
+	wantSteps(t, results(t, r), map[string]string{"google verify": "pass", "google sitemap": "pass", "bing verify": "skipped", "bing sitemap": "skipped", "indexnow": "skipped"})
 	if l.b.Calls("GetUserSites") != 0 || len(l.n.Posts()) != 0 {
 		t.Fatal("a skipped provider was called")
 	}
@@ -172,15 +181,147 @@ func TestLaunchShowsAnUnreachableIndexNowKey(t *testing.T) {
 	}
 }
 
-func TestLaunchDryRunChangesNothing(t *testing.T) {
+// dryRunSteps are the five steps, in order.
+var dryRunSteps = []string{"google verify", "google sitemap", "bing verify", "bing sitemap", "indexnow"}
+
+func TestLaunchDryRunNeverReportsAPass(t *testing.T) {
 	l := newLaunchRig(t)
-	r := l.run("--dry-run")
+	r := l.run("--dry-run", "--json")
 	wantExit(t, r, 0)
-	wantContains(t, "stdout", r.Stdout, "dry-run:")
+	got := results(t, r)
+	for _, name := range dryRunSteps {
+		if got[name]["status"] != "skipped" {
+			t.Fatalf("%s = %v, want skipped", name, got[name]["status"])
+		}
+		if w, _ := got[name]["would"].(string); w == "" {
+			t.Fatalf("%s does not say what it would do: %v", name, got[name])
+		}
+	}
+	v := r.JSON(t)
+	if v["verified"] != false || v["dry_run"] != true || v["summary"] != "dry run: nothing was changed or verified" {
+		t.Fatalf("the JSON does not say that nothing was verified: %s", r.Stdout)
+	}
+
+	r = l.run("--dry-run")
+	wantExit(t, r, 0)
+	for _, name := range dryRunSteps {
+		wantLine(t, r.Stdout, name, "skipped (dry-run)")
+	}
+	if strings.Contains(r.Stdout, "pass") {
+		t.Fatalf("a dry run printed pass:\n%s", r.Stdout)
+	}
+	lines := strings.Split(strings.TrimSpace(r.Stdout), "\n")
+	if last := lines[len(lines)-1]; last != "dry run: nothing was changed or verified" {
+		t.Fatalf("the last line is %q", last)
+	}
+}
+
+func TestLaunchDryRunRunsTheReadOnlyChecksForReal(t *testing.T) {
+	l := newLaunchRig(t)
+	r := l.run("--dry-run", "--json")
+	wantExit(t, r, 0)
+	if l.site.Hits("/"+inKey+".txt") == 0 {
+		t.Fatal("the key file was not requested")
+	}
+	checks := map[string]string{}
+	for _, name := range dryRunSteps {
+		list, _ := results(t, r)[name]["checks"].([]any)
+		for _, c := range list {
+			m := c.(map[string]any)
+			checks[name+"/"+m["name"].(string)] = m["status"].(string)
+		}
+	}
+	for _, want := range []string{"google verify/google login", "google verify/cloudflare token", "bing verify/bing key", "indexnow/indexnow key file"} {
+		if checks[want] != "pass" {
+			t.Fatalf("check %s = %q, want pass\n%v", want, checks[want], checks)
+		}
+	}
 	if len(l.cf.Records("zone-1")) != 0 || l.g.HasSite("example.com") || len(l.n.Posts()) != 0 || l.b.Calls("AddSite") != 0 {
 		t.Fatal("dry run changed something")
 	}
 	if files, _ := filepath.Glob(filepath.Join(l.keyDir, "*")); len(files) != 0 {
 		t.Fatalf("dry run wrote %v", files)
 	}
+	if strings.Contains(r.Stderr, "created: true") {
+		t.Fatalf("a dry run says it created a record:\n%s", r.Stderr)
+	}
+}
+
+func TestLaunchDryRunFailsWhenACheckFails(t *testing.T) {
+	cases := []struct {
+		name   string
+		break_ func(*launchRig)
+		want   map[string]string
+		detail [2]string // step, text in its detail
+	}{
+		{"no Bing key", func(l *launchRig) { delete(l.sb.Env, "BING_WEBMASTER_API_KEY") },
+			map[string]string{"google verify": "skipped", "bing verify": "fail", "bing sitemap": "skipped", "indexnow": "skipped"},
+			[2]string{"bing verify", "BING_WEBMASTER_API_KEY"}},
+		{"no Google login", func(l *launchRig) { delete(l.sb.Env, "GOOGLE_ACCESS_TOKEN") },
+			map[string]string{"google verify": "fail", "google sitemap": "skipped", "bing verify": "skipped"},
+			[2]string{"google verify", "not logged in to Google"}},
+		{"no Cloudflare token", func(l *launchRig) { delete(l.sb.Env, "CLOUDFLARE_API_TOKEN") },
+			map[string]string{"google verify": "fail", "bing verify": "fail", "indexnow": "skipped"},
+			[2]string{"google verify", "CLOUDFLARE_API_TOKEN"}},
+		{"key file is missing", func(l *launchRig) { l.site.Serve("/"+inKey+".txt", 404, "text/html", "missing") },
+			map[string]string{"google verify": "skipped", "bing verify": "skipped", "indexnow": "fail"},
+			[2]string{"indexnow", "not reachable"}},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			l := newLaunchRig(t)
+			c.break_(l)
+			r := l.run("--dry-run", "--json")
+			wantExit(t, r, 1)
+			got := results(t, r)
+			wantSteps(t, got, c.want)
+			wantContains(t, "detail", got[c.detail[0]]["detail"].(string), c.detail[1])
+			if r.JSON(t)["ok"] != false {
+				t.Fatalf("ok is not false: %s", r.Stdout)
+			}
+			text := l.run("--dry-run")
+			wantExit(t, text, 1)
+			wantContains(t, "stdout", text.Stdout, "dry run: nothing was changed or verified")
+			if len(l.n.Posts()) != 0 || len(l.cf.Records("zone-1")) != 0 {
+				t.Fatal("dry run changed something")
+			}
+		})
+	}
+}
+
+func TestLaunchDryRunNamesAKeyFileThatDoesNotExistYet(t *testing.T) {
+	l := newLaunchRig(t)
+	if err := os.Remove(filepath.Join(l.sb.ConfigDir, "indexnow-example.com.json")); err != nil {
+		t.Fatal(err)
+	}
+	r := l.run("--dry-run", "--json")
+	wantExit(t, r, 0)
+	wantSteps(t, results(t, r), map[string]string{"indexnow": "skipped"})
+	wantContains(t, "detail", results(t, r)["indexnow"]["detail"].(string), "no key saved yet")
+	if l.site.Hits("/"+inKey+".txt") != 0 {
+		t.Fatal("the key file was requested with no saved key")
+	}
+}
+
+func TestLaunchDryRunLabelsASkipFlagAsASkip(t *testing.T) {
+	l := newLaunchRig(t)
+	r := l.run("--dry-run", "--skip", "bing")
+	wantExit(t, r, 0)
+	wantLine(t, r.Stdout, "bing verify", "skipped by --skip bing")
+	if strings.Contains(strings.Split(r.Stdout, "\n")[3], "(dry-run)") {
+		t.Fatalf("a --skip row is labelled as a dry-run skip:\n%s", r.Stdout)
+	}
+	wantLine(t, r.Stdout, "google verify", "skipped (dry-run)")
+}
+
+// wantLine finds the row that starts with step and checks that it holds text.
+func wantLine(t *testing.T, stdout, step, text string) {
+	t.Helper()
+	for _, line := range strings.Split(stdout, "\n") {
+		if strings.HasPrefix(line, step+" ") {
+			wantContains(t, "row "+step, line, text)
+			return
+		}
+	}
+	t.Fatalf("no row for %s:\n%s", step, stdout)
 }
