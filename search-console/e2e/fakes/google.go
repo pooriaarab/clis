@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"sync"
 	"testing"
@@ -27,6 +28,12 @@ type Google struct {
 	TokenStatus int
 	// AddStatus, when set, is the status the sites.add call answers.
 	AddStatus int
+	// PendingPolls is how many sitemap status reads answer isPending before Google "reads" it.
+	PendingPolls int
+	// SitemapErrors and SitemapWarnings are the counts Google reports once it read the sitemap.
+	SitemapErrors, SitemapWarnings int
+	// SitemapStatus, when set, is the status the sitemap submit answers.
+	SitemapStatus int
 	// Permission is the level sites.get reports for an added site. Default "siteOwner".
 	Permission string
 
@@ -34,13 +41,14 @@ type Google struct {
 	calls    map[string]int
 	verified map[string]bool
 	sites    map[string]bool
+	feeds    map[string]int // submitted sitemap URL -> status reads so far
 }
 
 // NewGoogle starts the fake. It accepts the bearer token "at-test".
 func NewGoogle(t *testing.T) *Google {
 	t.Helper()
 	g := &Google{AccessToken: "at-test", Permission: "siteOwner",
-		calls: map[string]int{}, verified: map[string]bool{}, sites: map[string]bool{}}
+		calls: map[string]int{}, verified: map[string]bool{}, sites: map[string]bool{}, feeds: map[string]int{}}
 	g.Server = httptest.NewServer(http.HandlerFunc(g.serve))
 	t.Cleanup(g.Close)
 	return g
@@ -57,6 +65,14 @@ func (g *Google) Calls(key string) int {
 func (g *Google) PreVerify(domain string) {
 	g.mu.Lock()
 	g.verified[domain] = true
+	g.mu.Unlock()
+}
+
+// PreAdd marks a domain as verified and added to Search Console.
+func (g *Google) PreAdd(domain string) {
+	g.PreVerify(domain)
+	g.mu.Lock()
+	g.sites["sc-domain:"+domain] = true
 	g.mu.Unlock()
 }
 
@@ -100,8 +116,8 @@ func (g *Google) serve(w http.ResponseWriter, r *http.Request) {
 		}
 		g.mu.Unlock()
 		reply(w, http.StatusOK, map[string]any{"items": items})
-	case strings.HasPrefix(r.URL.Path, sitePrefix):
-		g.site(w, r, strings.TrimPrefix(r.URL.Path, sitePrefix))
+	case strings.HasPrefix(r.URL.EscapedPath(), sitePrefix):
+		g.site(w, r, strings.TrimPrefix(r.URL.EscapedPath(), sitePrefix))
 	default:
 		apiError(w, http.StatusNotFound, fmt.Sprintf("no route %s", key))
 	}
@@ -149,16 +165,33 @@ func (g *Google) verification(w http.ResponseWriter, r *http.Request, key string
 	reply(w, http.StatusOK, map[string]any{"id": "id-1", "site": body.Site, "owners": []string{"owner@example.test"}})
 }
 
-// site serves sites.add (PUT) and sites.get (GET). The path must carry the
-// colon as %3A, like the real API expects.
-func (g *Google) site(w http.ResponseWriter, r *http.Request, name string) {
-	if !strings.Contains(r.URL.EscapedPath(), "sc-domain%3A") {
+// Sitemaps returns the sitemap URLs that were submitted.
+func (g *Google) Sitemaps() []string {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	out := []string{}
+	for f := range g.feeds {
+		out = append(out, f)
+	}
+	return out
+}
+
+// site serves sites.add (PUT), sites.get (GET) and the sitemaps calls. The
+// paths must carry ":" and "/" percent-encoded, like the real API expects.
+func (g *Google) site(w http.ResponseWriter, r *http.Request, rest string) {
+	if !strings.HasPrefix(rest, "sc-domain%3A") {
 		apiError(w, http.StatusBadRequest, "site URL must be percent-encoded")
 		return
 	}
+	siteEsc, feedEsc, isFeed := strings.Cut(rest, "/sitemaps/")
+	name, _ := url.PathUnescape(siteEsc)
+	domain := strings.TrimPrefix(name, "sc-domain:")
 	g.mu.Lock()
 	defer g.mu.Unlock()
-	domain := strings.TrimPrefix(name, "sc-domain:")
+	if isFeed {
+		g.feed(w, r, name, feedEsc)
+		return
+	}
 	switch r.Method {
 	case http.MethodPut:
 		if g.AddStatus != 0 {
@@ -177,6 +210,44 @@ func (g *Google) site(w http.ResponseWriter, r *http.Request, name string) {
 			return
 		}
 		reply(w, http.StatusOK, map[string]string{"siteUrl": name, "permissionLevel": g.Permission})
+	default:
+		apiError(w, http.StatusMethodNotAllowed, "method not allowed")
+	}
+}
+
+// feed serves sitemaps.submit (PUT) and sitemaps.get (GET). g.mu is held.
+func (g *Google) feed(w http.ResponseWriter, r *http.Request, site, feedEsc string) {
+	if strings.Contains(feedEsc, "/") {
+		apiError(w, http.StatusBadRequest, "feedpath must be percent-encoded")
+		return
+	}
+	feed, _ := url.PathUnescape(feedEsc)
+	if !g.sites[site] {
+		apiError(w, http.StatusNotFound, "Site not found")
+		return
+	}
+	switch r.Method {
+	case http.MethodPut:
+		if g.SitemapStatus != 0 {
+			apiError(w, g.SitemapStatus, "sitemap refused")
+			return
+		}
+		g.feeds[feed] = 0
+		w.WriteHeader(http.StatusNoContent)
+	case http.MethodGet:
+		reads, ok := g.feeds[feed]
+		if !ok {
+			apiError(w, http.StatusNotFound, "Sitemap not found")
+			return
+		}
+		g.feeds[feed] = reads + 1
+		st := map[string]any{"path": feed, "lastSubmitted": "2026-01-02T03:04:05.000Z", "isPending": reads < g.PendingPolls,
+			"isSitemapsIndex": false, "errors": "0", "warnings": "0"}
+		if reads >= g.PendingPolls {
+			st["lastDownloaded"] = "2026-01-02T03:05:00.000Z"
+			st["errors"], st["warnings"] = fmt.Sprint(g.SitemapErrors), fmt.Sprint(g.SitemapWarnings)
+		}
+		reply(w, http.StatusOK, st)
 	default:
 		apiError(w, http.StatusMethodNotAllowed, "method not allowed")
 	}
