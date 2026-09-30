@@ -13,6 +13,7 @@ import (
 type BingSite struct {
 	Verified bool
 	DNSCode  string
+	host     string
 }
 
 // Bing mimics the Bing Webmaster JSON API. Replies wrap results in {"d": ...}.
@@ -22,6 +23,10 @@ type Bing struct {
 	Key string
 	// ErrorsAs200 makes every error arrive as HTTP 200 with an ErrorCode body.
 	ErrorsAs200 bool
+	// Ready reports whether DNS shows the verification CNAME. Nil means always.
+	Ready func(name, target string) bool
+	// VerifyError makes VerifySite answer an error body with this message.
+	VerifyError string
 	// Daily and Monthly are the URL submission quotas.
 	Daily, Monthly int
 
@@ -42,8 +47,17 @@ func NewBing(t *testing.T) *Bing {
 // AddSite registers a site the account already holds.
 func (b *Bing) AddSite(url string, s BingSite) {
 	b.mu.Lock()
+	s.host = strings.Trim(strings.TrimPrefix(url, "https://"), "/")
 	b.sites[url] = &s
 	b.mu.Unlock()
+}
+
+// Verified reports whether the site is verified in the account.
+func (b *Bing) Verified(url string) bool {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	s, ok := b.sites[url]
+	return ok && s.Verified
 }
 
 // Calls counts requests to a method name such as "GetUserSites".
@@ -92,6 +106,31 @@ func (b *Bing) serve(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		b.ok(w, map[string]int{"DailyQuota": b.Daily, "MonthlyQuota": b.Monthly})
+	case r.Method == http.MethodPost && name == "AddSite":
+		var body struct{ SiteURL string }
+		_ = json.NewDecoder(r.Body).Decode(&body)
+		if _, dup := b.sites[body.SiteURL]; dup || !strings.HasPrefix(body.SiteURL, "https://") {
+			b.fail(w, 2, "ERROR!!! InvalidParameter: site already added or bad siteUrl")
+			return
+		}
+		host := strings.Trim(strings.TrimPrefix(body.SiteURL, "https://"), "/")
+		b.sites[body.SiteURL] = &BingSite{DNSCode: "0123456789abcdef0123456789abcdef", host: host}
+		b.ok(w, nil)
+	case r.Method == http.MethodPost && name == "VerifySite":
+		var body struct{ SiteURL string }
+		_ = json.NewDecoder(r.Body).Decode(&body)
+		s, found := b.sites[body.SiteURL]
+		switch {
+		case !found:
+			b.fail(w, 3, "ERROR!!! InvalidParameter: site not found")
+		case b.VerifyError != "":
+			b.fail(w, 9, b.VerifyError)
+		case b.Ready == nil || b.Ready(s.DNSCode+"."+s.host, "verify.bing.com"):
+			s.Verified = true
+			b.ok(w, true)
+		default:
+			b.ok(w, false)
+		}
 	default:
 		b.fail(w, 1, "unknown method "+name)
 	}
