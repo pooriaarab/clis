@@ -14,7 +14,7 @@ import (
 
 func googleCmd(env *Env) *cobra.Command {
 	cmd := &cobra.Command{Use: "google", Short: "Verify a domain and submit sitemaps in Google Search Console"}
-	cmd.AddCommand(googleVerifyCmd(env))
+	cmd.AddCommand(googleVerifyCmd(env), googleSitemapCmd(env))
 	return cmd
 }
 
