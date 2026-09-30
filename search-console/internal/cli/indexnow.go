@@ -14,6 +14,7 @@ import (
 
 	"github.com/pooriaarab/clis/search-console/internal/config"
 	"github.com/pooriaarab/clis/search-console/internal/indexnow"
+	"github.com/pooriaarab/clis/search-console/internal/sitemap"
 )
 
 func indexnowCmd(env *Env) *cobra.Command {
@@ -23,25 +24,26 @@ func indexnowCmd(env *Env) *cobra.Command {
 }
 
 func indexnowSubmitCmd(env *Env) *cobra.Command {
-	var urlsFile, keyDir, keyLocation string
+	var urlsFile, fromSitemap, keyDir, keyLocation string
 	cmd := &cobra.Command{
 		Use:   "submit <domain>",
 		Short: "Post URLs to IndexNow in batches of up to 10,000",
 		Long: `Read the key for the domain from the config directory, or make one. Write the key
 file <key>.txt to --key-dir and print its path. You must serve that file at
 https://<domain>/<key>.txt. The command checks that the file is reachable before it
-posts. Give the URLs with --urls, one per line. Every URL must be on <domain>.`,
+posts. Give the URLs with --urls (one per line) or --from-sitemap. Every URL must be
+on <domain>.`,
 		Args: cobra.ExactArgs(1),
 		RunE: run(func(args []string) error {
 			domain, err := normalizeDomain(args[0])
 			if err != nil {
 				return err
 			}
-			if urlsFile == "" {
-				return &ExitError{Code: ExitUsage, Err: errors.New("give the URLs with --urls <file>")}
+			if (urlsFile != "") == (fromSitemap != "") {
+				return &ExitError{Code: ExitUsage, Err: errors.New("give exactly one of --urls and --from-sitemap")}
 			}
 			ctx := context.Background()
-			urls, err := indexnowURLs(domain, urlsFile)
+			urls, err := indexnowURLs(ctx, env, domain, urlsFile, fromSitemap)
 			if err != nil {
 				return err
 			}
@@ -79,30 +81,49 @@ posts. Give the URLs with --urls, one per line. Every URL must be on <domain>.`,
 		}),
 	}
 	cmd.Flags().StringVar(&urlsFile, "urls", "", "file with one URL per line")
+	cmd.Flags().StringVar(&fromSitemap, "from-sitemap", "", "read the URLs from a sitemap (default https://<domain>/sitemap.xml)")
+	cmd.Flags().Lookup("from-sitemap").NoOptDefVal = "auto"
 	cmd.Flags().StringVar(&keyDir, "key-dir", ".", "directory where the key file is written")
 	cmd.Flags().StringVar(&keyLocation, "key-location", "", "URL of the key file (default https://<domain>/<key>.txt)")
 	return cmd
 }
 
-// indexnowURLs reads the URLs from a file. It drops blank lines, comments and
-// duplicates. A URL that is not on the domain is a usage error, because
-// IndexNow would refuse the whole batch.
-func indexnowURLs(domain, file string) ([]string, error) {
-	f, err := os.Open(file)
-	if err != nil {
-		return nil, err
-	}
-	defer f.Close()
+// indexnowURLs reads the URLs from a file or a sitemap. It drops blank lines,
+// comments and duplicates. A URL that is not on the domain is a usage error,
+// because IndexNow would refuse the whole batch.
+func indexnowURLs(ctx context.Context, env *Env, domain, file, fromSitemap string) ([]string, error) {
 	var raw []string
-	sc := bufio.NewScanner(f)
-	sc.Buffer(make([]byte, 0, 64*1024), 1<<20)
-	for sc.Scan() {
-		if line := strings.TrimSpace(sc.Text()); line != "" && !strings.HasPrefix(line, "#") {
-			raw = append(raw, line)
+	if file == "" {
+		if fromSitemap == "auto" {
+			fromSitemap = "https://" + domain + "/sitemap.xml"
 		}
-	}
-	if err := sc.Err(); err != nil {
-		return nil, err
+		locs, err := sitemap.Locs(ctx, env.Client, fromSitemap)
+		if errors.Is(err, sitemap.ErrNotAbsolute) {
+			return nil, &ExitError{Code: ExitUsage, Err: err}
+		}
+		if err != nil {
+			return nil, err
+		}
+		raw = locs
+		if env.DryRun && len(raw) == 0 {
+			raw = []string{"https://" + domain + "/"} // a dry run cannot read the sitemap
+		}
+	} else {
+		f, err := os.Open(file)
+		if err != nil {
+			return nil, err
+		}
+		defer f.Close()
+		sc := bufio.NewScanner(f)
+		sc.Buffer(make([]byte, 0, 64*1024), 1<<20)
+		for sc.Scan() {
+			if line := strings.TrimSpace(sc.Text()); line != "" && !strings.HasPrefix(line, "#") {
+				raw = append(raw, line)
+			}
+		}
+		if err := sc.Err(); err != nil {
+			return nil, err
+		}
 	}
 	seen := map[string]bool{}
 	var urls, foreign []string

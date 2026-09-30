@@ -46,6 +46,7 @@ func Check(ctx context.Context, c *httpx.Client, rawURL string) (*Report, error)
 	if err != nil {
 		return nil, err
 	}
+	rep.checkLocs("", rawURL, locs)
 	rep.Kind, rep.URLs = root, len(locs)
 	if root == "sitemapindex" {
 		rep.URLs = 0
@@ -57,6 +58,7 @@ func Check(ctx context.Context, c *httpx.Client, rawURL string) (*Report, error)
 			if err != nil {
 				return nil, err
 			}
+			rep.checkLocs("child "+child+": ", child, clocs)
 			if croot == "sitemapindex" {
 				rep.problem("child %s: an index inside an index is not allowed", child)
 			}
@@ -66,6 +68,34 @@ func Check(ctx context.Context, c *httpx.Client, rawURL string) (*Report, error)
 	}
 	rep.OK = len(rep.Problems) == 0 || c.DryRun
 	return rep, nil
+}
+
+// Locs returns every page URL of a sitemap, and follows an index one level. It
+// does not lint the hosts. It fails when a sitemap cannot be read.
+func Locs(ctx context.Context, c *httpx.Client, rawURL string) ([]string, error) {
+	if _, err := absolute(rawURL); err != nil {
+		return nil, fmt.Errorf("%q: %w", rawURL, ErrNotAbsolute)
+	}
+	rep := &Report{}
+	root, locs, err := rep.fetch(ctx, c, rawURL, "")
+	if err == nil && root == "sitemapindex" {
+		var pages []string
+		for _, child := range locs {
+			_, clocs, cerr := rep.fetch(ctx, c, child, "child "+child+": ")
+			if cerr != nil {
+				return nil, cerr
+			}
+			pages = append(pages, clocs...)
+		}
+		locs = pages
+	}
+	if err != nil {
+		return nil, err
+	}
+	if len(rep.Problems) > 0 {
+		return nil, fmt.Errorf("cannot read the sitemap: %s", strings.Join(rep.Problems, "; "))
+	}
+	return locs, nil
 }
 
 // absolute parses raw and requires an http(s) URL with a host.
@@ -104,7 +134,6 @@ func (r *Report) fetch(ctx context.Context, c *httpx.Client, rawURL, prefix stri
 	case len(locs) >= MaxURLs:
 		r.problem("%sthe sitemap has %d URLs, the limit is under 50,000", prefix, len(locs))
 	}
-	r.checkLocs(prefix, rawURL, locs)
 	return root, locs, nil
 }
 
