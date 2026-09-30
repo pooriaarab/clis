@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -72,7 +73,7 @@ func (c *Client) Do(ctx context.Context, method, rawURL string, header map[strin
 		payload, contentType = enc, "application/json"
 	}
 	if c.DryRun {
-		c.Calls = append(c.Calls, Call{Method: method, URL: rawURL, Body: redactBody(contentType, payload)})
+		c.Calls = append(c.Calls, Call{Method: method, URL: redactURL(rawURL), Body: redactBody(contentType, payload)})
 		return &Response{Status: http.StatusOK, DryRun: true}, nil
 	}
 	req, err := http.NewRequestWithContext(ctx, method, rawURL, bytes.NewReader(payload))
@@ -87,7 +88,11 @@ func (c *Client) Do(ctx context.Context, method, rawURL string, header map[strin
 	}
 	resp, err := c.HTTP.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("%s %s: %w", method, rawURL, err)
+		var ue *url.Error // its text repeats the URL, and the URL can hold an API key
+		if errors.As(err, &ue) {
+			err = ue.Err
+		}
+		return nil, fmt.Errorf("%s %s: %w", method, redactURL(rawURL), err)
 	}
 	defer resp.Body.Close()
 	data, err := io.ReadAll(io.LimitReader(resp.Body, 64<<20))
@@ -112,4 +117,19 @@ func redactBody(contentType string, payload []byte) string {
 		}
 	}
 	return form.Encode()
+}
+
+// redactURL hides the apikey query value, which Bing wants in the URL.
+func redactURL(raw string) string {
+	u, err := url.Parse(raw)
+	if err != nil {
+		return "REDACTED"
+	}
+	q := u.Query()
+	if !q.Has("apikey") {
+		return raw
+	}
+	q.Set("apikey", "REDACTED")
+	u.RawQuery = q.Encode()
+	return u.String()
 }
