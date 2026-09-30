@@ -39,7 +39,7 @@ search-console launch example.com --sitemap https://example.com/sitemap.xml --cl
 search-console launch example.com --sitemap https://example.com/sitemap.xml --cloudflare-zone auto --json
 ```
 
-The result is a table of five steps: `google verify`, `google sitemap`, `bing verify`, `bing sitemap` and `indexnow`. Each row is `pass`, `fail` or `skip`. Run the command again to retry. A step that is already done passes.
+The result is a table of five steps: `google verify`, `google sitemap`, `bing verify`, `bing sitemap` and `indexnow`. Each row is `pass`, `fail` or `skipped`. A dry run shows `skipped (dry-run)` for every step and ends with `dry run: nothing was changed or verified`. It runs only the read-only checks (login, keys, IndexNow key file), and a failed check exits 1. Run the command again to retry. A step that is already done passes.
 
 ## Single steps
 
