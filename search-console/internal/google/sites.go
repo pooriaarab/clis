@@ -3,6 +3,7 @@ package google
 import (
 	"context"
 	"net/http"
+	"net/url"
 	"strings"
 )
 
@@ -26,4 +27,9 @@ func (a *API) Permission(ctx context.Context, domain string) (string, error) {
 	}
 	err := a.call(ctx, http.MethodGet, sitePath(domain), nil, nil, &out)
 	return out.PermissionLevel, err
+}
+
+// feedPath is the API path of one sitemap of a domain property.
+func feedPath(domain, sitemapURL string) string {
+	return sitePath(domain) + "/sitemaps/" + url.QueryEscape(sitemapURL)
 }
