@@ -72,7 +72,7 @@ func (c *Client) Do(ctx context.Context, method, rawURL string, header map[strin
 		payload, contentType = enc, "application/json"
 	}
 	if c.DryRun {
-		c.Calls = append(c.Calls, Call{Method: method, URL: rawURL, Body: string(payload)})
+		c.Calls = append(c.Calls, Call{Method: method, URL: rawURL, Body: redactBody(contentType, payload)})
 		return &Response{Status: http.StatusOK, DryRun: true}, nil
 	}
 	req, err := http.NewRequestWithContext(ctx, method, rawURL, bytes.NewReader(payload))
@@ -95,4 +95,21 @@ func (c *Client) Do(ctx context.Context, method, rawURL string, header map[strin
 		return nil, err
 	}
 	return &Response{Status: resp.StatusCode, Body: data}, nil
+}
+
+// redactBody hides form values, which carry secrets, except the safe ones.
+func redactBody(contentType string, payload []byte) string {
+	if contentType != "application/x-www-form-urlencoded" {
+		return string(payload)
+	}
+	form, err := url.ParseQuery(string(payload))
+	if err != nil {
+		return "REDACTED"
+	}
+	for k := range form {
+		if k != "grant_type" && k != "redirect_uri" && k != "client_id" {
+			form.Set(k, "REDACTED")
+		}
+	}
+	return form.Encode()
 }

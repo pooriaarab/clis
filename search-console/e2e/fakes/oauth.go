@@ -76,6 +76,14 @@ func (o *OAuth) token(w http.ResponseWriter, r *http.Request) {
 		_ = json.NewEncoder(w).Encode(map[string]string{"error": code, "error_description": "fake " + code})
 	}
 	f := r.PostForm
+	if f.Get("grant_type") == "refresh_token" {
+		if rt := f.Get("refresh_token"); rt != "rt-valid" && rt != "rt-env" {
+			fail("invalid_grant")
+			return
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{"access_token": "at-refreshed", "expires_in": 3600, "token_type": "Bearer"})
+		return
+	}
 	sum := sha256.Sum256([]byte(f.Get("code_verifier")))
 	if f.Get("grant_type") != "authorization_code" || f.Get("client_secret") != "csecret" || f.Get("code") != "code-1" ||
 		f.Get("redirect_uri") != redirect || base64.RawURLEncoding.EncodeToString(sum[:]) != challenge {

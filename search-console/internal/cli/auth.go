@@ -16,7 +16,7 @@ import (
 
 func authCmd(env *Env) *cobra.Command {
 	cmd := &cobra.Command{Use: "auth", Short: "Log in to Google"}
-	cmd.AddCommand(authGoogleCmd(env))
+	cmd.AddCommand(authGoogleCmd(env), authStatusCmd(env))
 	return cmd
 }
 
