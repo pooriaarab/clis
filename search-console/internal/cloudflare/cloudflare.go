@@ -32,6 +32,9 @@ type Record struct {
 	Name    string `json:"name"`
 	Content string `json:"content"`
 	TTL     int    `json:"ttl"`
+	// Proxied is sent only when set. A CNAME that Bing must see needs false.
+	Proxied *bool  `json:"proxied,omitempty"`
+	ID      string `json:"id,omitempty"`
 }
 
 // call sends one request and unwraps the {success, errors, result} envelope.
@@ -90,7 +93,8 @@ func (a *API) ZoneID(ctx context.Context, domain string) (string, error) {
 }
 
 // EnsureRecord creates r unless a record with the same type, name and content
-// exists. It reports whether it created one.
+// exists. When r.Proxied is set and the record differs, it fixes that flag. It
+// reports whether it changed DNS.
 func (a *API) EnsureRecord(ctx context.Context, zoneID string, r Record) (bool, error) {
 	var found []Record
 	q := url.Values{"type": {r.Type}, "name": {r.Name}, "content": {r.Content}}
@@ -98,7 +102,11 @@ func (a *API) EnsureRecord(ctx context.Context, zoneID string, r Record) (bool, 
 		return false, err
 	}
 	if len(found) > 0 {
-		return false, nil
+		old := found[0]
+		if r.Proxied == nil || old.Proxied == nil || *old.Proxied == *r.Proxied {
+			return false, nil
+		}
+		return true, a.call(ctx, http.MethodPatch, "/zones/"+zoneID+"/dns_records/"+old.ID, nil, map[string]any{"proxied": *r.Proxied}, nil)
 	}
 	return true, a.call(ctx, http.MethodPost, "/zones/"+zoneID+"/dns_records", nil, r, nil)
 }
