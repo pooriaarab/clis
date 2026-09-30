@@ -16,7 +16,7 @@ import (
 // OAuth mimics the Google consent page and token endpoint.
 type OAuth struct {
 	*httptest.Server
-	// Mode changes the consent result: "badstate".
+	// Mode changes the consent result: "deny", "badstate" or "norefresh".
 	Mode string
 
 	mu        sync.Mutex
@@ -55,11 +55,14 @@ func (o *OAuth) auth(w http.ResponseWriter, r *http.Request) {
 	o.mu.Lock()
 	o.challenge, o.redirect = q.Get("code_challenge"), q.Get("redirect_uri")
 	o.mu.Unlock()
-	state := q.Get("state")
-	if o.Mode == "badstate" {
+	state, result := q.Get("state"), "code=code-1"
+	switch o.Mode {
+	case "deny":
+		result = "error=access_denied"
+	case "badstate":
 		state = "wrong"
 	}
-	http.Redirect(w, r, q.Get("redirect_uri")+"?code=code-1&state="+state, http.StatusFound)
+	http.Redirect(w, r, q.Get("redirect_uri")+"?"+result+"&state="+state, http.StatusFound)
 }
 
 func (o *OAuth) token(w http.ResponseWriter, r *http.Request) {
@@ -79,6 +82,9 @@ func (o *OAuth) token(w http.ResponseWriter, r *http.Request) {
 		fail("invalid_grant")
 		return
 	}
-	_ = json.NewEncoder(w).Encode(map[string]any{
-		"access_token": "at-login", "refresh_token": "rt-valid", "expires_in": 3600, "token_type": "Bearer"})
+	resp := map[string]any{"access_token": "at-login", "expires_in": 3600, "token_type": "Bearer"}
+	if o.Mode != "norefresh" {
+		resp["refresh_token"] = "rt-valid"
+	}
+	_ = json.NewEncoder(w).Encode(resp)
 }

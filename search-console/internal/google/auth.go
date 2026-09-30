@@ -29,6 +29,9 @@ var Scopes = []string{
 	"https://www.googleapis.com/auth/webmasters",
 }
 
+// ErrTimeout means nobody finished the consent before the deadline.
+var ErrTimeout = errors.New("timed out waiting for the browser consent")
+
 // Credentials is the OAuth client and the login it produced. It is the
 // content of google.json.
 type Credentials struct {
@@ -46,6 +49,7 @@ type OAuth struct {
 
 // LoginOpts controls one login.
 type LoginOpts struct {
+	Timeout time.Duration
 	// Notify receives the consent URL so the user can open it by hand.
 	Notify func(url string)
 	// Open tries to open the consent URL in a browser. A nil Open skips it.
@@ -84,6 +88,8 @@ func (o *OAuth) Login(ctx context.Context, cred Credentials, opts LoginOpts) (st
 	var cb callback
 	select {
 	case cb = <-codes:
+	case <-time.After(opts.Timeout):
+		return "", ErrTimeout
 	case <-ctx.Done():
 		return "", ctx.Err()
 	}
@@ -111,6 +117,9 @@ func (o *OAuth) Login(ctx context.Context, cred Credentials, opts LoginOpts) (st
 	if !resp.OK() {
 		return "", fmt.Errorf("google oauth: HTTP %d: %s %s", resp.Status, tok.Error, tok.Description)
 	}
+	if tok.RefreshToken == "" {
+		return "", errors.New("Google returned no refresh token; remove this app at myaccount.google.com/permissions and run auth google again")
+	}
 	return tok.RefreshToken, nil
 }
 
@@ -128,6 +137,8 @@ func callbackHandler(state string, out chan<- callback) http.Handler {
 		switch {
 		case q.Get("state") != state:
 			cb.err = errors.New("the consent reply has a different state value; start again")
+		case q.Get("error") != "":
+			cb.err = fmt.Errorf("consent failed: %s", q.Get("error"))
 		default:
 			cb.code = q.Get("code")
 		}
