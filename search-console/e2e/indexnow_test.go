@@ -12,7 +12,7 @@ import (
 )
 
 // Ways `indexnow submit` can fail, listed before the code was written:
-//  1. --urls is missing: exit 2, no request.
+//  1. Neither or both of --urls and --from-sitemap are given: exit 2, no request.
 //  2. Blank lines, comments or duplicates in the list reach IndexNow.
 //  3. A URL is on another host: IndexNow refuses the batch, so stop with exit 2.
 //  4. The key changes on every run, so the key file on the site goes stale.
@@ -22,6 +22,7 @@ import (
 //     and the batches after the failed one are not sent.
 //  8. --dry-run writes the key file, saves the key or sends a request.
 //  9. The key directory does not exist: fail before any request.
+// 10. A sitemap index is not followed, or an unreadable sitemap gives an empty run.
 
 const inKey = "abcdef0123456789abcdef0123456789"
 
@@ -88,10 +89,13 @@ func TestIndexNowSubmitCleansTheList(t *testing.T) {
 	}
 }
 
-func TestIndexNowNeedsURLs(t *testing.T) {
+func TestIndexNowNeedsOneSource(t *testing.T) {
 	e := indexnowSandbox(t)
 	e.seedKey(t)
-	wantExit(t, e.submit(), 2)
+	f := e.urlFile(t, "https://example.com/")
+	for _, args := range [][]string{{}, {"--urls", f, "--from-sitemap=" + e.site.URL + "/sitemap.xml"}} {
+		wantExit(t, e.submit(args...), 2)
+	}
 	if len(e.n.Posts()) != 0 {
 		t.Fatal("a request was sent")
 	}
@@ -211,5 +215,39 @@ func TestIndexNowMissingKeyDir(t *testing.T) {
 	wantExit(t, e.submit("--urls", e.urlFile(t, "https://example.com/")), 1)
 	if len(e.n.Posts()) != 0 {
 		t.Fatal("a request was sent")
+	}
+}
+
+func TestIndexNowFromSitemapIndex(t *testing.T) {
+	e := indexnowSandbox(t)
+	e.seedKey(t)
+	e.site.Serve("/a.xml", 200, "application/xml", fakes.URLSet("https://example.com/", "https://example.com/a"))
+	e.site.Serve("/b.xml", 200, "application/xml", fakes.URLSet("https://example.com/a", "https://example.com/b"))
+	e.site.Serve("/index.xml", 200, "application/xml", `<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><sitemap><loc>`+
+		e.site.URL+`/a.xml</loc></sitemap><sitemap><loc>`+e.site.URL+`/b.xml</loc></sitemap></sitemapindex>`)
+	wantExit(t, e.submit("--from-sitemap="+e.site.URL+"/index.xml"), 0)
+	if p := e.n.Posts(); len(p) != 1 || len(p[0].URLs) != 3 {
+		t.Fatalf("posts = %+v, want one post with 3 URLs", p)
+	}
+}
+
+func TestIndexNowUnreadableSitemap(t *testing.T) {
+	e := indexnowSandbox(t)
+	e.seedKey(t)
+	r := e.submit("--from-sitemap=" + e.site.URL + "/missing.xml")
+	wantExit(t, r, 1)
+	wantContains(t, "stderr", r.Stderr, "cannot read the sitemap")
+	if len(e.n.Posts()) != 0 {
+		t.Fatal("a request was sent")
+	}
+}
+
+func TestIndexNowDefaultSitemapInDryRun(t *testing.T) {
+	e := indexnowSandbox(t)
+	r := e.submit("--from-sitemap", "--dry-run")
+	wantExit(t, r, 0)
+	wantContains(t, "stdout", r.Stdout, "https://example.com/sitemap.xml")
+	if len(e.n.Posts()) != 0 || e.site.Hits("/sitemap.xml") != 0 {
+		t.Fatal("dry run sent a request")
 	}
 }
