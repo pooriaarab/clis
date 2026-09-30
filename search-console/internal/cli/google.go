@@ -8,6 +8,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/pooriaarab/clis/search-console/internal/cloudflare"
 	"github.com/pooriaarab/clis/search-console/internal/google"
 )
 
@@ -32,6 +33,7 @@ func (e *Env) googleAPI(ctx context.Context) (*google.API, error) {
 
 func googleVerifyCmd(env *Env) *cobra.Command {
 	var wait, interval time.Duration
+	var zone string
 	cmd := &cobra.Command{
 		Use:   "verify <domain>",
 		Short: "Verify a domain with Google over DNS and add it to Search Console",
@@ -46,6 +48,12 @@ Exit code 4 means DNS was not ready in time.`,
 				return err
 			}
 			ctx := context.Background()
+			var cf *cloudflare.API
+			if zone != "" {
+				if cf, err = env.cloudflareAPI(); err != nil {
+					return err
+				}
+			}
 			api, err := env.googleAPI(ctx)
 			if err != nil {
 				return err
@@ -60,7 +68,16 @@ Exit code 4 means DNS was not ready in time.`,
 				if err != nil {
 					return err
 				}
-				env.P.Warnf("Add this TXT record at the root of %s:\n  %s", domain, record)
+				if cf == nil {
+					env.P.Warnf("Add this TXT record at the root of %s:\n  %s", domain, record)
+				} else {
+					created, err := publishTXT(ctx, cf, zone, domain, record)
+					if err != nil {
+						return err
+					}
+					result["cloudflare_created"] = created
+					env.P.Warnf("Cloudflare TXT record for %s (created: %t).", domain, created)
+				}
 				attempts, err := api.VerifyWithBackoff(ctx, domain, google.BackoffOpts{
 					Wait: wait, Interval: interval,
 					OnRetry: func(n int, d time.Duration) {
@@ -96,7 +113,28 @@ Exit code 4 means DNS was not ready in time.`,
 			})
 		}),
 	}
+	cmd.Flags().StringVar(&zone, "cloudflare-zone", "", "create the TXT record on Cloudflare: a zone id, or auto to find it (needs CLOUDFLARE_API_TOKEN)")
 	cmd.Flags().DurationVar(&wait, "wait", 10*time.Minute, "how long to wait for DNS before giving up")
 	cmd.Flags().DurationVar(&interval, "interval", 5*time.Second, "first delay between checks; it doubles up to 60s")
 	return cmd
+}
+
+// cloudflareAPI reads the token from CLOUDFLARE_API_TOKEN. It never reads a file.
+func (e *Env) cloudflareAPI() (*cloudflare.API, error) {
+	token := e.Getenv("CLOUDFLARE_API_TOKEN")
+	if token == "" {
+		return nil, errors.New("--cloudflare-zone needs the CLOUDFLARE_API_TOKEN environment variable")
+	}
+	return &cloudflare.API{HTTP: e.Client, Base: envOr(e.Getenv, "CLOUDFLARE_API_BASE", cloudflare.DefaultBase), Token: token}, nil
+}
+
+// publishTXT puts the verification record in DNS. zone is a zone id or "auto".
+func publishTXT(ctx context.Context, cf *cloudflare.API, zone, domain, record string) (bool, error) {
+	if zone == "auto" {
+		var err error
+		if zone, err = cf.ZoneID(ctx, domain); err != nil {
+			return false, err
+		}
+	}
+	return cf.EnsureRecord(ctx, zone, cloudflare.Record{Type: "TXT", Name: domain, Content: record, TTL: 120})
 }

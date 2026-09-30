@@ -18,6 +18,9 @@ type Google struct {
 	// ReadyAfter is how many verify calls answer 400 before the TXT record "appears".
 	// A negative value means never.
 	ReadyAfter int
+	// Ready, when set, replaces ReadyAfter: it reports whether DNS shows the TXT
+	// record for the domain.
+	Ready func(domain, record string) bool
 	// VerifyStatus, when set, is the status every verify call answers.
 	VerifyStatus int
 	// TokenStatus, when set, is the status the token call answers.
@@ -134,7 +137,11 @@ func (g *Google) verification(w http.ResponseWriter, r *http.Request, key string
 		apiError(w, g.VerifyStatus, "verify failed")
 		return
 	}
-	if g.ReadyAfter < 0 || n <= g.ReadyAfter {
+	notReady := g.ReadyAfter < 0 || n <= g.ReadyAfter
+	if g.Ready != nil {
+		notReady = !g.Ready(body.Site.Identifier, "google-site-verification=fake-"+body.Site.Identifier)
+	}
+	if notReady {
 		apiError(w, http.StatusBadRequest, "The necessary verification token could not be found on your site.")
 		return
 	}
