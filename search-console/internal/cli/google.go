@@ -8,6 +8,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/pooriaarab/clis/search-console/internal/backoff"
 	"github.com/pooriaarab/clis/search-console/internal/cloudflare"
 	"github.com/pooriaarab/clis/search-console/internal/google"
 )
@@ -71,14 +72,14 @@ Exit code 4 means DNS was not ready in time.`,
 				if cf == nil {
 					env.P.Warnf("Add this TXT record at the root of %s:\n  %s", domain, record)
 				} else {
-					created, err := publishTXT(ctx, cf, zone, domain, record)
+					created, err := publishRecord(ctx, cf, zone, domain, cloudflare.Record{Type: "TXT", Name: domain, Content: record, TTL: 120})
 					if err != nil {
 						return err
 					}
 					result["cloudflare_created"] = created
 					env.P.Warnf("Cloudflare TXT record for %s (created: %t).", domain, created)
 				}
-				attempts, err := api.VerifyWithBackoff(ctx, domain, google.BackoffOpts{
+				attempts, err := api.VerifyWithBackoff(ctx, domain, backoff.Opts{
 					Wait: wait, Interval: interval,
 					OnRetry: func(n int, d time.Duration) {
 						env.P.Warnf("Google cannot see the record yet (attempt %d). Retrying in %s.", n, d)
@@ -128,13 +129,14 @@ func (e *Env) cloudflareAPI() (*cloudflare.API, error) {
 	return &cloudflare.API{HTTP: e.Client, Base: envOr(e.Getenv, "CLOUDFLARE_API_BASE", cloudflare.DefaultBase), Token: token}, nil
 }
 
-// publishTXT puts the verification record in DNS. zone is a zone id or "auto".
-func publishTXT(ctx context.Context, cf *cloudflare.API, zone, domain, record string) (bool, error) {
+// publishRecord creates a DNS record on Cloudflare. zone is a zone id or "auto",
+// and "auto" finds the zone that holds domain.
+func publishRecord(ctx context.Context, cf *cloudflare.API, zone, domain string, rec cloudflare.Record) (bool, error) {
 	if zone == "auto" {
 		var err error
 		if zone, err = cf.ZoneID(ctx, domain); err != nil {
 			return false, err
 		}
 	}
-	return cf.EnsureRecord(ctx, zone, cloudflare.Record{Type: "TXT", Name: domain, Content: record, TTL: 120})
+	return cf.EnsureRecord(ctx, zone, rec)
 }
