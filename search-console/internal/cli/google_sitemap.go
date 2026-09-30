@@ -29,16 +29,8 @@ means Google reported errors for the sitemap.`,
 				return err
 			}
 			ctx := context.Background()
-			rep, err := sitemap.Check(ctx, env.Client, args[1])
-			if errors.Is(err, sitemap.ErrNotAbsolute) {
-				return &ExitError{Code: ExitUsage, Err: err}
-			}
-			if err != nil {
+			if err := checkSitemap(ctx, env, args[1]); err != nil {
 				return err
-			}
-			if !rep.OK && !env.DryRun {
-				env.P.Warnf("problems in %s:\n  %s", rep.URL, strings.Join(rep.Problems, "\n  "))
-				return &ExitError{Code: ExitSitemapError, Err: errors.New("the sitemap has problems, so it was not submitted")}
 			}
 			api, err := env.googleAPI(ctx)
 			if err != nil {
@@ -86,6 +78,23 @@ means Google reported errors for the sitemap.`,
 	}
 	cmd.AddCommand(submit, status)
 	return cmd
+}
+
+// checkSitemap fetches the sitemap. It fails with exit code 3 when the sitemap
+// has problems, so nobody submits a broken sitemap.
+func checkSitemap(ctx context.Context, env *Env, url string) error {
+	rep, err := sitemap.Check(ctx, env.Client, url)
+	if errors.Is(err, sitemap.ErrNotAbsolute) {
+		return &ExitError{Code: ExitUsage, Err: err}
+	}
+	if err != nil {
+		return err
+	}
+	if !rep.OK && !env.DryRun {
+		env.P.Warnf("problems in %s:\n  %s", rep.URL, strings.Join(rep.Problems, "\n  "))
+		return &ExitError{Code: ExitSitemapError, Err: errors.New("the sitemap has problems, so it was not submitted")}
+	}
+	return nil
 }
 
 // reportSitemap prints the status. Errors from Google exit with code 3.

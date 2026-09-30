@@ -14,6 +14,7 @@ type BingSite struct {
 	Verified bool
 	DNSCode  string
 	host     string
+	feeds    []map[string]any
 }
 
 // Bing mimics the Bing Webmaster JSON API. Replies wrap results in {"d": ...}.
@@ -27,6 +28,10 @@ type Bing struct {
 	Ready func(name, target string) bool
 	// VerifyError makes VerifySite answer an error body with this message.
 	VerifyError string
+	// FeedStatus is the status a submitted sitemap gets. The default is "Pending".
+	FeedStatus string
+	// HideFeeds makes GetFeeds answer an empty list, as Bing does before it reads a sitemap.
+	HideFeeds bool
 	// Daily and Monthly are the URL submission quotas.
 	Daily, Monthly int
 
@@ -58,6 +63,19 @@ func (b *Bing) Verified(url string) bool {
 	defer b.mu.Unlock()
 	s, ok := b.sites[url]
 	return ok && s.Verified
+}
+
+// Feeds lists the sitemap URLs submitted for a site.
+func (b *Bing) Feeds(siteURL string) []string {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	var out []string
+	if s := b.sites[siteURL]; s != nil {
+		for _, f := range s.feeds {
+			out = append(out, f["Url"].(string))
+		}
+	}
+	return out
 }
 
 // Calls counts requests to a method name such as "GetUserSites".
@@ -131,6 +149,43 @@ func (b *Bing) serve(w http.ResponseWriter, r *http.Request) {
 		default:
 			b.ok(w, false)
 		}
+	case r.Method == http.MethodPost && name == "SubmitFeed":
+		var body struct{ SiteURL, FeedURL string }
+		_ = json.NewDecoder(r.Body).Decode(&body)
+		s, found := b.sites[body.SiteURL]
+		switch {
+		case !found || !s.Verified:
+			b.fail(w, 3, "ERROR!!! InvalidParameter: site is not verified")
+		case !strings.HasPrefix(body.FeedURL, "http"):
+			b.fail(w, 2, "ERROR!!! InvalidParameter: bad feedUrl")
+		default:
+			status := b.FeedStatus
+			if status == "" {
+				status = "Pending"
+			}
+			feed := map[string]any{"Url": body.FeedURL, "Type": "Sitemap", "Status": status,
+				"Submitted": "/Date(1700000000000)/", "LastCrawled": "/Date(-62135596800000)/", "UrlCount": 0}
+			for i, f := range s.feeds {
+				if f["Url"] == body.FeedURL { // a resubmit replaces the feed, it does not add one
+					s.feeds[i] = feed
+					b.ok(w, nil)
+					return
+				}
+			}
+			s.feeds = append(s.feeds, feed)
+			b.ok(w, nil)
+		}
+	case r.Method == http.MethodGet && name == "GetFeeds":
+		s, found := b.sites[r.URL.Query().Get("siteUrl")]
+		if !found {
+			b.fail(w, 3, "ERROR!!! InvalidParameter: siteUrl is not a site of this account")
+			return
+		}
+		out := []map[string]any{}
+		if !b.HideFeeds {
+			out = append(out, s.feeds...)
+		}
+		b.ok(w, out)
 	default:
 		b.fail(w, 1, "unknown method "+name)
 	}
