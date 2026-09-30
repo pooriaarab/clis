@@ -68,3 +68,21 @@ func (a *API) VerifyWithBackoff(ctx context.Context, domain string, o BackoffOpt
 		delay = min(delay*2, MaxInterval)
 	}
 }
+
+// IsVerified reports whether the account already owns domain.
+func (a *API) IsVerified(ctx context.Context, domain string) (bool, error) {
+	var out struct {
+		Items []struct {
+			Site struct{ Type, Identifier string } `json:"site"`
+		} `json:"items"`
+	}
+	if err := a.call(ctx, http.MethodGet, "/siteVerification/v1/webResource", nil, nil, &out); err != nil {
+		return false, err
+	}
+	for _, it := range out.Items {
+		if it.Site.Type == "INET_DOMAIN" && it.Site.Identifier == domain {
+			return true, nil
+		}
+	}
+	return false, nil
+}
