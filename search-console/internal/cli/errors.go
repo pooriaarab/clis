@@ -14,6 +14,8 @@ const (
 type ExitError struct {
 	Code int
 	Err  error
+	// Printed means the command already showed the failure in its own output.
+	Printed bool
 }
 
 func (e *ExitError) Error() string { return e.Err.Error() }
