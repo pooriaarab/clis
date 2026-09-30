@@ -86,7 +86,11 @@
 --- PASS: TestLaunchUsageErrorsRunNothing
 --- PASS: TestLaunchDoesNotSubmitABrokenSitemap
 --- PASS: TestLaunchShowsAnUnreachableIndexNowKey
---- PASS: TestLaunchDryRunChangesNothing
+--- PASS: TestLaunchDryRunNeverReportsAPass
+--- PASS: TestLaunchDryRunRunsTheReadOnlyChecksForReal
+--- PASS: TestLaunchDryRunFailsWhenACheckFails
+--- PASS: TestLaunchDryRunNamesAKeyFileThatDoesNotExistYet
+--- PASS: TestLaunchDryRunLabelsASkipFlagAsASkip
 --- PASS: TestVersion
 --- PASS: TestUnknownCommandIsUsageError
 --- PASS: TestJSONErrorIsOneObjectOnStdout
@@ -102,95 +106,95 @@
 ok e2e
 
 # One launch, then a rerun that changes nothing
-    launch_test.go:55: $ search-console launch example.com --sitemap http://site.fake/sitemap.xml --cloudflare-zone auto --interval 20ms --wait 400ms --key-dir $KEYDIR --key-location http://site.fake/abcdef0123456789abcdef0123456789.txt --indexnow-urls $WORK/urls.txt --json
-    launch_test.go:55: {
+    launch_test.go:64: $ search-console launch example.com --sitemap http://site.fake/sitemap.xml --cloudflare-zone auto --interval 20ms --wait 400ms --key-dir $KEYDIR --key-location http://site.fake/abcdef0123456789abcdef0123456789.txt --indexnow-urls $WORK/urls.txt --json
+    launch_test.go:64: {
           "domain": "example.com",
           "ok": true,
           "steps": [
             {
               "detail": "verified after 1 attempt(s)",
               "exit": 0,
-              "result": "pass",
+              "status": "pass",
               "step": "google verify"
             },
             {
               "detail": "done",
               "exit": 0,
-              "result": "pass",
+              "status": "pass",
               "step": "google sitemap"
             },
             {
               "detail": "verified after 1 attempt(s)",
               "exit": 0,
-              "result": "pass",
+              "status": "pass",
               "step": "bing verify"
             },
             {
               "detail": "status Pending",
               "exit": 0,
-              "result": "pass",
+              "status": "pass",
               "step": "bing sitemap"
             },
             {
               "detail": "2 URL(s) sent",
               "exit": 0,
-              "result": "pass",
+              "status": "pass",
               "step": "indexnow"
             }
           ]
         }
-    launch_test.go:55: stderr: Cloudflare TXT record for example.com (created: true).
+    launch_test.go:64: stderr: Cloudflare TXT record for example.com (created: true).
         Cloudflare CNAME 0123456789abcdef0123456789abcdef.example.com -> verify.bing.com, not proxied (changed: true).
         Key file: $KEYDIR/abcdef0123456789abcdef0123456789.txt
         Serve it at: http://site.fake/abcdef0123456789abcdef0123456789.txt
-    launch_test.go:55: -> exit 0
-    launch_test.go:55: $ search-console launch example.com --sitemap http://site.fake/sitemap.xml --cloudflare-zone auto --interval 20ms --wait 400ms --key-dir $KEYDIR --key-location http://site.fake/abcdef0123456789abcdef0123456789.txt --indexnow-urls $WORK/urls.txt --json
-    launch_test.go:55: {
+    launch_test.go:64: -> exit 0
+    launch_test.go:64: $ search-console launch example.com --sitemap http://site.fake/sitemap.xml --cloudflare-zone auto --interval 20ms --wait 400ms --key-dir $KEYDIR --key-location http://site.fake/abcdef0123456789abcdef0123456789.txt --indexnow-urls $WORK/urls.txt --json
+    launch_test.go:64: {
           "domain": "example.com",
           "ok": true,
           "steps": [
             {
               "detail": "already verified",
               "exit": 0,
-              "result": "pass",
+              "status": "pass",
               "step": "google verify"
             },
             {
               "detail": "done",
               "exit": 0,
-              "result": "pass",
+              "status": "pass",
               "step": "google sitemap"
             },
             {
               "detail": "already verified",
               "exit": 0,
-              "result": "pass",
+              "status": "pass",
               "step": "bing verify"
             },
             {
               "detail": "status Pending",
               "exit": 0,
-              "result": "pass",
+              "status": "pass",
               "step": "bing sitemap"
             },
             {
               "detail": "2 URL(s) sent",
               "exit": 0,
-              "result": "pass",
+              "status": "pass",
               "step": "indexnow"
             }
           ]
         }
-    launch_test.go:55: stderr: Key file: $KEYDIR/abcdef0123456789abcdef0123456789.txt
+    launch_test.go:64: stderr: Key file: $KEYDIR/abcdef0123456789abcdef0123456789.txt
         Serve it at: http://site.fake/abcdef0123456789abcdef0123456789.txt
-    launch_test.go:55: -> exit 0
-    launch_test.go:55: $ search-console launch example.com --sitemap http://site.fake/sitemap.xml --cloudflare-zone auto --interval 20ms --wait 400ms --key-dir $KEYDIR --key-location http://site.fake/abcdef0123456789abcdef0123456789.txt --indexnow-urls $WORK/urls.txt
-    launch_test.go:55: STEP            RESULT  DETAIL
+    launch_test.go:64: -> exit 0
+    launch_test.go:64: $ search-console launch example.com --sitemap http://site.fake/sitemap.xml --cloudflare-zone auto --interval 20ms --wait 400ms --key-dir $KEYDIR --key-location http://site.fake/abcdef0123456789abcdef0123456789.txt --indexnow-urls $WORK/urls.txt
+    launch_test.go:64: STEP            STATUS  DETAIL
         google verify   pass    already verified
         google sitemap  pass    done
         bing verify     pass    already verified
         bing sitemap    pass    status Pending
         indexnow        pass    2 URL(s) sent
-    launch_test.go:55: stderr: Key file: $KEYDIR/abcdef0123456789abcdef0123456789.txt
+    launch_test.go:64: stderr: Key file: $KEYDIR/abcdef0123456789abcdef0123456789.txt
         Serve it at: http://site.fake/abcdef0123456789abcdef0123456789.txt
-    launch_test.go:55: -> exit 0
+    launch_test.go:64: -> exit 0
