@@ -2,6 +2,7 @@ package e2e
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -16,9 +17,11 @@ import (
 //  3. A URL is on another host: IndexNow refuses the batch, so stop with exit 2.
 //  4. The key changes on every run, so the key file on the site goes stale.
 //  5. The key file is missing (404) or a soft 404 page: exit 1 before any POST.
-//  6. IndexNow answers 202: that is success.
-//  7. --dry-run writes the key file, saves the key or sends a request.
-//  8. The key directory does not exist: fail before any request.
+//  6. More than 10,000 URLs go in one request.
+//  7. IndexNow answers 202: that is success. 400, 403, 422, 429: exit 1 with the reason,
+//     and the batches after the failed one are not sent.
+//  8. --dry-run writes the key file, saves the key or sends a request.
+//  9. The key directory does not exist: fail before any request.
 
 const inKey = "abcdef0123456789abcdef0123456789"
 
@@ -76,7 +79,7 @@ func TestIndexNowSubmitCleansTheList(t *testing.T) {
 	if len(posts) != 1 || len(posts[0].URLs) != 3 || posts[0].Host != "example.com" || posts[0].Key != inKey || posts[0].KeyLocation != e.keyLoc {
 		t.Fatalf("unexpected posts: %+v", posts)
 	}
-	if v := r.JSON(t); v["urls"] != float64(3) || v["status"] != float64(200) {
+	if v := r.JSON(t); v["urls"] != float64(3) || v["batches"] != float64(1) {
 		t.Fatalf("unexpected result: %s", r.Stdout)
 	}
 	wantContains(t, "stderr", r.Stderr, filepath.Join(e.keyDir, inKey+".txt"))
@@ -145,11 +148,44 @@ func TestIndexNowSoftNotFoundKeyFile(t *testing.T) {
 	}
 }
 
-func TestIndexNowAcceptedAnswer(t *testing.T) {
+func numbered(n int) []string {
+	out := make([]string, n)
+	for i := range out {
+		out[i] = fmt.Sprintf("https://example.com/p/%d", i)
+	}
+	return out
+}
+
+func TestIndexNowSplitsIntoBatchesOf10000(t *testing.T) {
+	e := indexnowSandbox(t)
+	e.seedKey(t)
+	wantExit(t, e.submit("--urls", e.urlFile(t, numbered(25000)...)), 0)
+	var sizes []int
+	for _, p := range e.n.Posts() {
+		sizes = append(sizes, len(p.URLs))
+	}
+	if fmt.Sprint(sizes) != "[10000 10000 5000]" {
+		t.Fatalf("batch sizes = %v", sizes)
+	}
+}
+
+func TestIndexNowAcceptedAndRefusedAnswers(t *testing.T) {
 	e := indexnowSandbox(t)
 	e.seedKey(t)
 	e.n.Answer[0] = 202
 	wantExit(t, e.submit("--urls", e.urlFile(t, "https://example.com/")), 0)
+	for status, want := range map[int]string{400: "malformed", 403: "key is not valid", 422: "does not belong", 429: "too many requests"} {
+		e := indexnowSandbox(t)
+		e.seedKey(t)
+		e.n.Answer[1] = status // the second of three batches fails
+		r := e.submit("--urls", e.urlFile(t, numbered(25000)...))
+		wantExit(t, r, 1)
+		wantContains(t, "stderr", r.Stderr, want)
+		wantContains(t, "stderr", r.Stderr, "batch 2 of 3 failed after 1 batch(es)")
+		if len(e.n.Posts()) != 2 {
+			t.Fatalf("status %d: posts = %d, want 2", status, len(e.n.Posts()))
+		}
+	}
 }
 
 func TestIndexNowDryRunWritesAndSendsNothing(t *testing.T) {

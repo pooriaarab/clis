@@ -26,7 +26,7 @@ func indexnowSubmitCmd(env *Env) *cobra.Command {
 	var urlsFile, keyDir, keyLocation string
 	cmd := &cobra.Command{
 		Use:   "submit <domain>",
-		Short: "Post URLs to IndexNow",
+		Short: "Post URLs to IndexNow in batches of up to 10,000",
 		Long: `Read the key for the domain from the config directory, or make one. Write the key
 file <key>.txt to --key-dir and print its path. You must serve that file at
 https://<domain>/<key>.txt. The command checks that the file is reachable before it
@@ -57,19 +57,24 @@ posts. Give the URLs with --urls, one per line. Every URL must be on <domain>.`,
 			if err := api.CheckKeyFile(ctx, keyLocation, key); err != nil {
 				return fmt.Errorf("the key file is not reachable: %w (upload %s, then run the command again)", err, filepath.Base(keyPath))
 			}
-			status, err := api.Submit(ctx, domain, key, keyLocation, urls)
-			if err != nil {
-				return err
+			batches := indexnow.Batches(urls)
+			var statuses []int
+			for i, batch := range batches {
+				st, err := api.Submit(ctx, domain, key, keyLocation, batch)
+				if err != nil {
+					return fmt.Errorf("batch %d of %d failed after %d batch(es) were sent: %w", i+1, len(batches), len(statuses), err)
+				}
+				statuses = append(statuses, st)
 			}
 			return env.Emit(map[string]any{
 				"ok": true, "domain": domain, "key_file": keyPath, "key_location": keyLocation,
-				"urls": len(urls), "status": status,
+				"urls": len(urls), "batches": len(statuses), "statuses": statuses,
 			}, func() {
 				verb := "Sent"
 				if env.DryRun {
 					verb = "Would send"
 				}
-				env.P.Linef("%s %d URL(s) to IndexNow.", verb, len(urls))
+				env.P.Linef("%s %d URL(s) to IndexNow in %d batch(es).", verb, len(urls), len(statuses))
 			})
 		}),
 	}

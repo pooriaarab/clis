@@ -15,6 +15,9 @@ import (
 // DefaultBase is the shared IndexNow endpoint. INDEXNOW_API_BASE overrides it.
 const DefaultBase = "https://api.indexnow.org/indexnow"
 
+// MaxBatch is the most URLs one request may hold.
+const MaxBatch = 10000
+
 // API posts URL lists to IndexNow.
 type API struct {
 	HTTP *httpx.Client
@@ -28,6 +31,18 @@ func NewKey() (string, error) {
 		return "", err
 	}
 	return hex.EncodeToString(b), nil
+}
+
+// Batches splits urls into lists of at most MaxBatch.
+func Batches(urls []string) [][]string {
+	var out [][]string
+	for len(urls) > MaxBatch {
+		out, urls = append(out, urls[:MaxBatch]), urls[MaxBatch:]
+	}
+	if len(urls) > 0 {
+		out = append(out, urls)
+	}
+	return out
 }
 
 // CheckKeyFile fetches the key file the way IndexNow will. It fails unless the
@@ -57,5 +72,12 @@ func (a *API) Submit(ctx context.Context, host, key, location string, urls []str
 	if resp.DryRun || resp.Status == http.StatusOK || resp.Status == http.StatusAccepted {
 		return resp.Status, nil
 	}
-	return resp.Status, fmt.Errorf("indexnow: HTTP %d", resp.Status)
+	return resp.Status, fmt.Errorf("indexnow: HTTP %d: %s", resp.Status, reason[resp.Status])
+}
+
+var reason = map[int]string{
+	400: "the request is malformed",
+	403: "the key is not valid: IndexNow could not read the key file",
+	422: "a URL does not belong to the host, or the key does not match",
+	429: "too many requests: wait and try again later",
 }
