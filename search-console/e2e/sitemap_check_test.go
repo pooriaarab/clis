@@ -104,3 +104,68 @@ func TestSitemapCheckDryRunSendsNothing(t *testing.T) {
 		t.Fatal("dry run sent a request")
 	}
 }
+
+// More ways `sitemap check` can fail, listed before the code was written:
+// 11. A <loc> is relative (/a) or not http(s), and the CLI accepts it.
+// 12. A <loc> is on another host (or www vs apex), which search engines drop.
+// 13. A sitemap index lists a child that answers 404 and the CLI never fetches it.
+// 14. A child of an index is itself an index (nesting is not allowed).
+// 15. A child holds bad URLs and the report does not say which child.
+// 16. The URL count of an index is the number of children, not of pages.
+
+func TestSitemapCheckURLRules(t *testing.T) {
+	cases := []struct {
+		name string
+		locs func(site string) []string
+		want string
+	}{
+		{"relative", func(s string) []string { return []string{s + "/", "/a"} }, "not an absolute http(s) URL"},
+		{"ftp scheme", func(s string) []string { return []string{"ftp://x.test/a"} }, "not an absolute http(s) URL"},
+		{"other host", func(s string) []string { return []string{s + "/", "https://other.test/a"} }, "other.test"},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			sb, site := checkSandbox(t)
+			site.Serve("/sitemap.xml", 200, "application/xml", fakes.URLSet(c.locs(site.URL)...))
+			r := sb.Run("sitemap", "check", site.URL+"/sitemap.xml", "--json")
+			wantExit(t, r, 3)
+			wantContains(t, "problems", fmt.Sprint(r.JSON(t)["problems"]), c.want)
+		})
+	}
+}
+
+func indexXML(children ...string) string {
+	var b strings.Builder
+	b.WriteString(`<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">`)
+	for _, c := range children {
+		fmt.Fprintf(&b, "<sitemap><loc>%s</loc></sitemap>", c)
+	}
+	b.WriteString("</sitemapindex>")
+	return b.String()
+}
+
+func TestSitemapCheckIndexFollowsChildren(t *testing.T) {
+	sb, site := checkSandbox(t)
+	site.Serve("/index.xml", 200, "application/xml", indexXML(site.URL+"/a.xml", site.URL+"/b.xml"))
+	site.Serve("/a.xml", 200, "application/xml", fakes.URLSet(site.URL+"/1", site.URL+"/2"))
+	site.Serve("/b.xml", 200, "application/xml", fakes.URLSet(site.URL+"/3"))
+	r := sb.Run("sitemap", "check", site.URL+"/index.xml", "--json")
+	wantExit(t, r, 0)
+	v := r.JSON(t)
+	if v["kind"] != "sitemapindex" || v["urls"] != float64(3) || v["sitemaps"] != float64(2) {
+		t.Fatalf("index totals are wrong: %v", v)
+	}
+}
+
+func TestSitemapCheckIndexChildProblems(t *testing.T) {
+	sb, site := checkSandbox(t)
+	site.Serve("/index.xml", 200, "application/xml", indexXML(site.URL+"/missing.xml", site.URL+"/nested.xml", site.URL+"/bad.xml"))
+	site.Serve("/nested.xml", 200, "application/xml", indexXML(site.URL+"/a.xml"))
+	site.Serve("/bad.xml", 200, "application/xml", fakes.URLSet("/relative"))
+	r := sb.Run("sitemap", "check", site.URL+"/index.xml", "--json")
+	wantExit(t, r, 3)
+	problems := fmt.Sprint(r.JSON(t)["problems"])
+	for _, want := range []string{"missing.xml", "HTTP 404", "nested.xml", "index inside an index", "bad.xml", "not an absolute"} {
+		wantContains(t, "problems", problems, want)
+	}
+}

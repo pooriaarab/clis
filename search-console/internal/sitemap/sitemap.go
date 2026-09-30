@@ -30,46 +30,111 @@ type Report struct {
 	URL      string   `json:"url"`
 	Kind     string   `json:"kind,omitempty"`
 	URLs     int      `json:"urls"`
+	Sitemaps int      `json:"sitemaps,omitempty"`
 	Problems []string `json:"problems"`
 }
 
-// Check fetches rawURL and lints it. It returns an error only when the request
-// cannot be made. A bad sitemap comes back as problems in the report.
+// Check fetches rawURL and lints it. A sitemap index is followed one level. It
+// returns an error only when a request cannot be made. A bad sitemap comes back
+// as problems in the report.
 func Check(ctx context.Context, c *httpx.Client, rawURL string) (*Report, error) {
-	u, err := url.Parse(rawURL)
-	if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
+	if _, err := absolute(rawURL); err != nil {
 		return nil, fmt.Errorf("%q: %w", rawURL, ErrNotAbsolute)
 	}
 	rep := &Report{URL: rawURL, Problems: []string{}}
-	resp, err := c.Do(ctx, http.MethodGet, rawURL, map[string]string{"Accept": "application/xml"}, nil)
+	root, locs, err := rep.fetch(ctx, c, rawURL, "")
 	if err != nil {
 		return nil, err
 	}
+	rep.Kind, rep.URLs = root, len(locs)
+	if root == "sitemapindex" {
+		rep.URLs = 0
+		for _, child := range locs {
+			if _, err := absolute(child); err != nil {
+				continue // already reported as a bad <loc>
+			}
+			croot, clocs, err := rep.fetch(ctx, c, child, "child "+child+": ")
+			if err != nil {
+				return nil, err
+			}
+			if croot == "sitemapindex" {
+				rep.problem("child %s: an index inside an index is not allowed", child)
+			}
+			rep.Sitemaps++
+			rep.URLs += len(clocs)
+		}
+	}
+	rep.OK = len(rep.Problems) == 0 || c.DryRun
+	return rep, nil
+}
+
+// absolute parses raw and requires an http(s) URL with a host.
+func absolute(raw string) (*url.URL, error) {
+	u, err := url.Parse(raw)
+	if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
+		return nil, ErrNotAbsolute
+	}
+	return u, nil
+}
+
+// fetch downloads one sitemap and records its problems. prefix names a child.
+func (r *Report) fetch(ctx context.Context, c *httpx.Client, rawURL, prefix string) (string, []string, error) {
+	resp, err := c.Do(ctx, http.MethodGet, rawURL, map[string]string{"Accept": "application/xml"}, nil)
+	if err != nil {
+		return "", nil, err
+	}
 	if resp.DryRun {
-		rep.OK = true
-		return rep, nil
+		return "", nil, nil
 	}
 	if resp.Status != http.StatusOK {
-		rep.problem("%s answered HTTP %d, want 200", rawURL, resp.Status)
-		return rep, nil
+		r.problem("%s%s answered HTTP %d, want 200", prefix, rawURL, resp.Status)
+		return "", nil, nil
 	}
 	if len(resp.Body) > MaxBytes {
-		rep.problem("the sitemap is larger than 50 MB")
+		r.problem("%sthe sitemap is larger than 50 MB", prefix)
 	}
 	root, locs, err := parse(resp.Body)
-	rep.Kind, rep.URLs = root, len(locs)
 	switch {
 	case err != nil:
-		rep.problem("the body is not valid XML: %v", err)
+		r.problem("%sthe body is not valid XML: %v", prefix, err)
 	case root != "urlset" && root != "sitemapindex":
-		rep.problem("the root element is <%s>, want urlset or sitemapindex", root)
+		r.problem("%sthe root element is <%s>, want urlset or sitemapindex", prefix, root)
 	case len(locs) == 0:
-		rep.problem("the sitemap has no URLs")
+		r.problem("%sthe sitemap has no URLs", prefix)
 	case len(locs) >= MaxURLs:
-		rep.problem("the sitemap has %d URLs, the limit is under 50,000", len(locs))
+		r.problem("%sthe sitemap has %d URLs, the limit is under 50,000", prefix, len(locs))
 	}
-	rep.OK = len(rep.Problems) == 0
-	return rep, nil
+	r.checkLocs(prefix, rawURL, locs)
+	return root, locs, nil
+}
+
+// checkLocs flags URLs that are relative or not on the sitemap host. It names
+// up to three examples so the report stays short.
+func (r *Report) checkLocs(prefix, sitemapURL string, locs []string) {
+	base, _ := url.Parse(sitemapURL)
+	var relative, foreign []string
+	for _, loc := range locs {
+		u, err := absolute(loc)
+		switch {
+		case err != nil:
+			relative = append(relative, loc)
+		case !strings.EqualFold(u.Host, base.Host):
+			foreign = append(foreign, loc)
+		}
+	}
+	for _, g := range []struct {
+		bad  []string
+		what string
+	}{
+		{relative, "not an absolute http(s) URL"},
+		{foreign, "not on the sitemap host " + base.Host},
+	} {
+		if len(g.bad) == 0 {
+			continue
+		}
+		shown := g.bad[:min(3, len(g.bad))]
+		r.problem("%s%d <loc> values are %s, for example %s", prefix, len(g.bad), g.what, strings.Join(shown, ", "))
+	}
 }
 
 func (r *Report) problem(format string, a ...any) {
