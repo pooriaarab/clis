@@ -99,23 +99,12 @@ func (o *OAuth) Login(ctx context.Context, cred Credentials, opts LoginOpts) (st
 	if cb.code == "" {
 		return "", errors.New("consent failed: the reply has no code")
 	}
-	resp, err := o.HTTP.Do(ctx, http.MethodPost, o.TokenURL, nil, url.Values{
+	tok, err := o.exchange(ctx, url.Values{
 		"grant_type": {"authorization_code"}, "code": {cb.code}, "code_verifier": {verifier},
 		"redirect_uri": {redirect}, "client_id": {cred.ClientID}, "client_secret": {cred.ClientSecret},
 	})
 	if err != nil {
 		return "", err
-	}
-	var tok struct {
-		RefreshToken string `json:"refresh_token"`
-		Error        string `json:"error"`
-		Description  string `json:"error_description"`
-	}
-	if err := resp.Decode(&tok); err != nil {
-		return "", err
-	}
-	if !resp.OK() {
-		return "", fmt.Errorf("google oauth: HTTP %d: %s %s", resp.Status, tok.Error, tok.Description)
 	}
 	if tok.RefreshToken == "" {
 		return "", errors.New("Google returned no refresh token; remove this app at myaccount.google.com/permissions and run auth google again")
@@ -172,4 +161,49 @@ func randomString(n int) (string, error) {
 		return "", err
 	}
 	return base64.RawURLEncoding.EncodeToString(b)[:n], nil
+}
+
+type tokenReply struct {
+	AccessToken  string `json:"access_token"`
+	RefreshToken string `json:"refresh_token"`
+	Error        string `json:"error"`
+	Description  string `json:"error_description"`
+}
+
+// TokenError is a refusal from the token endpoint.
+type TokenError struct {
+	Status      int
+	Code        string
+	Description string
+}
+
+func (e *TokenError) Error() string {
+	return fmt.Sprintf("google oauth: HTTP %d: %s %s", e.Status, e.Code, e.Description)
+}
+
+func (o *OAuth) exchange(ctx context.Context, form url.Values) (tokenReply, error) {
+	var tok tokenReply
+	resp, err := o.HTTP.Do(ctx, http.MethodPost, o.TokenURL, nil, form)
+	if err != nil {
+		return tok, err
+	}
+	if !resp.OK() {
+		_ = resp.Decode(&tok)
+		return tok, &TokenError{Status: resp.Status, Code: tok.Error, Description: tok.Description}
+	}
+	return tok, resp.Decode(&tok)
+}
+
+// Refresh trades a refresh token for an access token.
+func (o *OAuth) Refresh(ctx context.Context, cred Credentials) (string, error) {
+	tok, err := o.exchange(ctx, url.Values{
+		"grant_type": {"refresh_token"}, "refresh_token": {cred.RefreshToken},
+		"client_id": {cred.ClientID}, "client_secret": {cred.ClientSecret},
+	})
+	var te *TokenError
+	if errors.As(err, &te) && te.Code == "invalid_grant" {
+		return "", fmt.Errorf("%w; the refresh token is expired or revoked. "+
+			"Set the OAuth consent screen to In production (Testing tokens last 7 days), then run auth google again", err)
+	}
+	return tok.AccessToken, err
 }
