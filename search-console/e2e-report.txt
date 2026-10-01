@@ -38,6 +38,7 @@
 --- PASS: TestBingVerifyCreatesUnproxiedCNAME
 --- PASS: TestBingVerifyTreats81058AsAlreadyPresent
 --- PASS: TestBingVerifyFindsTheSiteWhateverItsURLLooksLike
+--- PASS: TestBingVerifyPrefersTheHTTPSSiteOverAnHTTPTwin
 --- PASS: TestBingVerifyFixesProxiedCNAME
 --- PASS: TestBingVerifyIsIdempotent
 --- PASS: TestBingVerifyRetriesUntilDNSIsReady
