@@ -32,3 +32,24 @@ jobs:
           # capped and 3 and 4 are left out on purpose, so the CLI chair runs.
           devin_cli_key: ${{ secrets.DEVIN_CLI_KEY }}
           cursor_api_key: ${{ secrets.CURSOR_API_KEY }}
+  # Throwaway probe for pooriaarab/vibecodereview#203: why Devin says "Login canceled" on the runner.
+  devin-probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - shell: bash
+        env:
+          DEVIN_CLI_KEY: ${{ secrets.DEVIN_CLI_KEY }}
+        run: |
+          set -uo pipefail
+          env | grep -E '^(XDG_|HOME=)' | sort
+          echo "key len=${#DEVIN_CLI_KEY} prefix=${DEVIN_CLI_KEY:0:5}"
+          curl -fsSL https://cli.devin.ai/install.sh -o /tmp/i.sh && bash /tmp/i.sh >/dev/null 2>&1
+          export PATH="$HOME/.local/bin:$PATH"
+          command -v devin; devin --version
+          C="$HOME/.local/share/devin/credentials.toml"; mkdir -p "$(dirname "$C")"
+          (umask 077; printf 'windsurf_api_key = "%s"\n' "$DEVIN_CLI_KEY" > "$C")
+          echo "== auth status"; devin auth status 2>&1 | head -6; echo "rc=${PIPESTATUS[0]}"
+          echo "reply with the single word PONG" > /tmp/p.txt
+          echo "== prompt"; env -u DEVIN_CLI_KEY timeout 120 devin -p --prompt-file /tmp/p.txt --model swe-2-max --permission-mode dangerous --respect-workspace-trust false 2>&1 | tail -6; echo "rc=${PIPESTATUS[0]}"
+          echo "== prompt with XDG_DATA_HOME unset"; env -u XDG_DATA_HOME -u XDG_CONFIG_HOME -u DEVIN_CLI_KEY timeout 120 devin -p --prompt-file /tmp/p.txt --model swe-2-max --permission-mode dangerous --respect-workspace-trust false 2>&1 | tail -6; echo "rc=${PIPESTATUS[0]}"
