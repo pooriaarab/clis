@@ -41,15 +41,16 @@ jobs:
         env:
           DEVIN_CLI_KEY: ${{ secrets.DEVIN_CLI_KEY }}
         run: |
-          set -uo pipefail
-          env | grep -E '^(XDG_|HOME=)' | sort
-          echo "key len=${#DEVIN_CLI_KEY} prefix=${DEVIN_CLI_KEY:0:5}"
-          curl -fsSL https://cli.devin.ai/install.sh -o /tmp/i.sh && bash /tmp/i.sh >/dev/null 2>&1
-          export PATH="$HOME/.local/bin:$PATH"
-          command -v devin; devin --version
+          set +e
+          curl -fsSL https://cli.devin.ai/install.sh -o /tmp/i.sh
+          echo "== A: install with no credential on disk"
+          bash /tmp/i.sh >/dev/null 2>/tmp/e1; echo "install rc=$?"; tail -1 /tmp/e1
+          rm -rf "$HOME/.local/share/devin" "$HOME/.local/bin/devin" "$HOME/.config/devin"
           C="$HOME/.local/share/devin/credentials.toml"; mkdir -p "$(dirname "$C")"
           (umask 077; printf 'windsurf_api_key = "%s"\n' "$DEVIN_CLI_KEY" > "$C")
-          echo "== auth status"; devin auth status 2>&1 | head -6; echo "rc=${PIPESTATUS[0]}"
+          echo "== B: install with the credential written first"
+          bash /tmp/i.sh >/dev/null 2>/tmp/e2; echo "install rc=$?"; tail -1 /tmp/e2
+          export PATH="$HOME/.local/bin:$PATH"
+          devin auth status 2>&1 | head -1
           echo "reply with the single word PONG" > /tmp/p.txt
-          echo "== prompt"; env -u DEVIN_CLI_KEY timeout 120 devin -p --prompt-file /tmp/p.txt --model swe-2-max --permission-mode dangerous --respect-workspace-trust false 2>&1 | tail -6; echo "rc=${PIPESTATUS[0]}"
-          echo "== prompt with XDG_DATA_HOME unset"; env -u XDG_DATA_HOME -u XDG_CONFIG_HOME -u DEVIN_CLI_KEY timeout 120 devin -p --prompt-file /tmp/p.txt --model swe-2-max --permission-mode dangerous --respect-workspace-trust false 2>&1 | tail -6; echo "rc=${PIPESTATUS[0]}"
+          env -u DEVIN_CLI_KEY timeout 120 devin -p --prompt-file /tmp/p.txt --model swe-2-max --permission-mode dangerous --respect-workspace-trust false 2>&1 | tail -1; echo "prompt rc=${PIPESTATUS[0]}"
