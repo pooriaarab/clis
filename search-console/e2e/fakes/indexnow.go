@@ -25,6 +25,8 @@ type IndexNow struct {
 	*httptest.Server
 	// Answer maps a batch number (from 0) to a status. Other batches get the default 200.
 	Answer map[int]int
+	// EmptyBodies makes a forced answer carry no body, as the live endpoint does on 4xx.
+	EmptyBodies bool
 
 	mu    sync.Mutex
 	posts []IndexNowPost
@@ -65,6 +67,8 @@ func (n *IndexNow) serve(w http.ResponseWriter, r *http.Request) {
 	forced := n.Answer[idx]
 	n.mu.Unlock()
 	switch {
+	case forced != 0 && n.EmptyBodies:
+		w.WriteHeader(forced)
 	case forced != 0:
 		http.Error(w, "forced", forced)
 	case p.Host == "" || !keyRE.MatchString(p.Key) || len(p.URLList) == 0 || len(p.URLList) > 10000:

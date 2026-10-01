@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"strings"
 
 	"github.com/pooriaarab/clis/search-console/internal/backoff"
 )
@@ -14,23 +15,38 @@ var ErrVerifyTimeout = errors.New("Bing did not find the CNAME record in time")
 // VerifyTarget is where the verification CNAME must point.
 const VerifyTarget = "verify.bing.com"
 
+// NormalizeSiteURL makes site URLs comparable: Bing may list a site with another
+// scheme, other letter case or no trailing slash than SiteURL gives.
+func NormalizeSiteURL(raw string) string {
+	s := strings.ToLower(strings.TrimSpace(raw))
+	s = strings.TrimPrefix(strings.TrimPrefix(s, "https://"), "http://")
+	return strings.TrimRight(s, "/")
+}
+
 // FindSite returns the site of the account for domain, or nil when it is not added.
 func (a *API) FindSite(ctx context.Context, domain string) (*Site, error) {
 	sites, err := a.Sites(ctx)
 	if err != nil {
 		return nil, err
 	}
+	// The account can hold an http:// twin. The exact https:// site wins.
+	var twin *Site
 	for i := range sites {
-		if sites[i].URL == SiteURL(domain) {
+		switch {
+		case sites[i].URL == SiteURL(domain):
 			return &sites[i], nil
+		case twin == nil && NormalizeSiteURL(sites[i].URL) == NormalizeSiteURL(SiteURL(domain)):
+			twin = &sites[i]
 		}
 	}
-	return nil, nil
+	return twin, nil
 }
 
-// AddSite adds the domain to the account. Bing refuses a site it already holds.
-func (a *API) AddSite(ctx context.Context, domain string) error {
-	return a.call(ctx, http.MethodPost, "AddSite", nil, map[string]string{"siteUrl": SiteURL(domain)}, nil)
+// AddSite adds the domain to the account. It reports true when Bing already
+// held the site (error 81058), which is success.
+func (a *API) AddSite(ctx context.Context, domain string) (bool, error) {
+	err := a.call(ctx, http.MethodPost, "AddSite", nil, map[string]string{"siteUrl": SiteURL(domain)}, nil)
+	return IsAlreadyPresent(err), ignorePresent(err)
 }
 
 // VerifyOnce asks Bing to check the CNAME record. It reports whether Bing
@@ -48,4 +64,12 @@ func (a *API) VerifyWithBackoff(ctx context.Context, domain string, o backoff.Op
 		err = ErrVerifyTimeout
 	}
 	return n, err
+}
+
+// ignorePresent turns "already present" into no error.
+func ignorePresent(err error) error {
+	if IsAlreadyPresent(err) {
+		return nil
+	}
+	return err
 }
