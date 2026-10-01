@@ -27,7 +27,7 @@ func bingDNSSandbox(t *testing.T) (*Sandbox, *fakes.Bing, *fakes.Cloudflare) {
 	sb.Env["CLOUDFLARE_API_BASE"] = cf.URL
 	sb.Env["CLOUDFLARE_API_TOKEN"] = "cf-test"
 	cf.AddZone("example.com", "zone-1")
-	b.Ready = cf.HasCNAME // Bing sees the CNAME only when it is in DNS and not proxied
+	b.Configure(func(f *fakes.Bing) { f.Ready = cf.HasCNAME }) // Bing sees the CNAME only when it is in DNS and not proxied
 	return sb, b, cf
 }
 
@@ -79,7 +79,9 @@ func TestBingVerifyIsIdempotent(t *testing.T) {
 func TestBingVerifyRetriesUntilDNSIsReady(t *testing.T) {
 	sb, b, cf := bingDNSSandbox(t)
 	n := 0
-	b.Ready = func(name, target string) bool { n++; return n > 2 && cf.HasCNAME(name, target) }
+	b.Configure(func(f *fakes.Bing) {
+		f.Ready = func(name, target string) bool { n++; return n > 2 && cf.HasCNAME(name, target) }
+	})
 	r := sb.Run("bing", "verify", "example.com", "--cloudflare-zone", "auto", "--interval", "20ms")
 	wantExit(t, r, 0)
 	wantContains(t, "stderr", r.Stderr, "Retrying in")
@@ -88,7 +90,7 @@ func TestBingVerifyRetriesUntilDNSIsReady(t *testing.T) {
 
 func TestBingVerifyTimesOut(t *testing.T) {
 	sb, b, _ := bingDNSSandbox(t)
-	b.Ready = func(string, string) bool { return false }
+	b.Configure(func(f *fakes.Bing) { f.Ready = func(string, string) bool { return false } })
 	r := sb.Run("bing", "verify", "example.com", "--cloudflare-zone", "auto", "--interval", "20ms", "--wait", "300ms")
 	wantExit(t, r, 4)
 	wantContains(t, "stderr", r.Stderr, bingCode+".example.com")
@@ -98,8 +100,8 @@ func TestBingVerifyTimesOut(t *testing.T) {
 func TestBingVerifyErrorsAreNotRetried(t *testing.T) {
 	for _, as200 := range []bool{false, true} {
 		sb, b, _ := bingDNSSandbox(t)
-		b.ErrorsAs200 = as200
-		b.VerifyError = "verification refused"
+		b.Configure(func(f *fakes.Bing) { f.ErrorsAs200 = as200 })
+		b.Configure(func(f *fakes.Bing) { f.VerifyError = "verification refused" })
 		r := sb.Run("bing", "verify", "example.com", "--cloudflare-zone", "auto", "--interval", "20ms")
 		wantExit(t, r, 1)
 		wantContains(t, "stderr", r.Stderr, "verification refused")
@@ -111,7 +113,7 @@ func TestBingVerifyErrorsAreNotRetried(t *testing.T) {
 
 func TestBingVerifyPrintsRecordWithoutCloudflare(t *testing.T) {
 	sb, b, _ := bingDNSSandbox(t)
-	b.Ready = func(string, string) bool { return false }
+	b.Configure(func(f *fakes.Bing) { f.Ready = func(string, string) bool { return false } })
 	r := sb.Run("bing", "verify", "example.com", "--interval", "20ms", "--wait", "100ms")
 	wantExit(t, r, 4)
 	wantContains(t, "stderr", r.Stderr, bingCode+".example.com -> verify.bing.com")

@@ -25,6 +25,9 @@ record is never proxied. Then check with exponential backoff until Bing finds it
 Exit code 4 means DNS was not ready in time.`,
 		Args: cobra.ExactArgs(1),
 		RunE: run(func(args []string) error {
+			if err := checkPolling(wait, interval); err != nil {
+				return err
+			}
 			domain, err := normalizeDomain(args[0])
 			if err != nil {
 				return err

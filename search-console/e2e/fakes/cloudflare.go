@@ -40,6 +40,14 @@ func NewCloudflare(t *testing.T) *Cloudflare {
 	return c
 }
 
+// Configure changes the fake while the server runs. fn runs under the fake's lock, so a
+// handler never reads a field half-written.
+func (c *Cloudflare) Configure(fn func(*Cloudflare)) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	fn(c)
+}
+
 // AddZone registers a zone name and its id.
 func (c *Cloudflare) AddZone(name, id string) {
 	c.mu.Lock()

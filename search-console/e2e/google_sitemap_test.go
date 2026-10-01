@@ -31,7 +31,7 @@ func sitemapSandbox(t *testing.T) (*Sandbox, *fakes.Google, string) {
 
 func TestGoogleSitemapSubmitPollsUntilRead(t *testing.T) {
 	sb, g, sm := sitemapSandbox(t)
-	g.PendingPolls = 2
+	g.Configure(func(f *fakes.Google) { f.PendingPolls = 2 })
 	r := sb.Run("google", "sitemap", "submit", "example.com", sm, "--interval", "20ms", "--json")
 	wantExit(t, r, 0)
 	v := r.JSON(t)
@@ -45,7 +45,7 @@ func TestGoogleSitemapSubmitPollsUntilRead(t *testing.T) {
 
 func TestGoogleSitemapSubmitStopsWhenStillPending(t *testing.T) {
 	sb, g, sm := sitemapSandbox(t)
-	g.PendingPolls = 1000
+	g.Configure(func(f *fakes.Google) { f.PendingPolls = 1000 })
 	r := sb.Run("google", "sitemap", "submit", "example.com", sm, "--interval", "20ms", "--wait", "200ms")
 	wantExit(t, r, 0)
 	wantContains(t, "stdout", r.Stdout, "pending: true")
@@ -74,7 +74,7 @@ func TestGoogleSitemapNeedsVerifiedSite(t *testing.T) {
 	wantExit(t, r, 1)
 	sb.Env["SITEMAP_FETCH_BASE"] = exampleBase
 	wantContains(t, "stderr", r.Stderr, "google verify other.com")
-	g.Permission = "siteUnverifiedUser"
+	g.Configure(func(f *fakes.Google) { f.Permission = "siteUnverifiedUser" })
 	r = sb.Run("google", "sitemap", "submit", "example.com", sm)
 	wantExit(t, r, 1)
 	wantContains(t, "stderr", r.Stderr, "want siteOwner")
@@ -85,7 +85,7 @@ func TestGoogleSitemapNeedsVerifiedSite(t *testing.T) {
 
 func TestGoogleSitemapErrorsExitThree(t *testing.T) {
 	sb, g, sm := sitemapSandbox(t)
-	g.SitemapErrors, g.SitemapWarnings = 3, 2
+	g.Configure(func(f *fakes.Google) { f.SitemapErrors, f.SitemapWarnings = 3, 2 })
 	r := sb.Run("google", "sitemap", "submit", "example.com", sm, "--interval", "20ms", "--json")
 	wantExit(t, r, 3)
 	if v := r.JSON(t); v["errors"] != float64(3) || v["warnings"] != float64(2) {
@@ -95,7 +95,7 @@ func TestGoogleSitemapErrorsExitThree(t *testing.T) {
 	wantExit(t, r, 3)
 	wantContains(t, "stdout", r.Stdout, "errors: 3")
 
-	g.SitemapErrors = 0
+	g.Configure(func(f *fakes.Google) { f.SitemapErrors = 0 })
 	r = sb.Run("google", "sitemap", "status", "example.com", sm)
 	wantExit(t, r, 0)
 	wantContains(t, "stdout", r.Stdout, "warnings: 2")
@@ -103,7 +103,7 @@ func TestGoogleSitemapErrorsExitThree(t *testing.T) {
 
 func TestGoogleSitemapSubmitRefused(t *testing.T) {
 	sb, g, sm := sitemapSandbox(t)
-	g.SitemapStatus = 403
+	g.Configure(func(f *fakes.Google) { f.SitemapStatus = 403 })
 	r := sb.Run("google", "sitemap", "submit", "example.com", sm)
 	wantExit(t, r, 1)
 	wantContains(t, "stderr", r.Stderr, "sitemap refused")
