@@ -17,6 +17,10 @@ import (
 //  8. AddSite or VerifySite returns an error (HTTP 400 or 200 body): exit 1, no retry.
 //  9. Without --cloudflare-zone the record to add is not printed.
 // 10. The key or the token leaks, or --dry-run sends a request.
+// 11. Bing answers error 81058 (already present) and the CLI fails. It is success.
+// 12. The account lists the site as http://, in other case, or without the slash, the
+//     lookup misses it, and AddSite runs for a site that is already there.
+// 13. Bing sends the CNAME name as "<code>.<domain>", and the CLI appends the domain again.
 
 const bingCode = "0123456789abcdef0123456789abcdef"
 
@@ -43,6 +47,35 @@ func TestBingVerifyCreatesUnproxiedCNAME(t *testing.T) {
 	}
 	noLeak(t, r, bingKey)
 	noLeak(t, r, "cf-test")
+}
+
+func TestBingVerifyTreats81058AsAlreadyPresent(t *testing.T) {
+	for _, as200 := range []bool{false, true} {
+		sb, b, cf := bingDNSSandbox(t)
+		b.ErrorsAs200 = as200
+		b.AddSite("https://example.com/", fakes.BingSite{DNSCode: bingCode})
+		b.HideSitesCalls = 1 // the first listing lags: the CLI sees no site and calls AddSite
+		r := sb.Run("bing", "verify", "example.com", "--cloudflare-zone", "auto", "--interval", "20ms", "--json")
+		wantExit(t, r, 0)
+		if r.JSON(t)["already_present"] != true || !b.Verified("https://example.com/") || !cf.HasCNAME(bingCode+".example.com", "verify.bing.com") {
+			t.Fatalf("as200=%t: unexpected result: %s", as200, r.Stdout)
+		}
+		if b.Calls("AddSite") != 1 {
+			t.Fatalf("AddSite calls = %d, want 1", b.Calls("AddSite"))
+		}
+	}
+}
+
+func TestBingVerifyFindsTheSiteWhateverItsURLLooksLike(t *testing.T) {
+	for _, held := range []string{"http://example.com/", "https://Example.COM/", "https://example.com", "HTTP://EXAMPLE.COM"} {
+		sb, b, _ := bingDNSSandbox(t)
+		b.AddSite(held, fakes.BingSite{Verified: true, DNSCode: bingCode})
+		r := sb.Run("bing", "verify", "example.com", "--json")
+		wantExit(t, r, 0)
+		if r.JSON(t)["already_verified"] != true || b.Calls("AddSite") != 0 {
+			t.Fatalf("held as %q: not found: %s", held, r.Stdout)
+		}
+	}
 }
 
 func TestBingVerifyFixesProxiedCNAME(t *testing.T) {

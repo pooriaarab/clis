@@ -12,9 +12,12 @@ import (
 // BingSite is one site the fake Bing account holds.
 type BingSite struct {
 	Verified bool
-	DNSCode  string
-	host     string
-	feeds    []map[string]any
+	// DNSCode is the bare code. The fake reports "<code>.<host>", as the real
+	// GetUserSites does.
+	DNSCode string
+	url     string
+	host    string
+	feeds   []map[string]any
 }
 
 // Bing mimics the Bing Webmaster JSON API. Replies wrap results in {"d": ...}.
@@ -28,8 +31,20 @@ type Bing struct {
 	Ready func(name, target string) bool
 	// VerifyError makes VerifySite answer an error body with this message.
 	VerifyError string
-	// FeedStatus is the status a submitted sitemap gets. The default is "Pending".
+	// FeedStatus is the status a submitted sitemap gets. The default is "Success",
+	// the only status seen on the live API.
 	FeedStatus string
+	// DuplicateFeedIs81058 makes a resubmit answer error 81058 (already present).
+	DuplicateFeedIs81058 bool
+	// HideSitesCalls makes the first N GetUserSites calls answer an empty list,
+	// as a listing that lags behind AddSite.
+	HideSitesCalls int
+	// EchoRequest makes every error message repeat the request URL, which holds the key.
+	EchoRequest bool
+	// LongError pads every error message with this many characters.
+	LongError int
+	// RawErrors makes every error an HTML page, not a JSON body.
+	RawErrors bool
 	// HideFeeds makes GetFeeds answer an empty list, as Bing does before it reads a sitemap.
 	HideFeeds bool
 	// Daily and Monthly are the URL submission quotas.
@@ -60,7 +75,7 @@ func (b *Bing) Configure(fn func(*Bing)) {
 // AddSite registers a site the account already holds.
 func (b *Bing) AddSite(url string, s BingSite) {
 	b.mu.Lock()
-	s.host = strings.Trim(strings.TrimPrefix(url, "https://"), "/")
+	s.url, s.host = url, hostOf(url)
 	b.sites[url] = &s
 	b.mu.Unlock()
 }
@@ -69,8 +84,25 @@ func (b *Bing) AddSite(url string, s BingSite) {
 func (b *Bing) Verified(url string) bool {
 	b.mu.Lock()
 	defer b.mu.Unlock()
-	s, ok := b.sites[url]
-	return ok && s.Verified
+	s := b.find(url)
+	return s != nil && s.Verified
+}
+
+// find looks a site up the way the real API does: scheme, case and a trailing
+// slash do not matter. The caller holds the lock.
+func (b *Bing) find(url string) *BingSite {
+	for _, s := range b.sites {
+		if hostOf(s.url) == hostOf(url) {
+			return s
+		}
+	}
+	return nil
+}
+
+func hostOf(url string) string {
+	url = strings.ToLower(url)
+	url = strings.TrimPrefix(strings.TrimPrefix(url, "https://"), "http://")
+	return strings.Trim(url, "/")
 }
 
 // Feeds lists the sitemap URLs submitted for a site.
@@ -78,7 +110,7 @@ func (b *Bing) Feeds(siteURL string) []string {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	var out []string
-	if s := b.sites[siteURL]; s != nil {
+	if s := b.find(siteURL); s != nil {
 		for _, f := range s.feeds {
 			out = append(out, f["Url"].(string))
 		}
@@ -94,7 +126,17 @@ func (b *Bing) Calls(name string) int {
 }
 
 // fail answers an error. b.mu is held.
-func (b *Bing) fail(w http.ResponseWriter, code int, msg string) {
+func (b *Bing) fail(w http.ResponseWriter, r *http.Request, code int, msg string) {
+	if b.EchoRequest {
+		msg += " (request: " + r.URL.String() + ")"
+	}
+	msg += strings.Repeat("x", b.LongError)
+	if b.RawErrors {
+		w.Header().Set("Content-Type", "text/html")
+		w.WriteHeader(http.StatusBadGateway)
+		_, _ = w.Write([]byte("<html>" + msg + "</html>"))
+		return
+	}
 	status := http.StatusBadRequest
 	if b.ErrorsAs200 {
 		status = http.StatusOK
@@ -115,41 +157,50 @@ func (b *Bing) serve(w http.ResponseWriter, r *http.Request) {
 	defer b.mu.Unlock()
 	b.calls[name]++
 	if r.URL.Query().Get("apikey") != b.Key {
-		b.fail(w, 14, "NotAuthorized")
+		b.fail(w, r, 3, "ERROR!!! InvalidApiKey")
 		return
 	}
 	switch {
 	case r.Method == http.MethodGet && name == "GetUserSites":
 		out := []map[string]any{}
-		for url, s := range b.sites {
-			out = append(out, map[string]any{"Url": url, "IsVerified": s.Verified, "DnsVerificationCode": s.DNSCode})
+		if b.calls[name] > b.HideSitesCalls {
+			for url, s := range b.sites {
+				// The real reply: DnsVerificationCode is the whole record name, "<code>.<host>".
+				out = append(out, map[string]any{"__type": "Site:#Microsoft.Bing.Webmaster.Api", "AuthenticationCode": "619CF6025D0F59C03351F8E3980934CD",
+					"DnsVerificationCode": s.DNSCode + "." + s.host, "IsVerified": s.Verified, "Url": url})
+			}
 		}
 		b.ok(w, out)
 	case r.Method == http.MethodGet && name == "GetUrlSubmissionQuota":
-		if _, ok := b.sites[r.URL.Query().Get("siteUrl")]; !ok {
-			b.fail(w, 3, "ERROR!!! InvalidParameter: siteUrl is not a site of this account")
+		if b.find(r.URL.Query().Get("siteUrl")) == nil {
+			b.fail(w, r, 14, "ERROR!!! NotAuthorized") // the live answer for a site that is not in the account
 			return
 		}
-		b.ok(w, map[string]int{"DailyQuota": b.Daily, "MonthlyQuota": b.Monthly})
+		b.ok(w, map[string]any{"__type": "UrlSubmissionQuota:#Microsoft.Bing.Webmaster.Api", "DailyQuota": b.Daily, "MonthlyQuota": b.Monthly})
 	case r.Method == http.MethodPost && name == "AddSite":
 		var body struct{ SiteURL string }
 		_ = json.NewDecoder(r.Body).Decode(&body)
-		if _, dup := b.sites[body.SiteURL]; dup || !strings.HasPrefix(body.SiteURL, "https://") {
-			b.fail(w, 2, "ERROR!!! InvalidParameter: site already added or bad siteUrl")
+		if !strings.HasPrefix(body.SiteURL, "https://") {
+			b.fail(w, r, 2, "ERROR!!! InvalidParameter: bad siteUrl")
 			return
 		}
-		host := strings.Trim(strings.TrimPrefix(body.SiteURL, "https://"), "/")
-		b.sites[body.SiteURL] = &BingSite{DNSCode: "0123456789abcdef0123456789abcdef", host: host}
+		if b.find(body.SiteURL) != nil {
+			// Code 81058 is from the code review of the CLI. The message text was never
+			// seen live, because AddSite is not safe to call against a real account.
+			b.fail(w, r, 81058, "ERROR!!! the site is already present")
+			return
+		}
+		b.sites[body.SiteURL] = &BingSite{DNSCode: "0123456789abcdef0123456789abcdef", url: body.SiteURL, host: hostOf(body.SiteURL)}
 		b.ok(w, nil)
 	case r.Method == http.MethodPost && name == "VerifySite":
 		var body struct{ SiteURL string }
 		_ = json.NewDecoder(r.Body).Decode(&body)
-		s, found := b.sites[body.SiteURL]
+		s := b.find(body.SiteURL)
 		switch {
-		case !found:
-			b.fail(w, 3, "ERROR!!! InvalidParameter: site not found")
+		case s == nil:
+			b.fail(w, r, 3, "ERROR!!! InvalidParameter: site not found")
 		case b.VerifyError != "":
-			b.fail(w, 9, b.VerifyError)
+			b.fail(w, r, 9, b.VerifyError)
 		case b.Ready == nil || b.Ready(s.DNSCode+"."+s.host, "verify.bing.com"):
 			s.Verified = true
 			b.ok(w, true)
@@ -159,21 +210,26 @@ func (b *Bing) serve(w http.ResponseWriter, r *http.Request) {
 	case r.Method == http.MethodPost && name == "SubmitFeed":
 		var body struct{ SiteURL, FeedURL string }
 		_ = json.NewDecoder(r.Body).Decode(&body)
-		s, found := b.sites[body.SiteURL]
+		s := b.find(body.SiteURL)
 		switch {
-		case !found || !s.Verified:
-			b.fail(w, 3, "ERROR!!! InvalidParameter: site is not verified")
+		case s == nil || !s.Verified:
+			b.fail(w, r, 3, "ERROR!!! InvalidParameter: site is not verified")
 		case !strings.HasPrefix(body.FeedURL, "http"):
-			b.fail(w, 2, "ERROR!!! InvalidParameter: bad feedUrl")
+			b.fail(w, r, 2, "ERROR!!! InvalidParameter: bad feedUrl")
 		default:
 			status := b.FeedStatus
 			if status == "" {
-				status = "Pending"
+				status = "Success"
 			}
-			feed := map[string]any{"Url": body.FeedURL, "Type": "Sitemap", "Status": status,
-				"Submitted": "/Date(1700000000000)/", "LastCrawled": "/Date(-62135596800000)/", "UrlCount": 0}
+			// The live feed shape. Bing sends the date 1601-01-01 for "never": it was seen on Submitted.
+			feed := map[string]any{"__type": "Feed:#Microsoft.Bing.Webmaster.Api", "Compressed": false, "FileSize": 0, "Url": body.FeedURL,
+				"Type": "Sitemap", "Status": status, "Submitted": "/Date(1700000000000)/", "LastCrawled": "/Date(-11644473600000)/", "UrlCount": 0}
 			for i, f := range s.feeds {
 				if f["Url"] == body.FeedURL { // a resubmit replaces the feed, it does not add one
+					if b.DuplicateFeedIs81058 {
+						b.fail(w, r, 81058, "ERROR!!! the feed is already present")
+						return
+					}
 					s.feeds[i] = feed
 					b.ok(w, nil)
 					return
@@ -183,9 +239,9 @@ func (b *Bing) serve(w http.ResponseWriter, r *http.Request) {
 			b.ok(w, nil)
 		}
 	case r.Method == http.MethodGet && name == "GetFeeds":
-		s, found := b.sites[r.URL.Query().Get("siteUrl")]
-		if !found {
-			b.fail(w, 3, "ERROR!!! InvalidParameter: siteUrl is not a site of this account")
+		s := b.find(r.URL.Query().Get("siteUrl"))
+		if s == nil {
+			b.fail(w, r, 14, "ERROR!!! NotAuthorized")
 			return
 		}
 		out := []map[string]any{}
@@ -194,6 +250,6 @@ func (b *Bing) serve(w http.ResponseWriter, r *http.Request) {
 		}
 		b.ok(w, out)
 	default:
-		b.fail(w, 1, "unknown method "+name)
+		b.fail(w, r, 1, "unknown method "+name)
 	}
 }
