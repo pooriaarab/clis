@@ -19,6 +19,9 @@ import (
 const (
 	MaxURLs  = 50000
 	MaxBytes = 50 << 20
+	// MaxChildren caps the sitemaps that one index may list. The protocol allows
+	// 50,000, but a CLI that fetches that many children is easy to point at a target.
+	MaxChildren = 1000
 )
 
 // ErrNotAbsolute means the sitemap URL is not an absolute http(s) URL.
@@ -42,60 +45,79 @@ func Check(ctx context.Context, c *httpx.Client, rawURL string) (*Report, error)
 		return nil, fmt.Errorf("%q: %w", rawURL, ErrNotAbsolute)
 	}
 	rep := &Report{URL: rawURL, Problems: []string{}}
-	root, locs, err := rep.fetch(ctx, c, rawURL, "")
-	if err != nil {
+	if _, err := rep.crawl(ctx, c, rawURL, false); err != nil {
 		return nil, err
 	}
-	rep.checkLocs("", rawURL, locs)
-	rep.Kind, rep.URLs = root, len(locs)
-	if root == "sitemapindex" {
-		rep.URLs = 0
-		for _, child := range locs {
-			if _, err := absolute(child); err != nil {
-				continue // already reported as a bad <loc>
-			}
-			croot, clocs, err := rep.fetch(ctx, c, child, "child "+child+": ")
-			if err != nil {
-				return nil, err
-			}
-			rep.checkLocs("child "+child+": ", child, clocs)
-			if croot == "sitemapindex" {
-				rep.problem("child %s: an index inside an index is not allowed", child)
-			}
-			rep.Sitemaps++
-			rep.URLs += len(clocs)
-		}
-	}
-	rep.OK = len(rep.Problems) == 0 || c.DryRun
+	rep.OK = len(rep.Problems) == 0
 	return rep, nil
 }
 
 // Locs returns every page URL of a sitemap, and follows an index one level. It
-// does not lint the hosts. It fails when a sitemap cannot be read.
+// does not lint the page hosts. It fails when a sitemap cannot be read.
 func Locs(ctx context.Context, c *httpx.Client, rawURL string) ([]string, error) {
 	if _, err := absolute(rawURL); err != nil {
 		return nil, fmt.Errorf("%q: %w", rawURL, ErrNotAbsolute)
 	}
 	rep := &Report{}
-	root, locs, err := rep.fetch(ctx, c, rawURL, "")
-	if err == nil && root == "sitemapindex" {
-		var pages []string
-		for _, child := range locs {
-			_, clocs, cerr := rep.fetch(ctx, c, child, "child "+child+": ")
-			if cerr != nil {
-				return nil, cerr
-			}
-			pages = append(pages, clocs...)
-		}
-		locs = pages
-	}
+	pages, err := rep.crawl(ctx, c, rawURL, true)
 	if err != nil {
 		return nil, err
 	}
 	if len(rep.Problems) > 0 {
 		return nil, fmt.Errorf("cannot read the sitemap: %s", strings.Join(rep.Problems, "; "))
 	}
-	return locs, nil
+	return pages, nil
+}
+
+// crawl fetches rawURL and fills Kind, URLs and Sitemaps. Every child of an
+// index must be on the host of the index, there are at most MaxChildren, and no
+// child may be an index. A child that breaks a rule is not fetched, or its URLs
+// are not counted. When collect is true, crawl returns the page URLs. When it is
+// false, crawl lints the page URLs and returns none, so a big index stays small
+// in memory.
+func (r *Report) crawl(ctx context.Context, c *httpx.Client, rawURL string, collect bool) ([]string, error) {
+	root, locs, err := r.fetch(ctx, c, rawURL, "")
+	if err != nil {
+		return nil, err
+	}
+	r.Kind, r.URLs = root, len(locs)
+	if root != "sitemapindex" {
+		if !collect {
+			r.checkLocs("", rawURL, locs)
+		}
+		return locs, nil
+	}
+	r.URLs = 0
+	r.checkLocs("", rawURL, locs) // children must be absolute and on the index host
+	if len(locs) > MaxChildren {
+		r.problem("the index lists %d sitemaps, the limit is %d", len(locs), MaxChildren)
+		return nil, nil
+	}
+	base, _ := url.Parse(rawURL)
+	var pages []string
+	for _, child := range locs {
+		u, err := absolute(child)
+		if err != nil || !strings.EqualFold(u.Host, base.Host) {
+			continue // checkLocs reported it, and the CLI must not connect there
+		}
+		prefix := "child " + child + ": "
+		croot, clocs, err := r.fetch(ctx, c, child, prefix)
+		if err != nil {
+			return nil, err
+		}
+		r.Sitemaps++
+		if croot == "sitemapindex" {
+			r.problem("child %s: an index inside an index is not allowed", child)
+			continue
+		}
+		if collect {
+			pages = append(pages, clocs...)
+		} else {
+			r.checkLocs(prefix, child, clocs)
+		}
+		r.URLs += len(clocs)
+	}
+	return pages, nil
 }
 
 // absolute parses raw and requires an http(s) URL with a host.

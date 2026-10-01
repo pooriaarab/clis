@@ -97,7 +97,7 @@ func newRoot(env *Env) *cobra.Command {
 	}
 	root.CompletionOptions.DisableDefaultCmd = true
 	root.PersistentFlags().BoolVar(&env.P.JSON, "json", false, "print one JSON object instead of text")
-	root.PersistentFlags().BoolVar(&env.DryRun, "dry-run", false, "print the HTTP calls without sending them")
+	root.PersistentFlags().BoolVar(&env.DryRun, "dry-run", false, "print the HTTP calls without sending them (sitemap fetches are reads and still go out)")
 	root.PersistentPreRun = func(*cobra.Command, []string) { env.Client = httpx.New(env.DryRun) }
 	root.AddCommand(versionCmd(env), sitemapCmd(env), authCmd(env), googleCmd(env), bingCmd(env), indexnowCmd(env), launchCmd(env))
 	return root

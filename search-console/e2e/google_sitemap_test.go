@@ -23,10 +23,10 @@ func sitemapSandbox(t *testing.T) (*Sandbox, *fakes.Google, string) {
 	sb, g := googleSandbox(t)
 	g.PreAdd("example.com")
 	site := fakes.NewSite(t)
-	sm := site.URL + "/sitemap.xml"
-	site.Serve("/sitemap.xml", 200, "application/xml", fakes.URLSet(site.URL+"/", site.URL+"/a"))
+	site.Serve("/sitemap.xml", 200, "application/xml", fakes.URLSet("https://example.com/", "https://example.com/a"))
+	sb.Env["SITEMAP_FETCH_BASE"] = site.URL
 	sb.Alias(site.URL, "https://site.fake")
-	return sb, g, sm
+	return sb, g, "https://example.com/sitemap.xml"
 }
 
 func TestGoogleSitemapSubmitPollsUntilRead(t *testing.T) {
@@ -52,10 +52,11 @@ func TestGoogleSitemapSubmitStopsWhenStillPending(t *testing.T) {
 }
 
 func TestGoogleSitemapProblemsAreNotSubmitted(t *testing.T) {
-	sb, g, _ := sitemapSandbox(t)
+	sb, g, sm := sitemapSandbox(t)
 	site := fakes.NewSite(t)
 	site.Serve("/sitemap.xml", 404, "text/html", "missing")
-	r := sb.Run("google", "sitemap", "submit", "example.com", site.URL+"/sitemap.xml")
+	sb.Env["SITEMAP_FETCH_BASE"] = site.URL
+	r := sb.Run("google", "sitemap", "submit", "example.com", sm)
 	wantExit(t, r, 3)
 	wantContains(t, "stderr", r.Stderr, "not submitted")
 	if len(g.Sitemaps()) != 0 {
@@ -65,8 +66,13 @@ func TestGoogleSitemapProblemsAreNotSubmitted(t *testing.T) {
 
 func TestGoogleSitemapNeedsVerifiedSite(t *testing.T) {
 	sb, g, sm := sitemapSandbox(t)
-	r := sb.Run("google", "sitemap", "submit", "other.com", sm)
+	exampleBase := sb.Env["SITEMAP_FETCH_BASE"]
+	other := fakes.NewSite(t)
+	other.Serve("/sitemap.xml", 200, "application/xml", fakes.URLSet("https://other.com/"))
+	sb.Env["SITEMAP_FETCH_BASE"] = other.URL
+	r := sb.Run("google", "sitemap", "submit", "other.com", "https://other.com/sitemap.xml")
 	wantExit(t, r, 1)
+	sb.Env["SITEMAP_FETCH_BASE"] = exampleBase
 	wantContains(t, "stderr", r.Stderr, "google verify other.com")
 	g.Permission = "siteUnverifiedUser"
 	r = sb.Run("google", "sitemap", "submit", "example.com", sm)
@@ -119,5 +125,60 @@ func TestGoogleSitemapDryRun(t *testing.T) {
 	}
 	if len(g.Sitemaps()) != 0 {
 		t.Fatal("dry run submitted a sitemap")
+	}
+}
+
+// Ways the sitemap URL can be wrong for the property, listed before the code was written:
+// 12. The URL is http, so Google gets a sitemap it will not trust: refuse before any request.
+// 13. The URL is on another host than the property, or only looks like it
+//     (notexample.com, example.com.evil.test, user@host): refuse before any request.
+// 14. A subdomain of the property (www.example.com) is a valid sitemap host.
+// 15. --dry-run accepts a sitemap that the real run refuses (bad URL or a bad sitemap).
+
+func TestGoogleSitemapRejectsWrongURL(t *testing.T) {
+	for _, bad := range []string{
+		"http://example.com/sitemap.xml",
+		"https://other.com/sitemap.xml",
+		"https://notexample.com/sitemap.xml",
+		"https://example.com.evil.test/sitemap.xml",
+		"https://example.com@evil.test/sitemap.xml",
+		"ftp://example.com/sitemap.xml",
+	} {
+		for _, extra := range [][]string{nil, {"--dry-run"}} {
+			sb, g, _ := sitemapSandbox(t)
+			r := sb.Run(append([]string{"google", "sitemap", "submit", "example.com", bad}, extra...)...)
+			wantExit(t, r, 2)
+			wantContains(t, "stderr", r.Stderr, "sitemap URL")
+			if len(g.Sitemaps()) != 0 {
+				t.Fatalf("%s was submitted", bad)
+			}
+		}
+	}
+}
+
+func TestGoogleSitemapAcceptsSubdomain(t *testing.T) {
+	sb, g, _ := sitemapSandbox(t)
+	site := fakes.NewSite(t)
+	site.Serve("/sitemap.xml", 200, "application/xml", fakes.URLSet("https://www.example.com/", "https://www.example.com/a"))
+	sb.Env["SITEMAP_FETCH_BASE"] = site.URL
+	sm := "https://www.example.com/sitemap.xml"
+	r := sb.Run("google", "sitemap", "submit", "example.com", sm, "--interval", "20ms")
+	wantExit(t, r, 0)
+	if got := g.Sitemaps(); len(got) != 1 || got[0] != sm {
+		t.Fatalf("submitted = %v, want %s", got, sm)
+	}
+}
+
+func TestGoogleSitemapDryRunRefusesBadSitemap(t *testing.T) {
+	sb, g, sm := sitemapSandbox(t)
+	site := fakes.NewSite(t)
+	site.Serve("/sitemap.xml", 404, "text/html", "missing")
+	sb.Env["SITEMAP_FETCH_BASE"] = site.URL
+	real := sb.Run("google", "sitemap", "submit", "example.com", sm)
+	dry := sb.Run("google", "sitemap", "submit", "example.com", sm, "--dry-run")
+	wantExit(t, real, 3)
+	wantExit(t, dry, real.Code)
+	if len(g.Sitemaps()) != 0 {
+		t.Fatal("a sitemap with problems was submitted")
 	}
 }

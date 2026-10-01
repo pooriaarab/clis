@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/url"
 	"strings"
 	"time"
 
@@ -26,6 +27,9 @@ means Google reported errors for the sitemap.`,
 		RunE: run(func(args []string) error {
 			domain, err := normalizeDomain(args[0])
 			if err != nil {
+				return err
+			}
+			if err := checkSitemapURL(domain, args[1]); err != nil {
 				return err
 			}
 			ctx := context.Background()
@@ -80,17 +84,39 @@ means Google reported errors for the sitemap.`,
 	return cmd
 }
 
+// checkSitemapURL requires an https URL on the property. The property is a
+// domain, so the host is the domain or one of its subdomains. Google refuses any
+// other URL, so the CLI stops before it fetches or sends anything.
+func checkSitemapURL(domain, raw string) error {
+	u, err := url.Parse(raw)
+	if err != nil || u.Host == "" {
+		return &ExitError{Code: ExitUsage, Err: fmt.Errorf("sitemap URL %q is not an absolute https URL", raw)}
+	}
+	if u.Scheme != "https" {
+		return &ExitError{Code: ExitUsage, Err: fmt.Errorf("sitemap URL %q must use https", raw)}
+	}
+	host := strings.TrimSuffix(strings.ToLower(u.Hostname()), ".")
+	if host != domain && !strings.HasSuffix(host, "."+domain) {
+		return &ExitError{Code: ExitUsage, Err: fmt.Errorf("sitemap URL host %q is not on the property %s", host, google.SiteURL(domain))}
+	}
+	return nil
+}
+
 // checkSitemap fetches the sitemap. It fails with exit code 3 when the sitemap
 // has problems, so nobody submits a broken sitemap.
 func checkSitemap(ctx context.Context, env *Env, url string) error {
-	rep, err := sitemap.Check(ctx, env.Client, url)
+	client, err := env.sitemapClient()
+	if err != nil {
+		return err
+	}
+	rep, err := sitemap.Check(ctx, client, url)
 	if errors.Is(err, sitemap.ErrNotAbsolute) {
 		return &ExitError{Code: ExitUsage, Err: err}
 	}
 	if err != nil {
 		return err
 	}
-	if !rep.OK && !env.DryRun {
+	if !rep.OK {
 		env.P.Warnf("problems in %s:\n  %s", rep.URL, strings.Join(rep.Problems, "\n  "))
 		return &ExitError{Code: ExitSitemapError, Err: errors.New("the sitemap has problems, so it was not submitted")}
 	}
