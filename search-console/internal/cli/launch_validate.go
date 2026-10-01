@@ -7,19 +7,19 @@ import (
 	"net/url"
 	"os"
 
-	"github.com/pooriaarab/clis/search-console/internal/httpx"
 	"github.com/pooriaarab/clis/search-console/internal/sitemap"
 )
 
 // launchInputs are the flags that launch checks before any step runs.
 type launchInputs struct {
 	domain, sitemapURL, keyDir, keyLocation, urlsFile string
-	indexnow                                          bool // false when --skip indexnow
+	google, indexnow                                  bool // false when the group is in --skip
 }
 
 // validateLaunch checks every input before launch makes a remote change. A dry
 // run calls it too, so a dry run refuses the same inputs as a real run. It makes
-// read-only requests only: it reads the sitemap that IndexNow will use. A
+// read-only requests only: it reads the sitemap that IndexNow will use,
+// as every sitemap read does, in a dry run too. A
 // sitemap that cannot be read is not an input error. The steps report it.
 func (e *Env) validateLaunch(in launchInputs) error {
 	usage := func(format string, a ...any) error {
@@ -27,6 +27,11 @@ func (e *Env) validateLaunch(in launchInputs) error {
 	}
 	if _, err := absoluteURL(in.sitemapURL); err != nil {
 		return usage("--sitemap %q: %w", in.sitemapURL, sitemap.ErrNotAbsolute)
+	}
+	if in.google {
+		if err := checkSitemapURL(in.domain, in.sitemapURL); err != nil {
+			return err
+		}
 	}
 	if !in.indexnow {
 		return nil
@@ -40,7 +45,7 @@ func (e *Env) validateLaunch(in launchInputs) error {
 		}
 	}
 	probe := *e // read the list for real, even in a dry run
-	probe.Client, probe.DryRun = httpx.New(false), false
+	probe.DryRun = false
 	var err error
 	if in.urlsFile != "" {
 		_, err = indexnowURLs(context.Background(), &probe, in.domain, in.urlsFile, "")

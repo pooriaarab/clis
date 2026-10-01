@@ -97,7 +97,14 @@ func indexnowURLs(ctx context.Context, env *Env, domain, file, fromSitemap strin
 		if fromSitemap == "auto" {
 			fromSitemap = "https://" + domain + "/sitemap.xml"
 		}
-		locs, err := sitemap.Locs(ctx, env.Client, fromSitemap)
+		client := env.Client // a dry run records the read and sends nothing
+		if !env.DryRun {
+			var err error
+			if client, err = env.sitemapClient(); err != nil {
+				return nil, err
+			}
+		}
+		locs, err := sitemap.Locs(ctx, client, fromSitemap)
 		if errors.Is(err, sitemap.ErrNotAbsolute) {
 			return nil, &ExitError{Code: ExitUsage, Err: err}
 		}

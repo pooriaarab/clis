@@ -56,7 +56,7 @@ A failed step does not stop the others. A sitemap step is skipped when its verif
 
 | Flag | Default | Use |
 |---|---|---|
-| `--sitemap <url>` | required | Absolute URL of the sitemap. Google and Bing get this URL. IndexNow gets the URLs inside it. |
+| `--sitemap <url>` | required | Absolute https URL of the sitemap, on the domain or a subdomain of it. Google and Bing get this URL. IndexNow gets the URLs inside it. |
 | `--cloudflare-zone <id\|auto>` | none | Publish the DNS records to Cloudflare. Without it, the CLI prints each record and waits. |
 | `--wait <duration>` | `10m` | How long each verify step waits for DNS. Must not be negative. |
 | `--interval <duration>` | `5s` | Delay between checks. Must be more than zero. |
