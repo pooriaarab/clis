@@ -82,9 +82,11 @@ func TestBingErrorTextHidesKeyAndIsShort(t *testing.T) {
 		for _, key := range []string{bingKey, "wrong-key"} {
 			sb, b := bingSandbox(t)
 			sb.Env["BING_WEBMASTER_API_KEY"] = key
-			b.EchoRequest = mode == "echo" || mode == "all"
-			b.LongError = map[bool]int{true: 5000}[mode == "long" || mode == "all"]
-			b.RawErrors = mode == "html" || mode == "all"
+			b.Configure(func(f *fakes.Bing) {
+				f.EchoRequest = mode == "echo" || mode == "all"
+				f.LongError = map[bool]int{true: 5000}[mode == "long" || mode == "all"]
+				f.RawErrors = mode == "html" || mode == "all"
+			})
 			cmds := [][]string{{"bing", "quota", "example.com"}} // the site is not in the account
 			if key != bingKey {
 				cmds = append(cmds, []string{"auth", "bing"})
