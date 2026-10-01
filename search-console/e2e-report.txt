@@ -55,6 +55,9 @@
 --- PASS: TestGoogleSitemapSubmitRefused
 --- PASS: TestGoogleSitemapStatusNeverSubmitted
 --- PASS: TestGoogleSitemapDryRun
+--- PASS: TestGoogleSitemapRejectsWrongURL
+--- PASS: TestGoogleSitemapAcceptsSubdomain
+--- PASS: TestGoogleSitemapDryRunRefusesBadSitemap
 --- PASS: TestGoogleVerifyNotLoggedIn
 --- PASS: TestGoogleVerifyRejectsBadDomains
 --- PASS: TestGoogleVerifyRetriesUntilDNSIsReady
@@ -99,15 +102,18 @@
 --- PASS: TestSitemapCheckProblems
 --- PASS: TestSitemapCheckRelativeURL
 --- PASS: TestSitemapCheckServerDown
---- PASS: TestSitemapCheckDryRunSendsNothing
+--- PASS: TestSitemapCheckDryRunMatchesRealRun
 --- PASS: TestSitemapCheckURLRules
 --- PASS: TestSitemapCheckIndexFollowsChildren
 --- PASS: TestSitemapCheckIndexChildProblems
+--- PASS: TestSitemapCheckIndexDoesNotFetchOtherHosts
+--- PASS: TestSitemapCheckIndexHasChildCap
+--- PASS: TestSitemapCheckNestedIndexIsNotFollowed
 ok e2e
 
 # One launch, then a rerun that changes nothing
-    launch_test.go:64: $ search-console launch example.com --sitemap http://site.fake/sitemap.xml --cloudflare-zone auto --interval 20ms --wait 400ms --key-dir $KEYDIR --key-location http://site.fake/abcdef0123456789abcdef0123456789.txt --indexnow-urls $WORK/urls.txt --json
-    launch_test.go:64: {
+    launch_test.go:65: $ search-console launch example.com --sitemap https://example.com/sitemap.xml --cloudflare-zone auto --interval 20ms --wait 400ms --key-dir $KEYDIR --key-location http://site.fake/abcdef0123456789abcdef0123456789.txt --indexnow-urls $WORK/urls.txt --json
+    launch_test.go:65: {
           "domain": "example.com",
           "ok": true,
           "steps": [
@@ -143,13 +149,13 @@ ok e2e
             }
           ]
         }
-    launch_test.go:64: stderr: Cloudflare TXT record for example.com (created: true).
+    launch_test.go:65: stderr: Cloudflare TXT record for example.com (created: true).
         Cloudflare CNAME 0123456789abcdef0123456789abcdef.example.com -> verify.bing.com, not proxied (changed: true).
         Key file: $KEYDIR/abcdef0123456789abcdef0123456789.txt
         Serve it at: http://site.fake/abcdef0123456789abcdef0123456789.txt
-    launch_test.go:64: -> exit 0
-    launch_test.go:64: $ search-console launch example.com --sitemap http://site.fake/sitemap.xml --cloudflare-zone auto --interval 20ms --wait 400ms --key-dir $KEYDIR --key-location http://site.fake/abcdef0123456789abcdef0123456789.txt --indexnow-urls $WORK/urls.txt --json
-    launch_test.go:64: {
+    launch_test.go:65: -> exit 0
+    launch_test.go:65: $ search-console launch example.com --sitemap https://example.com/sitemap.xml --cloudflare-zone auto --interval 20ms --wait 400ms --key-dir $KEYDIR --key-location http://site.fake/abcdef0123456789abcdef0123456789.txt --indexnow-urls $WORK/urls.txt --json
+    launch_test.go:65: {
           "domain": "example.com",
           "ok": true,
           "steps": [
@@ -185,16 +191,16 @@ ok e2e
             }
           ]
         }
-    launch_test.go:64: stderr: Key file: $KEYDIR/abcdef0123456789abcdef0123456789.txt
+    launch_test.go:65: stderr: Key file: $KEYDIR/abcdef0123456789abcdef0123456789.txt
         Serve it at: http://site.fake/abcdef0123456789abcdef0123456789.txt
-    launch_test.go:64: -> exit 0
-    launch_test.go:64: $ search-console launch example.com --sitemap http://site.fake/sitemap.xml --cloudflare-zone auto --interval 20ms --wait 400ms --key-dir $KEYDIR --key-location http://site.fake/abcdef0123456789abcdef0123456789.txt --indexnow-urls $WORK/urls.txt
-    launch_test.go:64: STEP            STATUS  DETAIL
+    launch_test.go:65: -> exit 0
+    launch_test.go:65: $ search-console launch example.com --sitemap https://example.com/sitemap.xml --cloudflare-zone auto --interval 20ms --wait 400ms --key-dir $KEYDIR --key-location http://site.fake/abcdef0123456789abcdef0123456789.txt --indexnow-urls $WORK/urls.txt
+    launch_test.go:65: STEP            STATUS  DETAIL
         google verify   pass    already verified
         google sitemap  pass    done
         bing verify     pass    already verified
         bing sitemap    pass    status Pending
         indexnow        pass    2 URL(s) sent
-    launch_test.go:64: stderr: Key file: $KEYDIR/abcdef0123456789abcdef0123456789.txt
+    launch_test.go:65: stderr: Key file: $KEYDIR/abcdef0123456789abcdef0123456789.txt
         Serve it at: http://site.fake/abcdef0123456789abcdef0123456789.txt
-    launch_test.go:64: -> exit 0
+    launch_test.go:65: -> exit 0

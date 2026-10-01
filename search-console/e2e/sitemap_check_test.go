@@ -90,18 +90,45 @@ func TestSitemapCheckServerDown(t *testing.T) {
 	wantExit(t, r, 1)
 }
 
-func TestSitemapCheckDryRunSendsNothing(t *testing.T) {
-	sb, site := checkSandbox(t)
-	site.Serve("/sitemap.xml", 200, "application/xml", fakes.URLSet(site.URL+"/"))
-	r := sb.Run("sitemap", "check", site.URL+"/sitemap.xml", "--dry-run", "--json")
-	wantExit(t, r, 0)
-	v := r.JSON(t)
-	calls, _ := v["calls"].([]any)
-	if v["dry_run"] != true || len(calls) != 1 {
-		t.Fatalf("dry run must list one call: %s", r.Stdout)
+// Ways --dry-run can fail, listed before the code was written:
+// 17. The dry run skips the fetch, so it exits 0 for a sitemap the real run rejects.
+// 18. The dry run reads a different set of problems than the real run.
+// 19. The dry run changes something remote. A GET changes nothing, so it must go out.
+
+func TestSitemapCheckDryRunMatchesRealRun(t *testing.T) {
+	cases := []struct {
+		name   string
+		status int
+		body   string
+		exit   int
+	}{
+		{"good", 200, fakes.URLSet("SITE/", "SITE/a"), 0},
+		{"not found", 404, "missing", 3},
+		{"wrong root", 200, `<feed><entry/></feed>`, 3},
+		{"other host", 200, fakes.URLSet("SITE/", "https://other.test/a"), 3},
+		{"empty", 200, `<urlset></urlset>`, 3},
 	}
-	if site.Hits("/sitemap.xml") != 0 {
-		t.Fatal("dry run sent a request")
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			sb, site := checkSandbox(t)
+			site.Serve("/sitemap.xml", c.status, "application/xml", strings.ReplaceAll(c.body, "SITE", site.URL))
+			real := sb.Run("sitemap", "check", site.URL+"/sitemap.xml", "--json")
+			dry := sb.Run("sitemap", "check", site.URL+"/sitemap.xml", "--dry-run", "--json")
+			wantExit(t, real, c.exit)
+			wantExit(t, dry, c.exit)
+			rv, dv := real.JSON(t), dry.JSON(t)
+			for _, k := range []string{"ok", "kind", "urls", "problems"} {
+				if fmt.Sprint(rv[k]) != fmt.Sprint(dv[k]) {
+					t.Fatalf("%s differs: real %v, dry run %v", k, rv[k], dv[k])
+				}
+			}
+			if calls, _ := dv["calls"].([]any); dv["dry_run"] != true || len(calls) != 0 {
+				t.Fatalf("a dry run of a read must list no unsent call: %s", dry.Stdout)
+			}
+			if site.Hits("/sitemap.xml") != 2 {
+				t.Fatalf("the sitemap was fetched %d times, want 2 (one per run)", site.Hits("/sitemap.xml"))
+			}
+		})
 	}
 }
 
@@ -167,5 +194,58 @@ func TestSitemapCheckIndexChildProblems(t *testing.T) {
 	problems := fmt.Sprint(r.JSON(t)["problems"])
 	for _, want := range []string{"missing.xml", "HTTP 404", "nested.xml", "index inside an index", "bad.xml", "not an absolute"} {
 		wantContains(t, "problems", problems, want)
+	}
+	// The nested index lists one sitemap. That is not a page, so it must not count.
+	if v := r.JSON(t); v["urls"] != float64(1) {
+		t.Fatalf("urls = %v, want 1 (the bad.xml entry only)", v["urls"])
+	}
+}
+
+// Ways an index can hurt the machine that reads it, listed before the code was written:
+// 20. A child is on another host and the CLI fetches it anyway (the index decides where we connect).
+// 21. An index lists thousands of children and the CLI fetches every one.
+// 22. A child that is an index is followed, so nesting has no end.
+
+func TestSitemapCheckIndexDoesNotFetchOtherHosts(t *testing.T) {
+	sb, site := checkSandbox(t)
+	other := fakes.NewSite(t)
+	other.Serve("/c.xml", 200, "application/xml", fakes.URLSet(other.URL+"/1"))
+	site.Serve("/index.xml", 200, "application/xml", indexXML(site.URL+"/a.xml", other.URL+"/c.xml"))
+	site.Serve("/a.xml", 200, "application/xml", fakes.URLSet(site.URL+"/1"))
+	r := sb.Run("sitemap", "check", site.URL+"/index.xml", "--json")
+	wantExit(t, r, 3)
+	wantContains(t, "problems", fmt.Sprint(r.JSON(t)["problems"]), "not on the sitemap host")
+	if n := other.Hits("/c.xml"); n != 0 {
+		t.Fatalf("a child on another host was fetched %d times", n)
+	}
+	if site.Hits("/a.xml") != 1 {
+		t.Fatal("the same-host child was not fetched")
+	}
+}
+
+func TestSitemapCheckIndexHasChildCap(t *testing.T) {
+	sb, site := checkSandbox(t)
+	var children []string
+	for i := 0; i < 1001; i++ {
+		children = append(children, fmt.Sprintf("%s/c%d.xml", site.URL, i))
+	}
+	site.Serve("/index.xml", 200, "application/xml", indexXML(children...))
+	r := sb.Run("sitemap", "check", site.URL+"/index.xml", "--json")
+	wantExit(t, r, 3)
+	wantContains(t, "problems", fmt.Sprint(r.JSON(t)["problems"]), "limit is 1000")
+	if n := site.Hits("/c0.xml"); n != 0 {
+		t.Fatalf("an index over the cap still had its children fetched (%d)", n)
+	}
+}
+
+func TestSitemapCheckNestedIndexIsNotFollowed(t *testing.T) {
+	sb, site := checkSandbox(t)
+	site.Serve("/index.xml", 200, "application/xml", indexXML(site.URL+"/nested.xml"))
+	site.Serve("/nested.xml", 200, "application/xml", indexXML(site.URL+"/deep.xml"))
+	site.Serve("/deep.xml", 200, "application/xml", fakes.URLSet(site.URL+"/1"))
+	r := sb.Run("sitemap", "check", site.URL+"/index.xml", "--json")
+	wantExit(t, r, 3)
+	if n := site.Hits("/deep.xml"); n != 0 {
+		t.Fatalf("a nested index was followed (%d fetches of its child)", n)
 	}
 }
