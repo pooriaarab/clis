@@ -28,7 +28,7 @@ The owner does this once:
 2. Run `search-console auth google --client-id <id> --client-secret <secret>` and sign in.
 3. Create a Bing API key under Settings, API access, in Bing Webmaster Tools. Export `BING_WEBMASTER_API_KEY`.
 4. Optional. Create a Cloudflare token with Zone Read and DNS Edit. Export `CLOUDFLARE_API_TOKEN`. The CLI reads it from the environment only.
-5. Serve the IndexNow key file at `https://<domain>/<key>.txt`. The first `indexnow submit` prints the file path.
+5. Serve the IndexNow key file at `https://<domain>/<key>.txt`. The first run writes `<key>.txt` to `--key-dir` and prints the path.
 
 ## Launch a domain
 
@@ -39,7 +39,20 @@ search-console launch example.com --sitemap https://example.com/sitemap.xml --cl
 search-console launch example.com --sitemap https://example.com/sitemap.xml --cloudflare-zone auto --json
 ```
 
-The result is a table of five steps: `google verify`, `google sitemap`, `bing verify`, `bing sitemap` and `indexnow`. Each row is `pass`, `fail` or `skipped`. A dry run shows `skipped (dry-run)` for every step and ends with `dry run: nothing was changed or verified`. It runs only the read-only checks (login, keys, IndexNow key file), and a failed check exits 1. Run the command again to retry. A step that is already done passes.
+Flags of `launch`:
+
+- `--sitemap <url>` is required. It is an absolute https URL on the domain or a subdomain of it. IndexNow sends the URLs inside this sitemap.
+- `--cloudflare-zone <id|auto>` publishes the DNS records. Without it, tell the owner to add them.
+- `--wait <duration>` (default `10m`) must not be negative. `--interval <duration>` (default `5s`) must be more than zero.
+- `--key-dir <dir>` (default `.`) must exist. `--key-location <url>` is where the key file is served.
+- `--indexnow-urls <file>` sends the URLs in a file, one per line, instead of the sitemap URLs.
+- `--skip google,bing,indexnow` leaves out a group.
+
+`launch` checks every flag before it changes anything. A bad flag exits 2 and nothing is made. A dry run exits the same way.
+
+The result is a table of five steps: `google verify`, `google sitemap`, `bing verify`, `bing sitemap` and `indexnow`. Each row is `pass`, `fail` or `skipped`. A dry run shows `skipped (dry-run)` for every step and ends with `dry run: nothing was changed or verified`. It runs only the read-only checks (login, keys, sitemap, IndexNow key file). A failed check exits with the real run's code: 1, or 3 for a sitemap with problems. Run the command again to retry. A step that is already done passes.
+
+On the first launch, the `indexnow` step writes `<key>.txt` to `--key-dir`. The site must serve that file at `https://<domain>/<key>.txt` before the CLI pings IndexNow. Until then, the step fails with `the key file is not reachable`. Tell the owner to deploy the file, then run `launch` again.
 
 ## Single steps
 
