@@ -4,8 +4,10 @@ package bing
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/url"
+	"regexp"
 	"strings"
 
 	"github.com/pooriaarab/clis/search-console/internal/httpx"
@@ -21,8 +23,15 @@ type API struct {
 	Key  string
 }
 
+// CodeAlreadyPresent is the error code Bing sends when the site or the sitemap
+// is already there. It means the work is done.
+const CodeAlreadyPresent = 81058
+
+// maxMessage is the most text of a Bing error the CLI keeps.
+const maxMessage = 200
+
 // APIError is an error reply from Bing. Bing sends it as HTTP 400 or as a
-// 200 reply whose body holds an ErrorCode.
+// 200 reply whose body holds an ErrorCode. Message never holds the API key.
 type APIError struct {
 	Status  int
 	Code    int
@@ -31,6 +40,30 @@ type APIError struct {
 
 func (e *APIError) Error() string {
 	return fmt.Sprintf("bing api: HTTP %d: %s (code %d)", e.Status, e.Message, e.Code)
+}
+
+// IsAlreadyPresent reports whether err is Bing saying the site or sitemap already exists.
+func IsAlreadyPresent(err error) bool {
+	var e *APIError
+	return errors.As(err, &e) && e.Code == CodeAlreadyPresent
+}
+
+var apikeyParam = regexp.MustCompile(`(?i)apikey=[^&\s)"'<]*`)
+
+// safeMessage removes the API key from Bing's error text and cuts it short.
+// Bing can repeat the request URL, and the key is in its query. The reply can also be a page of HTML.
+func safeMessage(msg, key string) string {
+	for _, k := range []string{key, url.QueryEscape(key), url.PathEscape(key)} {
+		if k != "" {
+			msg = strings.ReplaceAll(msg, k, "REDACTED")
+		}
+	}
+	msg = apikeyParam.ReplaceAllString(msg, "apikey=REDACTED")
+	msg = strings.Join(strings.Fields(msg), " ")
+	if r := []rune(msg); len(r) > maxMessage {
+		msg = string(r[:maxMessage]) + "..."
+	}
+	return msg
 }
 
 // SiteURL is how the CLI names a domain in Bing.
@@ -61,8 +94,9 @@ func (a *API) call(ctx context.Context, method, name string, query url.Values, b
 			e.Code = *env.ErrorCode
 		}
 		if e.Message == "" {
-			e.Message = strings.TrimSpace(string(resp.Body))
+			e.Message = string(resp.Body)
 		}
+		e.Message = safeMessage(e.Message, a.Key)
 		return e
 	}
 	if out == nil || len(env.D) == 0 {
@@ -73,9 +107,11 @@ func (a *API) call(ctx context.Context, method, name string, query url.Values, b
 
 // Site is one site of the account, as GetUserSites reports it.
 type Site struct {
-	URL                 string `json:"Url"`
-	IsVerified          bool   `json:"IsVerified"`
-	DNSVerificationCode string `json:"DnsVerificationCode"`
+	URL        string `json:"Url"`
+	IsVerified bool   `json:"IsVerified"`
+	// DNSRecord is the whole name of the verification CNAME, "<code>.<domain>".
+	// GetUserSites sends it in the field DnsVerificationCode.
+	DNSRecord string `json:"DnsVerificationCode"`
 }
 
 // Sites lists the sites of the account.

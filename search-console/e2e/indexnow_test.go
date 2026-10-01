@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -23,6 +24,8 @@ import (
 //  8. --dry-run writes the key file, saves the key or sends a request.
 //  9. The key directory does not exist: fail before any request.
 // 10. A sitemap index is not followed, or an unreadable sitemap gives an empty run.
+// 11. A failure answer has an empty body (the live endpoint does this on 4xx) or a status
+//     with no listed reason: the message must still say what failed, not end in "HTTP 500: ".
 
 const inKey = "abcdef0123456789abcdef0123456789"
 
@@ -190,6 +193,27 @@ func TestIndexNowAcceptedAndRefusedAnswers(t *testing.T) {
 			t.Fatalf("status %d: posts = %d, want 2", status, len(e.n.Posts()))
 		}
 	}
+}
+
+func TestIndexNowEmptyFailureBody(t *testing.T) {
+	for status, want := range map[int]string{401: "Unauthorized", 500: "Internal Server Error", 503: "Service Unavailable", 429: "too many requests"} {
+		e := indexnowSandbox(t)
+		e.seedKey(t)
+		e.n.EmptyBodies = true
+		e.n.Answer[0] = status
+		r := e.submit("--urls", e.urlFile(t, "https://example.com/"))
+		wantExit(t, r, 1)
+		wantContains(t, "stderr", r.Stderr, want)
+		if regexp.MustCompile(`HTTP \d+: *\n`).MatchString(r.Stderr + "\n") {
+			t.Fatalf("status %d: the reason is empty:\n%s", status, r.Stderr)
+		}
+	}
+	e := indexnowSandbox(t)
+	e.seedKey(t)
+	e.n.Answer[0] = 500 // a body that says why is shown
+	r := e.submit("--urls", e.urlFile(t, "https://example.com/"))
+	wantExit(t, r, 1)
+	wantContains(t, "stderr", r.Stderr, "forced")
 }
 
 func TestIndexNowDryRunWritesAndSendsNothing(t *testing.T) {

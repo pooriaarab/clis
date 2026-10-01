@@ -72,7 +72,25 @@ func (a *API) Submit(ctx context.Context, host, key, location string, urls []str
 	if resp.DryRun || resp.Status == http.StatusOK || resp.Status == http.StatusAccepted {
 		return resp.Status, nil
 	}
-	return resp.Status, fmt.Errorf("indexnow: HTTP %d: %s", resp.Status, reason[resp.Status])
+	return resp.Status, fmt.Errorf("indexnow: HTTP %d: %s", resp.Status, failureReason(resp.Status, resp.Body))
+}
+
+// failureReason explains a refused batch. IndexNow often sends an empty body,
+// so a listed reason comes first, then the body text, then the status text.
+func failureReason(status int, body []byte) string {
+	if r, ok := reason[status]; ok {
+		return r
+	}
+	if text := strings.Join(strings.Fields(string(body)), " "); text != "" {
+		if r := []rune(text); len(r) > 200 {
+			text = string(r[:200]) + "..."
+		}
+		return text
+	}
+	if text := http.StatusText(status); text != "" {
+		return text
+	}
+	return "no reason given"
 }
 
 var reason = map[int]string{
