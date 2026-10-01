@@ -4,6 +4,9 @@
 --- PASS: TestAuthGoogleFailedConsent
 --- PASS: TestAuthGoogleTimeout
 --- PASS: TestAuthGoogleRejectsDryRun
+--- PASS: TestAuthGoogleNoRefreshTokenWritesNothing
+--- PASS: TestAuthGoogleRejectsWrongClientID
+--- PASS: TestAuthRefreshRejectsWrongClient
 --- PASS: TestAuthStatusCheckRefreshesSavedLogin
 --- PASS: TestAuthExpiredRefreshTokenExplainsFix
 --- PASS: TestAuthEnvWinsOverSavedLogin
@@ -38,6 +41,9 @@
 --- PASS: TestBingVerifyPrintsRecordWithoutCloudflare
 --- PASS: TestBingVerifyMissingSecrets
 --- PASS: TestBingVerifyDryRun
+--- PASS: TestTimingFlagsAreValidated
+--- PASS: TestAuthGoogleRejectsBadTimeout
+--- PASS: TestZeroWaitIsAllowed
 --- PASS: TestCloudflareZoneAutoCreatesTXTThenVerifies
 --- PASS: TestCloudflareExplicitZoneSkipsLookup
 --- PASS: TestCloudflareRerunDoesNotDuplicateTXT
