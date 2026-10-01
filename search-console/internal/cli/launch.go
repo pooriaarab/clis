@@ -87,7 +87,7 @@ IndexNow key file. A failed check fails its step and the exit code. A dry run ne
 			}
 			if err := env.validateLaunch(launchInputs{
 				domain: d, sitemapURL: sitemapURL, keyDir: keyDir, keyLocation: keyLocation, urlsFile: indexnowURLs,
-				indexnow: !skipped["indexnow"],
+				google: !skipped["google"], indexnow: !skipped["indexnow"],
 			}); err != nil {
 				return err
 			}

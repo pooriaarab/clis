@@ -74,7 +74,11 @@ func dryRunStep(s step, verifyFailed bool) stepResult {
 // problems, as the real submit step does.
 func (e *Env) sitemapCheck(sitemapURL string) check {
 	return check{"sitemap", func() (string, error) {
-		rep, err := sitemap.Check(context.Background(), httpx.New(false), sitemapURL)
+		client, err := e.sitemapClient()
+		if err != nil {
+			return "", err
+		}
+		rep, err := sitemap.Check(context.Background(), client, sitemapURL)
 		if err != nil {
 			return "", err
 		}

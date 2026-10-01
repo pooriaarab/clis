@@ -1,10 +1,6 @@
 package e2e
 
 import (
-	"net/http"
-	"net/http/httptest"
-	"net/http/httputil"
-	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -357,6 +353,10 @@ func TestLaunchChecksEveryInputBeforeAnyChange(t *testing.T) {
 		want  string
 	}{
 		{"relative sitemap", func(*launchRig, *testing.T) []string { return []string{"--sitemap", "/sitemap.xml"} }, "not absolute"},
+		{"http sitemap", func(*launchRig, *testing.T) []string { return []string{"--sitemap", "http://example.com/sitemap.xml"} }, "must use https"},
+		{"sitemap on another domain", func(*launchRig, *testing.T) []string {
+			return []string{"--sitemap", "https://other.example/sitemap.xml"}
+		}, "not on the property"},
 		{"missing URL list", func(*launchRig, *testing.T) []string { return []string{"--indexnow-urls", "/no/such/urls.txt"} }, "urls.txt"},
 		{"foreign URL in the list", func(l *launchRig, t *testing.T) []string {
 			p := filepath.Join(t.TempDir(), "foreign.txt")
@@ -403,43 +403,25 @@ func TestLaunchDryRunFailsOnABrokenSitemap(t *testing.T) {
 	l.untouched(t, "dry run")
 }
 
-// proxySite makes http://example.com answer from the fake site, so the sitemap can
-// live on the domain that IndexNow needs. The binary reads HTTP_PROXY.
-func (l *launchRig) proxySite(t *testing.T) {
-	t.Helper()
-	target, _ := url.Parse(l.site.URL)
-	p := httptest.NewServer(&httputil.ReverseProxy{Director: func(r *http.Request) {
-		r.URL.Scheme, r.URL.Host, r.Host = target.Scheme, target.Host, target.Host
-	}})
-	t.Cleanup(p.Close)
-	l.sb.Env["HTTP_PROXY"] = p.URL
-	l.sb.Alias(p.URL, "http://proxy.fake")
-}
-
-// fromSitemap turns the rig into the default path: no --indexnow-urls, and the
-// sitemap that Google, Bing and IndexNow read is http://example.com/sitemap.xml.
+// fromSitemap turns the rig into the default path: no --indexnow-urls, so the
+// sitemap that Google and Bing get also feeds IndexNow.
 func (l *launchRig) fromSitemap(t *testing.T, locs ...string) {
 	t.Helper()
-	l.proxySite(t)
 	l.site.Serve("/sitemap.xml", 200, "application/xml", fakes.URLSet(locs...))
 	var args []string
 	for i := 0; i < len(l.args); i++ {
-		switch l.args[i] {
-		case "--indexnow-urls":
+		if l.args[i] == "--indexnow-urls" {
 			i++
-		case "--sitemap":
-			args = append(args, "--sitemap", "http://example.com/sitemap.xml")
-			i++
-		default:
-			args = append(args, l.args[i])
+			continue
 		}
+		args = append(args, l.args[i])
 	}
 	l.args = args
 }
 
 func TestLaunchSendsTheSitemapUrlsToIndexNowByDefault(t *testing.T) {
 	l := newLaunchRig(t)
-	l.fromSitemap(t, "http://example.com/", "http://example.com/a", "http://example.com/a")
+	l.fromSitemap(t, "https://example.com/", "https://example.com/a", "https://example.com/a")
 	all := map[string]string{"google verify": "pass", "google sitemap": "pass", "bing verify": "pass", "bing sitemap": "pass", "indexnow": "pass"}
 	for i := 0; i < 2; i++ {
 		r := l.run("--json")
@@ -447,26 +429,27 @@ func TestLaunchSendsTheSitemapUrlsToIndexNowByDefault(t *testing.T) {
 		wantSteps(t, results(t, r), all)
 	}
 	posts := l.n.Posts()
-	if len(posts) != 2 || len(posts[0].URLs) != 2 || posts[0].URLs[0] != "http://example.com/" || posts[0].URLs[1] != "http://example.com/a" {
+	if len(posts) != 2 || len(posts[0].URLs) != 2 || posts[0].URLs[0] != "https://example.com/" || posts[0].URLs[1] != "https://example.com/a" {
 		t.Fatalf("IndexNow did not get the sitemap URLs once per run: %+v", posts)
 	}
-	if got := l.g.Sitemaps(); len(got) != 1 || got[0] != "http://example.com/sitemap.xml" {
+	if got := l.g.Sitemaps(); len(got) != 1 || got[0] != "https://example.com/sitemap.xml" {
 		t.Fatalf("Google sitemaps = %v", got)
 	}
 	r := l.run("--dry-run", "--json")
 	wantExit(t, r, 0)
 	wantContains(t, "indexnow detail", results(t, r)["indexnow"]["detail"].(string), "would write the key file")
+	if len(l.n.Posts()) != 2 {
+		t.Fatal("the dry run sent URLs")
+	}
 }
 
 func TestLaunchRefusesSitemapUrlsFromAnotherHostBeforeAnyChange(t *testing.T) {
-	for _, locs := range [][]string{{"http://example.com/", "http://other.example/x"}} {
-		l := newLaunchRig(t)
-		l.fromSitemap(t, locs...)
-		for _, mode := range [][]string{{"--json"}, {"--dry-run", "--json"}} {
-			r := l.run(mode...)
-			wantExit(t, r, 2)
-			wantContains(t, "stdout", r.Stdout, "http://other.example/x")
-			l.untouched(t, strings.Join(mode, " "))
-		}
+	l := newLaunchRig(t)
+	l.fromSitemap(t, "https://example.com/", "https://other.example/x")
+	for _, mode := range [][]string{{"--json"}, {"--dry-run", "--json"}} {
+		r := l.run(mode...)
+		wantExit(t, r, 2)
+		wantContains(t, "stdout", r.Stdout, "https://other.example/x")
+		l.untouched(t, strings.Join(mode, " "))
 	}
 }

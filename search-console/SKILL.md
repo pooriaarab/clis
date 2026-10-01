@@ -41,7 +41,7 @@ search-console launch example.com --sitemap https://example.com/sitemap.xml --cl
 
 Flags of `launch`:
 
-- `--sitemap <url>` is required. It is an absolute URL. IndexNow sends the URLs inside this sitemap.
+- `--sitemap <url>` is required. It is an absolute https URL on the domain or a subdomain of it. IndexNow sends the URLs inside this sitemap.
 - `--cloudflare-zone <id|auto>` publishes the DNS records. Without it, tell the owner to add them.
 - `--wait <duration>` (default `10m`) must not be negative. `--interval <duration>` (default `5s`) must be more than zero.
 - `--key-dir <dir>` (default `.`) must exist. `--key-location <url>` is where the key file is served.
