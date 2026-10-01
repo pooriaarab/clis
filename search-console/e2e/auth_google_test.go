@@ -1,8 +1,11 @@
 package e2e
 
 import (
+	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -19,6 +22,10 @@ import (
 //  7. The token or secret leaks to stdout or stderr.
 //  8. --dry-run opens a browser or sends a request (it is refused, exit 2).
 //  9. The PKCE verifier or redirect URI is wrong, so Google refuses the code.
+// 10. A reply with no refresh token, or an empty one, overwrites or adds a file under
+//     the default ~/.config/search-console, not only under SEARCH_CONSOLE_CONFIG_DIR.
+// 11. A login with a wrong client id is accepted by the fake, so the CLI never sees invalid_client.
+// 12. A refresh with a wrong client id or secret is accepted by the fake.
 
 func authSandbox(t *testing.T) (*Sandbox, *fakes.OAuth) {
 	sb := newSandbox(t)
@@ -72,7 +79,7 @@ func TestAuthGoogleFailedConsent(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.mode, func(t *testing.T) {
 			sb, oauth := authSandbox(t)
-			oauth.Mode = c.mode
+			oauth.Configure(func(f *fakes.OAuth) { f.Mode = c.mode })
 			r := login(sb)
 			wantExit(t, r, 1)
 			wantContains(t, "stderr", r.Stderr, c.want)
@@ -102,5 +109,86 @@ func TestAuthGoogleRejectsDryRun(t *testing.T) {
 	wantExit(t, r, 2)
 	if oauth.TokenHits() != 0 {
 		t.Fatal("dry run sent a request")
+	}
+}
+
+// treeState lists every file under root with its mode and content.
+func treeState(t *testing.T, root string) map[string]string {
+	t.Helper()
+	state := map[string]string{}
+	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		info, err := d.Info()
+		if err != nil {
+			return err
+		}
+		content := ""
+		if d.Type().IsRegular() {
+			data, err := os.ReadFile(path)
+			if err != nil {
+				return err
+			}
+			content = string(data)
+		}
+		state[path] = info.Mode().String() + " " + content
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return state
+}
+
+func TestAuthGoogleNoRefreshTokenWritesNothing(t *testing.T) {
+	for _, mode := range []string{"norefresh", "emptyrefresh"} {
+		for _, existing := range []bool{false, true} {
+			t.Run(fmt.Sprintf("%s/existing=%t", mode, existing), func(t *testing.T) {
+				sb, oauth := authSandbox(t)
+				delete(sb.Env, "SEARCH_CONSOLE_CONFIG_DIR") // use the default path under the temp HOME
+				oauth.Configure(func(f *fakes.OAuth) { f.Mode = mode })
+				if existing {
+					dir := filepath.Join(sb.Env["HOME"], ".config", "search-console")
+					if err := os.MkdirAll(dir, 0o700); err != nil {
+						t.Fatal(err)
+					}
+					if err := os.WriteFile(filepath.Join(dir, "google.json"), []byte(`{"refresh_token":"rt-keep"}`), 0o600); err != nil {
+						t.Fatal(err)
+					}
+				}
+				before := treeState(t, sb.Env["HOME"])
+				r := login(sb)
+				wantExit(t, r, 1)
+				wantContains(t, "stderr", r.Stderr, "refresh token")
+				after := treeState(t, sb.Env["HOME"])
+				if !reflect.DeepEqual(before, after) {
+					t.Fatalf("a failed login changed the home directory\nbefore: %v\nafter:  %v", before, after)
+				}
+			})
+		}
+	}
+}
+
+func TestAuthGoogleRejectsWrongClientID(t *testing.T) {
+	sb, _ := authSandbox(t)
+	r := sb.Run("auth", "google", "--client-id", "other", "--client-secret", "csecret", "--timeout", "10s")
+	wantExit(t, r, 1)
+	wantContains(t, "stderr", r.Stderr, "invalid_client")
+	if _, err := os.Stat(filepath.Join(sb.ConfigDir, "google.json")); err == nil {
+		t.Fatal("config file was saved after a refused client")
+	}
+}
+
+func TestAuthRefreshRejectsWrongClient(t *testing.T) {
+	for _, c := range []struct{ id, secret string }{{"cid", "wrong"}, {"wrong", "csecret"}} {
+		t.Run(c.id+"/"+c.secret, func(t *testing.T) {
+			sb, _ := authSandbox(t)
+			sb.Env["GOOGLE_CLIENT_ID"], sb.Env["GOOGLE_CLIENT_SECRET"] = c.id, c.secret
+			sb.Env["GOOGLE_REFRESH_TOKEN"] = "rt-env"
+			r := sb.Run("auth", "status", "--check")
+			wantExit(t, r, 1)
+			wantContains(t, "stderr", r.Stderr, "invalid_client")
+		})
 	}
 }

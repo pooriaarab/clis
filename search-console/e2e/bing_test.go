@@ -60,7 +60,7 @@ func TestAuthBingKeyMissing(t *testing.T) {
 func TestBingRejectsKeyInBothErrorShapes(t *testing.T) {
 	for _, as200 := range []bool{false, true} {
 		sb, b := bingSandbox(t)
-		b.ErrorsAs200 = as200
+		b.Configure(func(f *fakes.Bing) { f.ErrorsAs200 = as200 })
 		sb.Env["BING_WEBMASTER_API_KEY"] = "wrong-key"
 		for _, args := range [][]string{{"auth", "bing"}, {"bing", "quota", "example.com"}} {
 			r := sb.Run(args...)
@@ -82,7 +82,7 @@ func TestBingTransportErrorHidesKey(t *testing.T) {
 func TestBingQuota(t *testing.T) {
 	sb, b := bingSandbox(t)
 	b.AddSite("https://example.com/", fakes.BingSite{})
-	b.Daily, b.Monthly = 9990, 299000
+	b.Configure(func(f *fakes.Bing) { f.Daily, f.Monthly = 9990, 299000 })
 	r := sb.Run("bing", "quota", "example.com", "--json")
 	wantExit(t, r, 0)
 	if v := r.JSON(t); v["daily"] != float64(9990) || v["monthly"] != float64(299000) {

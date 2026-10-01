@@ -13,7 +13,7 @@ build:
 e2e:
 	go vet ./...
 	{ echo "# Every E2E test"; \
-	  go test -count=1 -v ./e2e/ | grep -E '^(--- |ok|FAIL)' | $(STRIP); \
+	  go test -race -count=1 -v ./e2e/ | grep -E '^(--- |ok|FAIL)' | $(STRIP); \
 	  echo; echo "# One launch, then a rerun that changes nothing"; \
-	  go test -count=1 -v -run TestLaunchPassesThenRerunsWithoutRepeating ./e2e/ | grep -vE '^(=== |ok|PASS|--- )' | $(STRIP); \
+	  go test -race -count=1 -v -run TestLaunchPassesThenRerunsWithoutRepeating ./e2e/ | grep -vE '^(=== |ok|PASS|--- )' | $(STRIP); \
 	} > e2e-report.txt

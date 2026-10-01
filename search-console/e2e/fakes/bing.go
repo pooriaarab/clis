@@ -49,6 +49,14 @@ func NewBing(t *testing.T) *Bing {
 	return b
 }
 
+// Configure changes the fake while the server runs. fn runs under the fake's lock, so a
+// handler never reads a field half-written.
+func (b *Bing) Configure(fn func(*Bing)) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	fn(b)
+}
+
 // AddSite registers a site the account already holds.
 func (b *Bing) AddSite(url string, s BingSite) {
 	b.mu.Lock()
@@ -85,6 +93,7 @@ func (b *Bing) Calls(name string) int {
 	return b.calls[name]
 }
 
+// fail answers an error. b.mu is held.
 func (b *Bing) fail(w http.ResponseWriter, code int, msg string) {
 	status := http.StatusBadRequest
 	if b.ErrorsAs200 {
@@ -102,15 +111,13 @@ func (b *Bing) ok(w http.ResponseWriter, v any) {
 
 func (b *Bing) serve(w http.ResponseWriter, r *http.Request) {
 	name := strings.TrimPrefix(r.URL.Path, "/")
-	b.mu.Lock()
+	b.mu.Lock() // held for the whole request: fail reads ErrorsAs200 and the cases read the settings
+	defer b.mu.Unlock()
 	b.calls[name]++
-	b.mu.Unlock()
 	if r.URL.Query().Get("apikey") != b.Key {
 		b.fail(w, 14, "NotAuthorized")
 		return
 	}
-	b.mu.Lock()
-	defer b.mu.Unlock()
 	switch {
 	case r.Method == http.MethodGet && name == "GetUserSites":
 		out := []map[string]any{}

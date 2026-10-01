@@ -44,6 +44,9 @@ DNS host while the command waits. Then it adds the domain to Search Console.
 Exit code 4 means DNS was not ready in time.`,
 		Args: cobra.ExactArgs(1),
 		RunE: run(func(args []string) error {
+			if err := checkPolling(wait, interval); err != nil {
+				return err
+			}
 			domain, err := normalizeDomain(args[0])
 			if err != nil {
 				return err
