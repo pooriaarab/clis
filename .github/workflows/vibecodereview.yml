@@ -32,25 +32,3 @@ jobs:
           # capped and 3 and 4 are left out on purpose, so the CLI chair runs.
           devin_cli_key: ${{ secrets.DEVIN_CLI_KEY }}
           cursor_api_key: ${{ secrets.CURSOR_API_KEY }}
-  # Throwaway probe for pooriaarab/vibecodereview#203: why Devin says "Login canceled" on the runner.
-  devin-probe:
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - shell: bash
-        env:
-          DEVIN_CLI_KEY: ${{ secrets.DEVIN_CLI_KEY }}
-        run: |
-          set +e
-          curl -fsSL https://cli.devin.ai/install.sh -o /tmp/i.sh
-          echo "== A: install with no credential on disk"
-          bash /tmp/i.sh >/dev/null 2>/tmp/e1; echo "install rc=$?"; tail -1 /tmp/e1
-          rm -rf "$HOME/.local/share/devin" "$HOME/.local/bin/devin" "$HOME/.config/devin"
-          C="$HOME/.local/share/devin/credentials.toml"; mkdir -p "$(dirname "$C")"
-          (umask 077; printf 'windsurf_api_key = "%s"\n' "$DEVIN_CLI_KEY" > "$C")
-          echo "== B: install with the credential written first"
-          bash /tmp/i.sh >/dev/null 2>/tmp/e2; echo "install rc=$?"; tail -1 /tmp/e2
-          export PATH="$HOME/.local/bin:$PATH"
-          devin auth status 2>&1 | head -1
-          echo "reply with the single word PONG" > /tmp/p.txt
-          env -u DEVIN_CLI_KEY timeout 120 devin -p --prompt-file /tmp/p.txt --model swe-2-max --permission-mode dangerous --respect-workspace-trust false 2>&1 | tail -1; echo "prompt rc=${PIPESTATUS[0]}"
