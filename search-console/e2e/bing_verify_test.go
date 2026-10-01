@@ -21,6 +21,7 @@ import (
 // 12. The account lists the site as http://, in other case, or without the slash, the
 //     lookup misses it, and AddSite runs for a site that is already there.
 // 13. Bing sends the CNAME name as "<code>.<domain>", and the CLI appends the domain again.
+// 14. The account holds an http:// twin of the site as well, and the lookup picks it.
 
 const bingCode = "0123456789abcdef0123456789abcdef"
 
@@ -74,6 +75,19 @@ func TestBingVerifyFindsTheSiteWhateverItsURLLooksLike(t *testing.T) {
 		wantExit(t, r, 0)
 		if r.JSON(t)["already_verified"] != true || b.Calls("AddSite") != 0 {
 			t.Fatalf("held as %q: not found: %s", held, r.Stdout)
+		}
+	}
+}
+
+func TestBingVerifyPrefersTheHTTPSSiteOverAnHTTPTwin(t *testing.T) {
+	for i := 0; i < 20; i++ { // the fake lists sites in random order
+		sb, b, _ := bingDNSSandbox(t)
+		b.AddSite("http://example.com/", fakes.BingSite{DNSCode: bingCode})
+		b.AddSite("https://example.com/", fakes.BingSite{Verified: true, DNSCode: bingCode})
+		r := sb.Run("bing", "verify", "example.com", "--json")
+		wantExit(t, r, 0)
+		if r.JSON(t)["already_verified"] != true {
+			t.Fatalf("the unverified http twin was picked: %s", r.Stdout)
 		}
 	}
 }

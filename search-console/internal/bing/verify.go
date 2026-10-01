@@ -29,12 +29,17 @@ func (a *API) FindSite(ctx context.Context, domain string) (*Site, error) {
 	if err != nil {
 		return nil, err
 	}
+	// The account can hold an http:// twin. The exact https:// site wins.
+	var twin *Site
 	for i := range sites {
-		if NormalizeSiteURL(sites[i].URL) == NormalizeSiteURL(SiteURL(domain)) {
+		switch {
+		case sites[i].URL == SiteURL(domain):
 			return &sites[i], nil
+		case twin == nil && NormalizeSiteURL(sites[i].URL) == NormalizeSiteURL(SiteURL(domain)):
+			twin = &sites[i]
 		}
 	}
-	return nil, nil
+	return twin, nil
 }
 
 // AddSite adds the domain to the account. It reports true when Bing already
