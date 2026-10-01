@@ -43,7 +43,7 @@ func newLaunchRig(t *testing.T) *launchRig {
 	b := fakes.NewBing(t)
 	sb.Env["BING_API_BASE"], sb.Env["BING_WEBMASTER_API_KEY"] = b.URL, bingKey
 	sb.Alias(b.URL, "http://bing.fake")
-	b.Ready = cf.HasCNAME
+	b.Configure(func(f *fakes.Bing) { f.Ready = cf.HasCNAME })
 	e := indexnowSandbox(t)
 	sb.Env["INDEXNOW_API_BASE"] = e.n.URL + "/indexnow"
 	sb.Alias(e.n.URL, "http://indexnow.fake")
@@ -114,7 +114,7 @@ func TestLaunchPassesThenRerunsWithoutRepeating(t *testing.T) {
 
 func TestLaunchKeepsGoingAfterAFailure(t *testing.T) {
 	l := newLaunchRig(t)
-	l.g.Ready = func(string, string) bool { return false } // DNS never shows the TXT record
+	l.g.Configure(func(f *fakes.Google) { f.Ready = func(string, string) bool { return false } }) // DNS never shows the TXT record
 	r := l.run("--json")
 	wantExit(t, r, 4)
 	wantSteps(t, results(t, r), map[string]string{"google verify": "fail", "google sitemap": "skipped", "bing verify": "pass", "bing sitemap": "pass", "indexnow": "pass"})

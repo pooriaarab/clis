@@ -24,6 +24,9 @@ Then submit it and poll until Google has read it or --wait ends. Exit code 3 als
 means Google reported errors for the sitemap.`,
 		Args: cobra.ExactArgs(2),
 		RunE: run(func(args []string) error {
+			if err := checkPolling(wait, interval); err != nil {
+				return err
+			}
 			domain, err := normalizeDomain(args[0])
 			if err != nil {
 				return err

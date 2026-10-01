@@ -71,6 +71,9 @@ key file. A failed check fails its step and the exit
 code. A dry run never reports that a step passed.`,
 		Args: cobra.ExactArgs(1),
 		RunE: run(func(args []string) error {
+			if err := checkPolling(wait, interval); err != nil {
+				return err
+			}
 			d, err := normalizeDomain(args[0])
 			if err != nil {
 				return err

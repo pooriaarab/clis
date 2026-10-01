@@ -58,7 +58,7 @@ func TestBingSitemapResubmitKeepsOneFeed(t *testing.T) {
 
 func TestBingSitemapSubmitBeforeBingListsIt(t *testing.T) {
 	sb, b, sm := bingSitemapSandbox(t)
-	b.HideFeeds = true
+	b.Configure(func(f *fakes.Bing) { f.HideFeeds = true })
 	r := sb.Run("bing", "sitemap", "submit", "example.com", sm)
 	wantExit(t, r, 0)
 	wantContains(t, "stdout", r.Stdout, "does not list the sitemap yet")
@@ -92,7 +92,7 @@ func TestBingSitemapNeedsVerifiedSite(t *testing.T) {
 func TestBingSitemapSubmitErrorInBothShapes(t *testing.T) {
 	for _, as200 := range []bool{false, true} {
 		sb, b, sm := bingSitemapSandbox(t)
-		b.ErrorsAs200 = as200
+		b.Configure(func(f *fakes.Bing) { f.ErrorsAs200 = as200 })
 		sb.Env["BING_WEBMASTER_API_KEY"] = "wrong-key"
 		r := sb.Run("bing", "sitemap", "submit", "example.com", sm)
 		wantExit(t, r, 1)
@@ -110,7 +110,7 @@ func TestBingSitemapStatusOfUnknownSitemap(t *testing.T) {
 
 func TestBingSitemapErrorStatusExits3(t *testing.T) {
 	sb, b, sm := bingSitemapSandbox(t)
-	b.FeedStatus = "Error"
+	b.Configure(func(f *fakes.Bing) { f.FeedStatus = "Error" })
 	wantExit(t, sb.Run("bing", "sitemap", "submit", "example.com", sm), 3)
 	r := sb.Run("bing", "sitemap", "status", "example.com", sm, "--json")
 	wantExit(t, r, 3)

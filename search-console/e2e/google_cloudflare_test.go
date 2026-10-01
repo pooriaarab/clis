@@ -29,7 +29,7 @@ func cloudflareSandbox(t *testing.T) (*Sandbox, *fakes.Google, *fakes.Cloudflare
 	sb.Env["CLOUDFLARE_API_TOKEN"] = "cf-test"
 	cf.AddZone("example.com", "zone-1")
 	// Google sees the TXT record only after Cloudflare holds it.
-	g.Ready = cf.HasTXT
+	g.Configure(func(f *fakes.Google) { f.Ready = cf.HasTXT })
 	return sb, g, cf
 }
 
@@ -64,7 +64,7 @@ func TestCloudflareExplicitZoneSkipsLookup(t *testing.T) {
 
 func TestCloudflareRerunDoesNotDuplicateTXT(t *testing.T) {
 	sb, g, cf := cloudflareSandbox(t)
-	g.Ready = func(string, string) bool { return false } // verify never works, so the record stays unverified
+	g.Configure(func(f *fakes.Google) { f.Ready = func(string, string) bool { return false } }) // verify never works, so the record stays unverified
 	for i := 0; i < 2; i++ {
 		r := sb.Run("google", "verify", "example.com", "--cloudflare-zone", "auto", "--interval", "20ms", "--wait", "100ms")
 		wantExit(t, r, 4)
@@ -114,7 +114,7 @@ func TestCloudflareSubdomainUsesParentZone(t *testing.T) {
 
 func TestCloudflareRefused(t *testing.T) {
 	sb, _, cf := cloudflareSandbox(t)
-	cf.CreateStatus = 403
+	cf.Configure(func(f *fakes.Cloudflare) { f.CreateStatus = 403 })
 	r := sb.Run("google", "verify", "example.com", "--cloudflare-zone", "auto", "--interval", "20ms")
 	wantExit(t, r, 1)
 	wantContains(t, "stderr", r.Stderr, "not allowed for this zone")

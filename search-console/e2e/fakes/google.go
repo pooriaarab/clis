@@ -54,6 +54,14 @@ func NewGoogle(t *testing.T) *Google {
 	return g
 }
 
+// Configure changes the fake while the server runs. fn runs under the fake's lock, so a
+// handler never reads a field half-written.
+func (g *Google) Configure(fn func(*Google)) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	fn(g)
+}
+
 // Calls counts requests to "METHOD /path". Site paths use the decoded name.
 func (g *Google) Calls(key string) int {
 	g.mu.Lock()
@@ -99,9 +107,10 @@ func (g *Google) serve(w http.ResponseWriter, r *http.Request) {
 	g.mu.Lock()
 	g.calls[key]++
 	n := g.calls[key]
+	token := g.AccessToken
 	g.mu.Unlock()
 
-	if r.Header.Get("Authorization") != "Bearer "+g.AccessToken {
+	if r.Header.Get("Authorization") != "Bearer "+token {
 		apiError(w, http.StatusUnauthorized, "Invalid Credentials")
 		return
 	}
@@ -129,13 +138,19 @@ func (g *Google) verification(w http.ResponseWriter, r *http.Request, key string
 		VerificationMethod string
 	}
 	_ = json.NewDecoder(r.Body).Decode(&body)
+	g.mu.Lock()
+	cfg := struct {
+		tokenStatus, verifyStatus, readyAfter int
+		ready                                 func(domain, record string) bool
+	}{g.TokenStatus, g.VerifyStatus, g.ReadyAfter, g.Ready}
+	g.mu.Unlock()
 	if body.Site.Type != "INET_DOMAIN" || body.Site.Identifier == "" {
 		apiError(w, http.StatusBadRequest, "site must be INET_DOMAIN with an identifier")
 		return
 	}
 	if key == "POST /siteVerification/v1/token" {
-		if g.TokenStatus != 0 {
-			apiError(w, g.TokenStatus, "Site Verification API has not been used in this project")
+		if cfg.tokenStatus != 0 {
+			apiError(w, cfg.tokenStatus, "Site Verification API has not been used in this project")
 			return
 		}
 		if body.VerificationMethod != "DNS_TXT" {
@@ -149,13 +164,13 @@ func (g *Google) verification(w http.ResponseWriter, r *http.Request, key string
 		apiError(w, http.StatusBadRequest, "verificationMethod must be DNS_TXT")
 		return
 	}
-	if g.VerifyStatus != 0 {
-		apiError(w, g.VerifyStatus, "verify failed")
+	if cfg.verifyStatus != 0 {
+		apiError(w, cfg.verifyStatus, "verify failed")
 		return
 	}
-	notReady := g.ReadyAfter < 0 || n <= g.ReadyAfter
-	if g.Ready != nil {
-		notReady = !g.Ready(body.Site.Identifier, "google-site-verification=fake-"+body.Site.Identifier)
+	notReady := cfg.readyAfter < 0 || n <= cfg.readyAfter
+	if cfg.ready != nil {
+		notReady = !cfg.ready(body.Site.Identifier, "google-site-verification=fake-"+body.Site.Identifier)
 	}
 	if notReady {
 		apiError(w, http.StatusBadRequest, "The necessary verification token could not be found on your site.")

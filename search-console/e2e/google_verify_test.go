@@ -58,7 +58,7 @@ func TestGoogleVerifyRejectsBadDomains(t *testing.T) {
 
 func TestGoogleVerifyRetriesUntilDNSIsReady(t *testing.T) {
 	sb, g := googleSandbox(t)
-	g.ReadyAfter = 2
+	g.Configure(func(f *fakes.Google) { f.ReadyAfter = 2 })
 	r := sb.Run("google", "verify", "example.com", "--interval", "20ms")
 	wantExit(t, r, 0)
 	wantContains(t, "stderr", r.Stderr, txtRecord)
@@ -78,7 +78,7 @@ func TestGoogleVerifyRetriesUntilDNSIsReady(t *testing.T) {
 
 func TestGoogleVerifyTimesOutWhenDNSNeverReady(t *testing.T) {
 	sb, g := googleSandbox(t)
-	g.ReadyAfter = -1
+	g.Configure(func(f *fakes.Google) { f.ReadyAfter = -1 })
 	r := sb.Run("google", "verify", "example.com", "--interval", "20ms", "--wait", "300ms")
 	wantExit(t, r, 4)
 	wantContains(t, "stderr", r.Stderr, txtRecord)
@@ -91,7 +91,7 @@ func TestGoogleVerifyTimesOutWhenDNSNeverReady(t *testing.T) {
 func TestGoogleVerifyDoesNotRetryOtherErrors(t *testing.T) {
 	for _, status := range []int{403, 500} {
 		sb, g := googleSandbox(t)
-		g.VerifyStatus = status
+		g.Configure(func(f *fakes.Google) { f.VerifyStatus = status })
 		r := sb.Run("google", "verify", "example.com", "--interval", "20ms")
 		wantExit(t, r, 1)
 		if got := g.Calls("POST /siteVerification/v1/webResource"); got != 1 {
@@ -102,7 +102,7 @@ func TestGoogleVerifyDoesNotRetryOtherErrors(t *testing.T) {
 
 func TestGoogleVerifyTokenRefused(t *testing.T) {
 	sb, g := googleSandbox(t)
-	g.TokenStatus = 403
+	g.Configure(func(f *fakes.Google) { f.TokenStatus = 403 })
 	r := sb.Run("google", "verify", "example.com")
 	wantExit(t, r, 1)
 	wantContains(t, "stderr", r.Stderr, "Site Verification API has not been used")
@@ -166,7 +166,7 @@ func TestGoogleVerifyIgnoresOtherVerifiedDomains(t *testing.T) {
 
 func TestGoogleVerifyAddSiteRefused(t *testing.T) {
 	sb, g := googleSandbox(t)
-	g.AddStatus = 403
+	g.Configure(func(f *fakes.Google) { f.AddStatus = 403 })
 	r := sb.Run("google", "verify", "example.com", "--interval", "20ms")
 	wantExit(t, r, 1)
 	wantContains(t, "stderr", r.Stderr, "example.com is verified but Search Console refused the site")
@@ -175,7 +175,7 @@ func TestGoogleVerifyAddSiteRefused(t *testing.T) {
 
 func TestGoogleVerifyRequiresSiteOwner(t *testing.T) {
 	sb, g := googleSandbox(t)
-	g.Permission = "siteUnverifiedUser"
+	g.Configure(func(f *fakes.Google) { f.Permission = "siteUnverifiedUser" })
 	r := sb.Run("google", "verify", "example.com", "--interval", "20ms")
 	wantExit(t, r, 1)
 	wantContains(t, "stderr", r.Stderr, "want siteOwner")

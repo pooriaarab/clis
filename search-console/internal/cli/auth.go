@@ -49,6 +49,9 @@ Console APIs. Set the consent screen to In production, or the refresh token
 expires after 7 days.`,
 		Args: cobra.NoArgs,
 		RunE: run(func([]string) error {
+			if err := needPositive("--timeout", timeout); err != nil {
+				return err
+			}
 			if env.DryRun {
 				return &ExitError{Code: ExitUsage, Err: errors.New("auth google needs a browser and has no dry run")}
 			}
