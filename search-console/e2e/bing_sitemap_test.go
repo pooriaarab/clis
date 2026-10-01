@@ -50,9 +50,9 @@ func TestBingSitemapSubmitThenStatus(t *testing.T) {
 func TestBingSitemapSubmit81058IsAlreadyPresent(t *testing.T) {
 	for _, as200 := range []bool{false, true} {
 		sb, b, sm := bingSitemapSandbox(t)
-		b.ErrorsAs200 = as200
+		b.Configure(func(f *fakes.Bing) { f.ErrorsAs200 = as200 })
 		wantExit(t, sb.Run("bing", "sitemap", "submit", "example.com", sm), 0)
-		b.DuplicateFeedIs81058 = true
+		b.Configure(func(f *fakes.Bing) { f.DuplicateFeedIs81058 = true })
 		r := sb.Run("bing", "sitemap", "submit", "example.com", sm, "--json")
 		wantExit(t, r, 0)
 		if v := r.JSON(t); v["already_present"] != true || v["listed"] != true || v["ok"] != true {

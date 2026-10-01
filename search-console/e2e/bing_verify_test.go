@@ -53,9 +53,11 @@ func TestBingVerifyCreatesUnproxiedCNAME(t *testing.T) {
 func TestBingVerifyTreats81058AsAlreadyPresent(t *testing.T) {
 	for _, as200 := range []bool{false, true} {
 		sb, b, cf := bingDNSSandbox(t)
-		b.ErrorsAs200 = as200
+		b.Configure(func(f *fakes.Bing) {
+			f.ErrorsAs200 = as200
+			f.HideSitesCalls = 1 // the first listing lags: the CLI sees no site and calls AddSite
+		})
 		b.AddSite("https://example.com/", fakes.BingSite{DNSCode: bingCode})
-		b.HideSitesCalls = 1 // the first listing lags: the CLI sees no site and calls AddSite
 		r := sb.Run("bing", "verify", "example.com", "--cloudflare-zone", "auto", "--interval", "20ms", "--json")
 		wantExit(t, r, 0)
 		if r.JSON(t)["already_present"] != true || !b.Verified("https://example.com/") || !cf.HasCNAME(bingCode+".example.com", "verify.bing.com") {
