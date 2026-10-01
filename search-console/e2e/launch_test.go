@@ -52,10 +52,11 @@ func newLaunchRig(t *testing.T) *launchRig {
 	sb.Alias(e.keyDir, "$KEYDIR")
 	sb.Alias(e.workDir, "$WORK")
 	e.seedKey(t)
-	e.site.Serve("/sitemap.xml", 200, "application/xml", fakes.URLSet(e.site.URL+"/", e.site.URL+"/a"))
+	e.site.Serve("/sitemap.xml", 200, "application/xml", fakes.URLSet("https://example.com/", "https://example.com/a"))
+	sb.Env["SITEMAP_FETCH_BASE"] = e.site.URL
 	list := e.urlFile(t, "https://example.com/", "https://example.com/a")
 	return &launchRig{sb: sb, g: g, cf: cf, b: b, n: e.n, site: e.site, keyDir: e.keyDir, args: []string{
-		"launch", "example.com", "--sitemap", e.site.URL + "/sitemap.xml", "--cloudflare-zone", "auto",
+		"launch", "example.com", "--sitemap", "https://example.com/sitemap.xml", "--cloudflare-zone", "auto",
 		"--interval", "20ms", "--wait", "400ms", "--key-dir", e.keyDir, "--key-location", e.keyLoc, "--indexnow-urls", list,
 	}}
 }
