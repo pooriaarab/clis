@@ -1,6 +1,10 @@
 package e2e
 
 import (
+	"net/http"
+	"net/http/httptest"
+	"net/http/httputil"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -26,6 +30,13 @@ import (
 // 13. The dry run does not say that nothing was verified, or says it before the table ends.
 // 14. A read-only check is faked instead of run: the credential check or the key file request.
 // 15. A step skipped by --skip is labelled as a dry-run skip.
+// 16. A bad input is found after DNS records, sites or feeds were already made:
+//     a relative sitemap URL, a missing or foreign URL list, a missing key
+//     directory, a relative key location.
+// 17. The dry run exits 0 for an input the real run refuses, or for a broken sitemap.
+// 18. The default path (the sitemap feeds IndexNow) is never run end to end, and
+//     a sitemap with URLs from other hosts changes things before it is refused.
+// 19. --skip indexnow still refuses a bad IndexNow input.
 
 type launchRig struct {
 	sb     *Sandbox
@@ -325,4 +336,137 @@ func wantLine(t *testing.T, stdout, step, text string) {
 		}
 	}
 	t.Fatalf("no row for %s:\n%s", step, stdout)
+}
+
+// untouched fails the test when a run made a remote change or wrote a key file.
+func (l *launchRig) untouched(t *testing.T, what string) {
+	t.Helper()
+	if len(l.cf.Records("zone-1")) != 0 || l.g.Calls("POST /siteVerification/v1/token") != 0 || l.g.HasSite("example.com") ||
+		len(l.g.Sitemaps()) != 0 || l.b.Calls("AddSite") != 0 || len(l.b.Feeds("https://example.com/")) != 0 || len(l.n.Posts()) != 0 {
+		t.Fatalf("%s: a remote change was made", what)
+	}
+	if files, _ := filepath.Glob(filepath.Join(l.keyDir, "*")); len(files) != 0 {
+		t.Fatalf("%s: wrote %v", what, files)
+	}
+}
+
+func TestLaunchChecksEveryInputBeforeAnyChange(t *testing.T) {
+	cases := []struct {
+		name  string
+		extra func(l *launchRig, t *testing.T) []string
+		want  string
+	}{
+		{"relative sitemap", func(*launchRig, *testing.T) []string { return []string{"--sitemap", "/sitemap.xml"} }, "not absolute"},
+		{"missing URL list", func(*launchRig, *testing.T) []string { return []string{"--indexnow-urls", "/no/such/urls.txt"} }, "urls.txt"},
+		{"foreign URL in the list", func(l *launchRig, t *testing.T) []string {
+			p := filepath.Join(t.TempDir(), "foreign.txt")
+			os.WriteFile(p, []byte("https://other.example/x\n"), 0o644)
+			return []string{"--indexnow-urls", p}
+		}, "https://other.example/x"},
+		{"empty URL list", func(l *launchRig, t *testing.T) []string {
+			p := filepath.Join(t.TempDir(), "empty.txt")
+			os.WriteFile(p, []byte("# nothing\n"), 0o644)
+			return []string{"--indexnow-urls", p}
+		}, "no URLs"},
+		{"missing key directory", func(*launchRig, *testing.T) []string { return []string{"--key-dir", "/no/such/dir"} }, "/no/such/dir"},
+		{"relative key location", func(*launchRig, *testing.T) []string { return []string{"--key-location", "key.txt"} }, "key.txt"},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			l := newLaunchRig(t)
+			extra := c.extra(l, t)
+			for _, mode := range [][]string{{"--json"}, {"--dry-run", "--json"}} {
+				r := l.run(append(append([]string{}, mode...), extra...)...)
+				wantExit(t, r, 2)
+				wantContains(t, "stdout", r.Stdout, c.want)
+				l.untouched(t, c.name+" "+strings.Join(mode, " "))
+			}
+		})
+	}
+}
+
+func TestLaunchSkippedIndexNowIsNotValidated(t *testing.T) {
+	l := newLaunchRig(t)
+	r := l.run("--json", "--skip", "indexnow", "--key-dir", "/no/such/dir", "--indexnow-urls", "/no/such/urls.txt")
+	wantExit(t, r, 0)
+	wantSteps(t, results(t, r), map[string]string{"google verify": "pass", "indexnow": "skipped"})
+}
+
+func TestLaunchDryRunFailsOnABrokenSitemap(t *testing.T) {
+	l := newLaunchRig(t)
+	l.site.Serve("/sitemap.xml", 404, "text/html", "missing")
+	r := l.run("--dry-run", "--json")
+	wantExit(t, r, 3)
+	got := results(t, r)
+	wantSteps(t, got, map[string]string{"google sitemap": "fail", "bing sitemap": "fail", "indexnow": "skipped"})
+	wantContains(t, "detail", got["google sitemap"]["detail"].(string), "HTTP 404")
+	l.untouched(t, "dry run")
+}
+
+// proxySite makes http://example.com answer from the fake site, so the sitemap can
+// live on the domain that IndexNow needs. The binary reads HTTP_PROXY.
+func (l *launchRig) proxySite(t *testing.T) {
+	t.Helper()
+	target, _ := url.Parse(l.site.URL)
+	p := httptest.NewServer(&httputil.ReverseProxy{Director: func(r *http.Request) {
+		r.URL.Scheme, r.URL.Host, r.Host = target.Scheme, target.Host, target.Host
+	}})
+	t.Cleanup(p.Close)
+	l.sb.Env["HTTP_PROXY"] = p.URL
+	l.sb.Alias(p.URL, "http://proxy.fake")
+}
+
+// fromSitemap turns the rig into the default path: no --indexnow-urls, and the
+// sitemap that Google, Bing and IndexNow read is http://example.com/sitemap.xml.
+func (l *launchRig) fromSitemap(t *testing.T, locs ...string) {
+	t.Helper()
+	l.proxySite(t)
+	l.site.Serve("/sitemap.xml", 200, "application/xml", fakes.URLSet(locs...))
+	var args []string
+	for i := 0; i < len(l.args); i++ {
+		switch l.args[i] {
+		case "--indexnow-urls":
+			i++
+		case "--sitemap":
+			args = append(args, "--sitemap", "http://example.com/sitemap.xml")
+			i++
+		default:
+			args = append(args, l.args[i])
+		}
+	}
+	l.args = args
+}
+
+func TestLaunchSendsTheSitemapUrlsToIndexNowByDefault(t *testing.T) {
+	l := newLaunchRig(t)
+	l.fromSitemap(t, "http://example.com/", "http://example.com/a", "http://example.com/a")
+	all := map[string]string{"google verify": "pass", "google sitemap": "pass", "bing verify": "pass", "bing sitemap": "pass", "indexnow": "pass"}
+	for i := 0; i < 2; i++ {
+		r := l.run("--json")
+		wantExit(t, r, 0)
+		wantSteps(t, results(t, r), all)
+	}
+	posts := l.n.Posts()
+	if len(posts) != 2 || len(posts[0].URLs) != 2 || posts[0].URLs[0] != "http://example.com/" || posts[0].URLs[1] != "http://example.com/a" {
+		t.Fatalf("IndexNow did not get the sitemap URLs once per run: %+v", posts)
+	}
+	if got := l.g.Sitemaps(); len(got) != 1 || got[0] != "http://example.com/sitemap.xml" {
+		t.Fatalf("Google sitemaps = %v", got)
+	}
+	r := l.run("--dry-run", "--json")
+	wantExit(t, r, 0)
+	wantContains(t, "indexnow detail", results(t, r)["indexnow"]["detail"].(string), "would write the key file")
+}
+
+func TestLaunchRefusesSitemapUrlsFromAnotherHostBeforeAnyChange(t *testing.T) {
+	for _, locs := range [][]string{{"http://example.com/", "http://other.example/x"}} {
+		l := newLaunchRig(t)
+		l.fromSitemap(t, locs...)
+		for _, mode := range [][]string{{"--json"}, {"--dry-run", "--json"}} {
+			r := l.run(mode...)
+			wantExit(t, r, 2)
+			wantContains(t, "stdout", r.Stdout, "http://other.example/x")
+			l.untouched(t, strings.Join(mode, " "))
+		}
+	}
 }
