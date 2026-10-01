@@ -63,12 +63,12 @@ func launchCmd(env *Env) *cobra.Command {
 bing sitemap submit and indexnow submit. A step that fails does not stop the others,
 but a sitemap step is skipped when its verify step failed. A step that is already
 done passes, so you can run the command again. The exit code is the code of the
-first failed step.
+first failed step. Before any step runs, launch checks every flag. A bad flag exits 2
+and changes nothing.
 
 With --dry-run, no step runs and every step shows "skipped (dry-run)" with what it
-would do. Read-only checks still run for real: the credentials and the IndexNow
-key file. A failed check fails its step and the exit
-code. A dry run never reports that a step passed.`,
+would do. Read-only checks still run for real: the credentials, the sitemap and the
+IndexNow key file. A failed check fails its step and the exit code. A dry run never reports that a step passed.`,
 		Args: cobra.ExactArgs(1),
 		RunE: run(func(args []string) error {
 			if err := checkPolling(wait, interval); err != nil {
@@ -84,6 +84,12 @@ code. A dry run never reports that a step passed.`,
 					return &ExitError{Code: ExitUsage, Err: fmt.Errorf("--skip %q: use google, bing or indexnow", g)}
 				}
 				skipped[g] = true
+			}
+			if err := env.validateLaunch(launchInputs{
+				domain: d, sitemapURL: sitemapURL, keyDir: keyDir, keyLocation: keyLocation, urlsFile: indexnowURLs,
+				google: !skipped["google"], indexnow: !skipped["indexnow"],
+			}); err != nil {
+				return err
 			}
 			common := []string{"--interval", interval.String()}
 			verify := append([]string{"--wait", wait.String()}, common...)
@@ -111,12 +117,12 @@ code. A dry run never reports that a step passed.`,
 					"get a TXT token from Google, " + record + ", wait for Google to see it, then add the site",
 					append([]check{env.googleLoginCheck()}, verifyChecks...)},
 				{"google sitemap", "google", "google verify", append([]string{"google", "sitemap", "submit", d, sitemapURL}, common...),
-					"submit " + sitemapURL + " to Google Search Console", nil},
+					"submit " + sitemapURL + " to Google Search Console", []check{env.sitemapCheck(sitemapURL)}},
 				{"bing verify", "bing", "", append([]string{"bing", "verify", d}, verify...),
 					"add the site to Bing, " + record + ", wait for Bing to verify it",
 					append([]check{env.bingKeyCheck()}, verifyChecks...)},
 				{"bing sitemap", "bing", "bing verify", []string{"bing", "sitemap", "submit", d, sitemapURL},
-					"submit " + sitemapURL + " to Bing Webmaster Tools", nil},
+					"submit " + sitemapURL + " to Bing Webmaster Tools", []check{env.sitemapCheck(sitemapURL)}},
 				{"indexnow", "indexnow", "", inArgs,
 					"write the key file to " + keyDir + ", check that it is reachable, then post the URLs to IndexNow",
 					[]check{env.keyFileCheck(d, keyLocation)}},
