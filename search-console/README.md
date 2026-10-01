@@ -63,7 +63,7 @@ A failed step does not stop the others. A sitemap step is skipped when its verif
 | `--key-dir <dir>` | `.` | Existing directory where the IndexNow key file is written. |
 | `--key-location <url>` | `https://<domain>/<key>.txt` | URL where the key file is served. |
 | `--indexnow-urls <file>` | none | File with one URL per line. Use it instead of the sitemap for IndexNow. |
-| `--skip <groups>` | none | Leave out `google`, `bing` or `indexnow`. A skipped group is not checked. |
+| `--skip <groups>` | none | Leave out `google`, `bing` or `indexnow`. With `indexnow` left out, the IndexNow flags are not checked. |
 
 ### First launch and the IndexNow key file
 
