@@ -31,7 +31,7 @@ func TestBingSitemapSubmitThenStatus(t *testing.T) {
 	sb, b, sm := bingSitemapSandbox(t)
 	r := sb.Run("bing", "sitemap", "submit", "example.com", sm, "--json")
 	wantExit(t, r, 0)
-	if v := r.JSON(t); v["submitted"] != true || v["listed"] != true || v["status"] != "Pending" {
+	if v := r.JSON(t); v["submitted"] != true || v["listed"] != true || v["status"] != "Success" {
 		t.Fatalf("unexpected result: %s", r.Stdout)
 	}
 	if got := b.Feeds("https://example.com/"); len(got) != 1 || got[0] != sm {
@@ -40,10 +40,32 @@ func TestBingSitemapSubmitThenStatus(t *testing.T) {
 	r = sb.Run("bing", "sitemap", "status", "example.com", sm, "--json")
 	wantExit(t, r, 0)
 	v := r.JSON(t)
-	if v["submitted"] != false || v["last_crawled"] != "0001-01-01T00:00:00Z" {
-		t.Fatalf("the date was not converted: %s", r.Stdout)
+	if v["submitted"] != false || v["last_crawled"] != "" {
+		t.Fatalf("Bing's date for never (1601-01-01) was not read as never: %s", r.Stdout)
 	}
+	wantContains(t, "stdout", sb.Run("bing", "sitemap", "status", "example.com", sm).Stdout, "last crawled: never")
 	noLeak(t, r, bingKey)
+}
+
+func TestBingSitemapSubmit81058IsAlreadyPresent(t *testing.T) {
+	for _, as200 := range []bool{false, true} {
+		sb, b, sm := bingSitemapSandbox(t)
+		b.ErrorsAs200 = as200
+		wantExit(t, sb.Run("bing", "sitemap", "submit", "example.com", sm), 0)
+		b.DuplicateFeedIs81058 = true
+		r := sb.Run("bing", "sitemap", "submit", "example.com", sm, "--json")
+		wantExit(t, r, 0)
+		if v := r.JSON(t); v["already_present"] != true || v["listed"] != true || v["ok"] != true {
+			t.Fatalf("as200=%t: unexpected result: %s", as200, r.Stdout)
+		}
+		wantContains(t, "stdout", sb.Run("bing", "sitemap", "submit", "example.com", sm).Stdout, "already")
+	}
+}
+
+func TestBingSitemapSubmitFindsSiteWhateverItsURLLooksLike(t *testing.T) {
+	sb, b, sm := bingSitemapSandbox(t)
+	b.AddSite("http://Example.com", fakes.BingSite{Verified: true, DNSCode: bingCode})
+	wantExit(t, sb.Run("bing", "sitemap", "submit", "example.com", sm), 0)
 }
 
 func TestBingSitemapResubmitKeepsOneFeed(t *testing.T) {
@@ -96,7 +118,7 @@ func TestBingSitemapSubmitErrorInBothShapes(t *testing.T) {
 		sb.Env["BING_WEBMASTER_API_KEY"] = "wrong-key"
 		r := sb.Run("bing", "sitemap", "submit", "example.com", sm)
 		wantExit(t, r, 1)
-		wantContains(t, "stderr", r.Stderr, "NotAuthorized")
+		wantContains(t, "stderr", r.Stderr, "InvalidApiKey")
 		noLeak(t, r, "wrong-key")
 	}
 }

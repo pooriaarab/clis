@@ -52,20 +52,22 @@ Exit code 4 means DNS was not ready in time.`,
 				return env.Emit(result, func() { env.P.Linef("%s was already verified in Bing.", domain) })
 			}
 			if site == nil {
-				if err := api.AddSite(ctx, domain); err != nil {
+				present, err := api.AddSite(ctx, domain)
+				if err != nil {
 					return err
 				}
+				result["already_present"] = present
 				if site, err = api.FindSite(ctx, domain); err != nil {
 					return err
 				}
 			}
 			if site == nil && env.DryRun {
-				site = &bing.Site{DNSVerificationCode: "CODE"}
+				site = &bing.Site{DNSRecord: "CODE." + domain}
 			}
-			if site == nil || site.DNSVerificationCode == "" {
+			if site == nil || site.DNSRecord == "" {
 				return fmt.Errorf("Bing gave no DNS verification code for %s", bing.SiteURL(domain))
 			}
-			name := site.DNSVerificationCode + "." + domain
+			name := site.DNSRecord
 			result["cname"] = map[string]string{"name": name, "target": bing.VerifyTarget}
 			if cf == nil {
 				env.P.Warnf("Add this CNAME record, not proxied:\n  %s -> %s", name, bing.VerifyTarget)

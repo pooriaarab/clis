@@ -9,13 +9,19 @@ import (
 
 // Ways `auth bing` and `bing quota` can fail, listed before the code was written:
 //  1. BING_WEBMASTER_API_KEY is not set: stop with the env name, send no request.
-//  2. Bing rejects the key (HTTP 400 NotAuthorized) and the CLI reports success.
+//  2. Bing rejects the key (HTTP 400 InvalidApiKey) and the CLI reports success.
 //  3. Bing sends the same error as HTTP 200 with an ErrorCode body, and the CLI reads it as data.
 //  4. The API key leaks in stdout, stderr, the dry-run calls or a transport error.
 //  5. The domain is not a site of the account: show Bing's message, exit 1.
 //  6. The quota is not shown as numbers.
 //  7. --dry-run sends a request.
 //  8. `auth status` shows the key or hides that it is set.
+//  9. Bing repeats the request URL in its error text, so the key reaches the screen.
+// 10. A long or HTML error body floods the terminal.
+// 11. The fake answers a shape the live API never sends. The live shapes, seen with
+//     read-only calls: a bad key is HTTP 400 code 3 "InvalidApiKey"; a site that is not
+//     in the account is HTTP 400 code 14 "NotAuthorized"; GetUserSites sends
+//     DnsVerificationCode as the whole record name "<code>.<domain>".
 
 const bingKey = "bing-key"
 
@@ -65,8 +71,32 @@ func TestBingRejectsKeyInBothErrorShapes(t *testing.T) {
 		for _, args := range [][]string{{"auth", "bing"}, {"bing", "quota", "example.com"}} {
 			r := sb.Run(args...)
 			wantExit(t, r, 1)
-			wantContains(t, "stderr", r.Stderr, "NotAuthorized")
+			wantContains(t, "stderr", r.Stderr, "InvalidApiKey")
 			noLeak(t, r, "wrong-key")
+		}
+	}
+}
+
+func TestBingErrorTextHidesKeyAndIsShort(t *testing.T) {
+	for _, mode := range []string{"echo", "long", "html", "all"} {
+		for _, key := range []string{bingKey, "wrong-key"} {
+			sb, b := bingSandbox(t)
+			sb.Env["BING_WEBMASTER_API_KEY"] = key
+			b.EchoRequest = mode == "echo" || mode == "all"
+			b.LongError = map[bool]int{true: 5000}[mode == "long" || mode == "all"]
+			b.RawErrors = mode == "html" || mode == "all"
+			cmds := [][]string{{"bing", "quota", "example.com"}} // the site is not in the account
+			if key != bingKey {
+				cmds = append(cmds, []string{"auth", "bing"})
+			}
+			for _, args := range cmds {
+				r := sb.Run(args...)
+				wantExit(t, r, 1)
+				noLeak(t, r, key)
+				if len(r.Stderr) > 600 {
+					t.Fatalf("%s: the error is %d bytes, want at most 600:\n%s", mode, len(r.Stderr), r.Stderr)
+				}
+			}
 		}
 	}
 }
@@ -96,7 +126,7 @@ func TestBingQuotaUnknownSite(t *testing.T) {
 	sb, _ := bingSandbox(t)
 	r := sb.Run("bing", "quota", "example.com")
 	wantExit(t, r, 1)
-	wantContains(t, "stderr", r.Stderr, "not a site of this account")
+	wantContains(t, "stderr", r.Stderr, "NotAuthorized")
 	wantExit(t, sb.Run("bing", "quota", "https://example.com"), 2)
 }
 

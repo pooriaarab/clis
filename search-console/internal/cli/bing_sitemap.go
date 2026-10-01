@@ -39,14 +39,15 @@ be missing for a while. Run "bing sitemap status" to read it again.`,
 			if !env.DryRun && (site == nil || !site.IsVerified) {
 				return fmt.Errorf("%s is not verified in Bing (run `search-console bing verify %s` first)", bing.SiteURL(domain), domain)
 			}
-			if err := api.SubmitFeed(ctx, domain, args[1]); err != nil {
+			present, err := api.SubmitFeed(ctx, domain, args[1])
+			if err != nil {
 				return err
 			}
 			f, err := api.Feed(ctx, domain, args[1])
 			if err != nil {
 				return err
 			}
-			return reportFeed(env, args[1], f, true)
+			return reportFeed(env, args[1], f, true, present)
 		}),
 	}
 	status := &cobra.Command{
@@ -70,7 +71,7 @@ be missing for a while. Run "bing sitemap status" to read it again.`,
 			if f == nil && !env.DryRun {
 				return fmt.Errorf("Bing does not list %s for %s (submit it with `search-console bing sitemap submit`)", args[1], bing.SiteURL(domain))
 			}
-			return reportFeed(env, args[1], f, false)
+			return reportFeed(env, args[1], f, false, false)
 		}),
 	}
 	cmd.AddCommand(submit, status)
@@ -79,15 +80,21 @@ be missing for a while. Run "bing sitemap status" to read it again.`,
 
 // reportFeed prints the feed. A missing feed after a submit is normal, because
 // Bing lists it later. An error status exits with code 3.
-func reportFeed(env *Env, feedURL string, f *bing.Feed, submitted bool) error {
+func reportFeed(env *Env, feedURL string, f *bing.Feed, submitted, alreadyPresent bool) error {
 	out := map[string]any{"ok": true, "sitemap": feedURL, "submitted": submitted, "listed": f != nil}
+	if submitted {
+		out["already_present"] = alreadyPresent
+	}
 	if f != nil {
 		out["ok"] = !f.HasError()
 		out["status"], out["type"] = f.Status, f.Type
 		out["last_crawled"], out["url_count"] = f.LastCrawled, f.URLCount
 	}
 	if err := env.Emit(out, func() {
-		if submitted {
+		switch {
+		case alreadyPresent:
+			env.P.Linef("Bing already has %s. Nothing to submit.", feedURL)
+		case submitted:
 			env.P.Linef("Submitted %s to Bing.", feedURL)
 		}
 		if f == nil {

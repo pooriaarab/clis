@@ -26,9 +26,11 @@ func (f Feed) HasError() bool {
 	return strings.Contains(s, "error") || strings.Contains(s, "fail")
 }
 
-// SubmitFeed asks Bing to read a sitemap. Bing reads it later.
-func (a *API) SubmitFeed(ctx context.Context, domain, feedURL string) error {
-	return a.call(ctx, http.MethodPost, "SubmitFeed", nil, map[string]string{"siteUrl": SiteURL(domain), "feedUrl": feedURL}, nil)
+// SubmitFeed asks Bing to read a sitemap. Bing reads it later. It reports true
+// when Bing already held the sitemap (error 81058), which is success.
+func (a *API) SubmitFeed(ctx context.Context, domain, feedURL string) (bool, error) {
+	err := a.call(ctx, http.MethodPost, "SubmitFeed", nil, map[string]string{"siteUrl": SiteURL(domain), "feedUrl": feedURL}, nil)
+	return IsAlreadyPresent(err), ignorePresent(err)
 }
 
 // Feeds lists the sitemaps Bing holds for the site.
@@ -56,12 +58,16 @@ func (a *API) Feed(ctx context.Context, domain, feedURL string) (*Feed, error) {
 var msDate = regexp.MustCompile(`^/Date\((-?\d+)`)
 
 // readDate turns the .NET date "/Date(1700000000000)/" that Bing sends into
-// RFC 3339. Any other text stays as it is.
+// RFC 3339. Bing sends a date before 1970 (1601-01-01 in live replies) for "never";
+// that becomes the empty string. Any other text stays as it is.
 func readDate(s string) string {
 	m := msDate.FindStringSubmatch(s)
 	if m == nil {
 		return s
 	}
 	ms, _ := strconv.ParseInt(m[1], 10, 64)
+	if ms < 0 {
+		return ""
+	}
 	return time.UnixMilli(ms).UTC().Format(time.RFC3339)
 }
