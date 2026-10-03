@@ -75,6 +75,7 @@ func newRoot(env *Env) *cobra.Command {
 	root.AddCommand(
 		versionCmd(env),
 		kitCmd(env),
+		directoriesCmd(env),
 	)
 	return root
 }
