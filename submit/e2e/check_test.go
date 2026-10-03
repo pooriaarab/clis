@@ -27,7 +27,7 @@ func TestCheckReportsFollow(t *testing.T) {
 	wantExit(t, r, 0)
 	wantContains(t, "stdout", r.Stdout, "status: 200")
 	wantContains(t, "stdout", r.Stdout, "link: found (follow)")
-	wantContains(t, "stdout", r.Stdout, "hint:")
+	wantContains(t, "stdout", r.Stdout, "hint: page is reachable and links (follow) to the site; confirm with: site:127.0.0.1 widgets")
 
 	r = sb.Run("check", "--site", checkSite, "--directory", "Crunchbase", "--json")
 	wantExit(t, r, 0)
