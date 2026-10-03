@@ -79,6 +79,7 @@ func newRoot(env *Env) *cobra.Command {
 		trackCmd(env),
 		doctorCmd(env),
 		checkCmd(env),
+		launchingNextCmd(env),
 	)
 	return root
 }
