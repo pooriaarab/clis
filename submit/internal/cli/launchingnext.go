@@ -18,12 +18,8 @@ func launchingNextCmd(env *Env) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "launching-next --sites sites.yaml",
 		Short: "Submit every site to Launching Next, the one scriptable target",
-		Long: `Submit every site to Launching Next (plain form POST + math check).
-
-This is the only directory the CLI posts to. With --dry-run the command
-shows the exact POST bodies without posting. Without it the command
-re-reads the form fresh per site, aborts when the shape changed, waits
---gap between posts, and records each result in the tracker.`,
+		Long: `Submit every site to Launching Next, the only directory the CLI posts to.
+See README for the form rules, gap floor and success heuristic.`,
 		Args: cobra.NoArgs,
 	}
 	load := sitesFlag(env, cmd)
@@ -117,16 +113,20 @@ func launchingNextRun(env *Env, base string, picked []sites.Site, gap time.Durat
 			time.Sleep(gap)
 		}
 		// Fresh form per submit: the shape check must see what the POST hits.
+		// Every error below saves first, so earlier posts stay tracked.
 		page, err := launchingnext.Fetch(base)
 		if err != nil {
+			_ = f.Save(path)
 			return err
 		}
 		form, err := launchingnext.Parse(page)
 		if err != nil {
+			_ = f.Save(path)
 			return err // form shape changed: abort, record nothing further
 		}
 		code, respPage, err := launchingnext.Post(base, postBody(s, form.Answer))
 		if err != nil {
+			_ = f.Save(path)
 			return err
 		}
 		oc := outcome{Site: s.ID, HTTPStatus: code}
