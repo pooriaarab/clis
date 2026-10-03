@@ -104,7 +104,7 @@ func Run(site, siteURL, directory, listingURL string) (Result, error) {
 	}
 	listHost, _ := hostOf(listingURL)
 	if r.LinkFound {
-		r.IndexedHint = fmt.Sprintf("page is reachable and links (%s) to the site; confirm with: site:%s %s", listHost, wantHost, site)
+		r.IndexedHint = fmt.Sprintf("page is reachable and links (%s) to the site; confirm with: site:%s %s", r.LinkRel, listHost, site)
 	} else {
 		r.IndexedHint = fmt.Sprintf("page is reachable but no link to %s was found; confirm with: site:%s %s", wantHost, listHost, site)
 	}
