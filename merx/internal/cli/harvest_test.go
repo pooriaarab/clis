@@ -404,6 +404,145 @@ func csrfPage(t *testing.T, page string) (*httpx.Client, string) {
 	return &httpx.Client{HTTP: srv.Client()}, srv.URL
 }
 
+func TestFacetPassDoesNotDuplicateDateStore(t *testing.T) {
+	dir := t.TempDir()
+	writeStore(t, dir, "closed", "old-1")
+	sum, err := executePlan(harvestDeps{dir: dir, status: "closed", resume: true, keepStore: true,
+		slices: []Slice{{Status: "closed", Category: "10034", Location: "355"}},
+		count:  func(Slice) (int, error) { return 2, nil },
+		page: func(Slice, int) (search.Page, error) {
+			return search.Page{Total: 2, Records: recs("old-1", "new-1")}, nil
+		},
+		detail:  func(string) error { return nil },
+		undated: &Undated{Looked: true, FacetPassRan: true}})
+	store, _ := harvestPaths(dir, "closed")
+	known, e2 := loadIDs(store)
+	if err != nil || e2 != nil || sum.Captured != 1 || len(known) != 2 || !known["old-1"] || !known["new-1"] {
+		t.Fatalf("cap %d store %v %v %v", sum.Captured, known, err, e2)
+	}
+}
+
+func TestFacetSliceOverCeilingIncomplete(t *testing.T) {
+	dir := t.TempDir()
+	const rep = 5000
+	s := Slice{Status: "closed", Category: "10034", Location: "355"}
+	leaves, totals, err := plan([]Slice{s}, func(Slice) (int, error) { return rep, nil }, nil)
+	if err != nil || len(leaves) != 1 || !incomplete(leaves[0], totals[key(leaves[0])]) {
+		t.Fatalf("facet leaf %+v totals %v %v", leaves, totals, err)
+	}
+	sum, err := executePlan(harvestDeps{dir: dir, status: "closed", keepStore: true,
+		slices: []Slice{s}, count: func(Slice) (int, error) { return rep, nil },
+		page: func(_ Slice, p int) (search.Page, error) {
+			if p == 1 {
+				return search.Page{Total: rep, Records: recs("only")}, nil
+			}
+			return search.Page{Total: rep}, nil
+		},
+		detail:  func(string) error { return nil },
+		undated: &Undated{Looked: true, FacetPassRan: true}})
+	_, path := harvestPaths(dir, "closed")
+	man, e2 := loadManifest(path)
+	if err != nil || e2 != nil || sum.Incomplete != 1 || len(man.Slices) != 1 {
+		t.Fatalf("sum %+v man %+v %v %v", sum, man.Slices, err, e2)
+	}
+	got := man.Slices[0]
+	if !got.Incomplete || got.Reported != rep || got.Captured != 1 || got.Category != "10034" || got.Location != "355" {
+		t.Fatalf("entry must carry both numbers: %+v", got)
+	}
+}
+
+func TestManifestRecordsWhetherUndatedPassRan(t *testing.T) {
+	dir := t.TempDir()
+	page := func(Slice, int) (search.Page, error) {
+		return search.Page{Total: 1, Records: recs("a")}, nil
+	}
+	_, err := executePlan(harvestDeps{dir: dir, status: "open",
+		slices: []Slice{{Status: "open", Start: "2020-01-01", End: "2020-01-01"}},
+		count:  func(Slice) (int, error) { return 1, nil }, page: page, detail: func(string) error { return nil }})
+	_, path := harvestPaths(dir, "open")
+	man, e2 := loadManifest(path)
+	if err != nil || e2 != nil || man.Undated == nil || man.Undated.Looked || man.Undated.FacetPassRan || man.Undated.CoveredByDates {
+		t.Fatalf("date pass must record the unread gap: %+v %v %v", man.Undated, err, e2)
+	}
+	if man.Undated.Exists != nil || man.Undated.Reported != nil {
+		t.Fatalf("never-looked must leave exists/reported null: %+v", man.Undated)
+	}
+	ex := true
+	_, err = executePlan(harvestDeps{dir: dir, status: "open", resume: true, keepStore: true,
+		slices: []Slice{{Status: "open", Category: "10034", Location: "355"}},
+		count:  func(Slice) (int, error) { return 1, nil }, page: page, detail: func(string) error { return nil },
+		undated: &Undated{Looked: true, Exists: &ex, FacetPassRan: true}})
+	man, e2 = loadManifest(path)
+	if err != nil || e2 != nil || man.Undated == nil || !man.Undated.Looked || !man.Undated.FacetPassRan || man.Undated.Exists == nil || !*man.Undated.Exists {
+		t.Fatalf("facet pass must mark ran: %+v %v %v", man.Undated, err, e2)
+	}
+}
+
+func TestResumeSkipsCompletedFacetSlices(t *testing.T) {
+	dir := t.TempDir()
+	done := Entry{Status: "closed", Category: "10034", Location: "355", Reported: 1, Captured: 1,
+		CompletedAt: time.Now().UTC().Format(time.RFC3339)}
+	_, path := harvestPaths(dir, "closed")
+	if err := saveManifest(path, Manifest{Slices: []Entry{done}, Undated: &Undated{Looked: true, FacetPassRan: true}}); err != nil {
+		t.Fatal(err)
+	}
+	var saw []string
+	sum, err := executePlan(harvestDeps{dir: dir, status: "closed", resume: true, keepStore: true,
+		slices: []Slice{
+			{Status: "closed", Category: "10034", Location: "355"},
+			{Status: "closed", Category: "10034", Location: "349"},
+		},
+		count: func(s Slice) (int, error) { return 1, nil },
+		page: func(s Slice, _ int) (search.Page, error) {
+			saw = append(saw, s.Category+"/"+s.Location)
+			return search.Page{Total: 1, Records: recs("n-" + s.Location)}, nil
+		},
+		detail:  func(string) error { return nil },
+		undated: &Undated{Looked: true, FacetPassRan: true}})
+	if err != nil || len(saw) != 1 || saw[0] != "10034/349" || sum.Captured != 1 {
+		t.Fatalf("saw %v cap %d %v", saw, sum.Captured, err)
+	}
+}
+
+func TestUndatedFromPageReportedOnlyWhenExact(t *testing.T) {
+	none, z := undatedFromPage(search.Page{Total: 3, Records: []search.Record{{Published: "2020/01/01", Closing: "2020/02/01"}}})
+	if none || z == nil || *z != 0 {
+		t.Fatalf("dated page exists=%t reported=%v", none, z)
+	}
+	ok, n := undatedFromPage(search.Page{Total: 2, Records: []search.Record{
+		{Published: "Not Available", Closing: "N/A"}, {Published: "", Closing: "Not Available"},
+	}})
+	if !ok || n == nil || *n != 2 {
+		t.Fatalf("small undated exists=%t reported=%v", ok, n)
+	}
+	big, unknown := undatedFromPage(search.Page{Total: 5000, Records: []search.Record{{Published: "Not Available", Closing: "Not Available"}}})
+	if !big || unknown != nil {
+		t.Fatalf("oversize undated exists=%t reported=%v", big, unknown)
+	}
+}
+
+func TestHarvestUndatedDryRun(t *testing.T) {
+	cmd := harvestCmd()
+	var buf strings.Builder
+	cmd.SetOut(&buf)
+	cmd.SetArgs([]string{"--status", "closed", "--undated", "--dry-run"})
+	if err := cmd.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	got := buf.String()
+	if n := strings.Count(got, "\n"); n != 52*14 || !strings.HasPrefix(got, "closed 10004 325\n") || !strings.Contains(got, "closed 10055 38000\n") {
+		t.Fatalf("lines %d prefix %q", n, got)
+	}
+}
+
+func TestFacetSlicesAreCategoryTimesLocation(t *testing.T) {
+	got := facetSlices("closed")
+	if len(got) != 52*14 || got[0].Category != "10004" || got[0].Location != "325" ||
+		got[len(got)-1].Category != "10055" || got[len(got)-1].Location != "38000" {
+		t.Fatalf("grid %d first %+v last %+v", len(got), got[0], got[len(got)-1])
+	}
+}
+
 func TestSignalHandlerLogsOut(t *testing.T) {
 	var hits int
 	srv := httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {

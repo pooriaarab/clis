@@ -28,18 +28,23 @@ var harvestStatus = map[string]bool{
 	"open": true, "closed": true, "awarded": true, "bid-results": true,
 }
 
-// Slice is one published-date RANGE query.
+// Slice is one harvest query: a published-date RANGE, or a public
+// category×location facet when Category/Location are set.
 type Slice struct {
-	Status string `json:"status"`
-	Start  string `json:"start"`
-	End    string `json:"end"`
+	Status   string `json:"status"`
+	Start    string `json:"start,omitempty"`
+	End      string `json:"end,omitempty"`
+	Category string `json:"category,omitempty"`
+	Location string `json:"location,omitempty"`
 }
 
 // Entry is one manifest row per finished leaf slice.
 type Entry struct {
 	Status      string `json:"status"`
-	Start       string `json:"start"`
-	End         string `json:"end"`
+	Start       string `json:"start,omitempty"`
+	End         string `json:"end,omitempty"`
+	Category    string `json:"category,omitempty"`
+	Location    string `json:"location,omitempty"`
 	Reported    int    `json:"reported"`
 	Captured    int    `json:"captured"`
 	CompletedAt string `json:"completed_at"`
@@ -55,15 +60,36 @@ type Summary struct {
 	Incomplete int    `json:"incomplete"`
 }
 
+// Undated records the notices that date RANGE slices cannot reach.
+// Exists and Reported stay null until a probe looks; that is how a
+// later reader tells "there were none" from "we never looked".
+type Undated struct {
+	CoveredByDates bool  `json:"covered_by_date_slices"`
+	Looked         bool  `json:"looked"`
+	Exists         *bool `json:"exists"`
+	Reported       *int  `json:"reported"`
+	FacetPassRan   bool  `json:"facet_pass_ran"`
+}
+
 // Manifest is the on-disk harvest index. Since/Until are the requested
 // coverage window, so a store that starts at 2020 documents that bound.
 type Manifest struct {
-	Since  string  `json:"since"`
-	Until  string  `json:"until"`
-	Slices []Entry `json:"slices"`
+	Since   string   `json:"since"`
+	Until   string   `json:"until"`
+	Slices  []Entry  `json:"slices"`
+	Undated *Undated `json:"undated"`
 }
 
-func key(s Slice) string { return s.Start + "\x00" + s.End }
+func key(s Slice) string {
+	if s.Category != "" || s.Location != "" {
+		return "f\x00" + s.Category + "\x00" + s.Location
+	}
+	return s.Start + "\x00" + s.End
+}
+
+func entryKey(e Entry) string {
+	return key(Slice{Start: e.Start, End: e.End, Category: e.Category, Location: e.Location})
+}
 
 // monthSlices covers since through until with calendar months.
 func monthSlices(status string, since, until time.Time) []Slice {
@@ -243,10 +269,23 @@ func capturedCount(reported int) int {
 
 func harvestCmd() *cobra.Command {
 	var status, since, until string
-	var resume, dry bool
+	var resume, dry, undated bool
 	cmd := &cobra.Command{Use: "harvest", Short: "Build a resumable notice corpus for one status (--since / --until bound the window)", RunE: func(cmd *cobra.Command, _ []string) error {
 		if !harvestStatus[status] {
 			return fmt.Errorf("unknown --status %q (open, awarded, bid-results, closed)", status)
+		}
+		if undated {
+			seeds := facetSlices(status)
+			if dry {
+				if flagJSON {
+					return emit(map[string]any{"status": status, "undated": true, "slices": seeds})
+				}
+				for _, s := range seeds {
+					fmt.Fprintf(cmd.OutOrStdout(), "%s %s %s\n", s.Status, s.Category, s.Location)
+				}
+				return nil
+			}
+			return runUndated(status)
 		}
 		start, err := harvestDate("since", since)
 		if err != nil {
@@ -284,5 +323,6 @@ func harvestCmd() *cobra.Command {
 	cmd.Flags().BoolVar(&dry, "dry-run", false, "print planned slices without fetching")
 	cmd.Flags().StringVar(&since, "since", harvestEpoch, "first published date YYYY-MM-DD")
 	cmd.Flags().StringVar(&until, "until", "", "last published date YYYY-MM-DD (default today)")
+	cmd.Flags().BoolVar(&undated, "undated", false, "reach notices with no dates via public category×location facets")
 	return cmd
 }
