@@ -74,6 +74,7 @@ func newRoot(env *Env) *cobra.Command {
 	root.PersistentFlags().BoolVar(&env.DryRun, "dry-run", false, "show what would change without changing it (no writes, no form posts)")
 	root.AddCommand(
 		versionCmd(env),
+		doctorCmd(env),
 		kitCmd(env),
 		directoriesCmd(env),
 		trackCmd(env),
