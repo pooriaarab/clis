@@ -10,6 +10,7 @@
 --- PASS: TestDoctorMissingSites
 --- PASS: TestKitRendersMarkdownAndJSON
 --- PASS: TestKitRejectsBadYAML
+--- PASS: TestKitRejectsTraversalID
 --- PASS: TestKitDryRunWritesNothing
 --- PASS: TestLaunchingNextDryRunShowsBodies
 --- PASS: TestLaunchingNextPostsAndTracks
@@ -18,6 +19,7 @@
 --- PASS: TestLaunchingNextRespectsDailyLimit
 --- PASS: TestVersion
 --- PASS: TestHelpAndUnknownCommand
+--- PASS: TestErrorOutputFormat
 --- PASS: TestTrackInitSetList
 --- PASS: TestTrackSetEnforcesDailyLimit
 --- PASS: TestTrackSetRejectsBadInput
