@@ -64,6 +64,20 @@ func TestKitRejectsBadYAML(t *testing.T) {
 	wantContains(t, "output", r.Stdout+r.Stderr, "full2200")
 }
 
+func TestKitRejectsTraversalID(t *testing.T) {
+	sb := newSandbox(t)
+	path := filepath.Join(t.TempDir(), "sites.yaml")
+	body := "sites:\n  - id: ../evil\n    name: Evil\n    url: https://evil.example.com\n" +
+		"    tagline: t\n    one_liner: o\n    short: s\n    medium: m\n    full2200: f\n" +
+		"    tags: [a, b, c, d, e]\n    founder: F\n    email: f@example.com\n"
+	if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	r := sb.Run("kit", "--sites", path, "--out", t.TempDir())
+	wantExit(t, r, 2)
+	wantContains(t, "output", r.Stdout+r.Stderr, "must be a slug")
+}
+
 func TestKitDryRunWritesNothing(t *testing.T) {
 	sb := newSandbox(t)
 	sites := sb.writeSites()
