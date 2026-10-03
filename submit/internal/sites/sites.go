@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"regexp"
 	"strings"
 
 	"gopkg.in/yaml.v3"
@@ -30,6 +31,9 @@ var Funding = map[string]string{
 	"funded":       "3",
 	"none":         "0",
 }
+
+// idPattern keeps ids safe to use as kit file names.
+var idPattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9_-]*$`)
 
 // Site is one of our directory websites.
 type Site struct {
@@ -80,6 +84,9 @@ func Load(path string) ([]Site, error) {
 			problems = append(problems, where+": id is required")
 		} else if seen[s.ID] {
 			problems = append(problems, where+": duplicate id")
+		}
+		if s.ID != "" && !idPattern.MatchString(s.ID) {
+			problems = append(problems, where+": id must be a slug of letters, digits, - and _ (it names the kit files)")
 		}
 		seen[s.ID] = true
 		if s.Name == "" {
