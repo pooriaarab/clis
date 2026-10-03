@@ -137,6 +137,7 @@ func launchingNextRun(env *Env, base string, picked []sites.Site, gap time.Durat
 				Note: "launching-next auto-submit, http 200, thank-you page",
 				Now:  time.Now(),
 			}); err != nil {
+				_ = f.Save(path)
 				return usagef("%s", err)
 			}
 			oc.Status = store.Submitted
