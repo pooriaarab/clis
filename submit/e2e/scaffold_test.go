@@ -26,3 +26,20 @@ func TestHelpAndUnknownCommand(t *testing.T) {
 	r = sb.Run("nosuch")
 	wantExit(t, r, 2)
 }
+
+func TestErrorOutputFormat(t *testing.T) {
+	sb := newSandbox(t)
+
+	r := sb.Run("nosuch", "--json")
+	wantExit(t, r, 2)
+	if v := r.JSON(t); v["ok"] != false {
+		t.Errorf("json ok = %v, want false", v["ok"])
+	}
+
+	r = sb.Run("nosuch", "--json=false")
+	wantExit(t, r, 2)
+	wantContains(t, "stderr", r.Stderr, "error:")
+	if r.Stdout != "" {
+		t.Errorf("stdout = %q, want empty in text mode", r.Stdout)
+	}
+}
