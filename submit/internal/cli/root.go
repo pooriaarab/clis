@@ -4,6 +4,7 @@ package cli
 import (
 	"errors"
 	"io"
+	"strconv"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -48,7 +49,13 @@ func Main(args []string, stdout, stderr io.Writer, getenv func(string) string) i
 
 func hasFlag(args []string, name string) bool {
 	for _, a := range args {
-		if a == name || strings.HasPrefix(a, name+"=") {
+		if a == name {
+			return true
+		}
+		if v, ok := strings.CutPrefix(a, name+"="); ok {
+			if b, err := strconv.ParseBool(v); err == nil {
+				return b
+			}
 			return true
 		}
 	}
