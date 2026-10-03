@@ -23,6 +23,8 @@ import (
 
 const privateSearchPath = "/private/supplier/solicitations/search"
 
+const maxSearchRedirects = 10
+
 var privateStatus = map[string]string{
 	"open": "OPEN", "closed": "CLOSED", "awarded": "AWARD", "bid-results": "AWARD",
 }
@@ -161,8 +163,8 @@ func loadSearchForm(c *httpx.Client, portal string) (url.Values, string, error) 
 		return nil, "", err
 	}
 	v := make(url.Values, len(fields)+1)
-	for k, val := range fields {
-		v.Set(k, val)
+	for k, vs := range fields {
+		v[k] = append([]string(nil), vs...)
 	}
 	v.Set("_csrf", token)
 	return v, header, nil
@@ -194,19 +196,103 @@ func postSlice(c *httpx.Client, portal string, form url.Values, csrfHeader, priv
 	if csrfHeader != "" {
 		req.Header.Set(csrfHeader, v.Get("_csrf"))
 	}
-	resp, err := c.Do(req)
+	body, err := followSearch(c, req)
 	if err != nil {
-		return search.Page{}, err
-	}
-	defer resp.Body.Close()
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return search.Page{}, err
-	}
-	if resp.StatusCode != http.StatusOK {
-		return search.Page{}, fmt.Errorf("slice %s..%s page %d: got HTTP %d", s.Start, s.End, page, resp.StatusCode)
+		return search.Page{}, fmt.Errorf("slice %s..%s page %d: %w", s.Start, s.End, page, err)
 	}
 	return search.Parse(strings.NewReader(string(body)))
+}
+
+// followSearch walks Post/Redirect/Get. 301, 302 and 303 become GET. 307 and 308 keep the method. A login URL is a session error.
+func followSearch(c *httpx.Client, req *http.Request) ([]byte, error) {
+	cur := req.URL.String()
+	for sent := 1; ; sent++ {
+		resp, err := c.Do(req)
+		if err != nil {
+			return nil, err
+		}
+		body, readErr := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		if readErr != nil {
+			return nil, readErr
+		}
+		if resp.Request != nil && resp.Request.URL != nil {
+			cur = resp.Request.URL.String()
+		}
+		if loginLanding(cur) {
+			return nil, fmt.Errorf("session expired: landed on login page %s", cur)
+		}
+		code := resp.StatusCode
+		if !searchRedirect(code) {
+			if code != http.StatusOK {
+				return nil, fmt.Errorf("got HTTP %d", code)
+			}
+			return body, nil
+		}
+		if sent >= maxSearchRedirects {
+			return nil, fmt.Errorf("too many redirects (max %d)", maxSearchRedirects)
+		}
+		loc := resp.Header.Get("Location")
+		if loc == "" {
+			return nil, fmt.Errorf("redirect with empty Location (HTTP %d)", code)
+		}
+		next, err := resolveRef(cur, loc)
+		if err != nil {
+			return nil, err
+		}
+		method := http.MethodGet
+		if code == http.StatusTemporaryRedirect || code == http.StatusPermanentRedirect {
+			method = req.Method
+		}
+		prev := req
+		req, err = httpx.NewRequest(method, next)
+		if err != nil {
+			return nil, err
+		}
+		if method != http.MethodGet && method != http.MethodHead {
+			if prev.GetBody == nil {
+				return nil, fmt.Errorf("HTTP %d redirect cannot replay the body", code)
+			}
+			b, berr := prev.GetBody()
+			if berr != nil {
+				return nil, berr
+			}
+			req.Body, req.GetBody, req.ContentLength = b, prev.GetBody, prev.ContentLength
+			req.Header = prev.Header.Clone()
+			req.Header.Del("Content-Length")
+			req.Header.Del("Cookie")
+		}
+		cur = next
+	}
+}
+
+func searchRedirect(code int) bool {
+	switch code {
+	case http.StatusMovedPermanently, http.StatusFound, http.StatusSeeOther, http.StatusTemporaryRedirect, http.StatusPermanentRedirect:
+		return true
+	default:
+		return false
+	}
+}
+
+func resolveRef(base, ref string) (string, error) {
+	b, err := url.Parse(base)
+	if err != nil {
+		return "", err
+	}
+	r, err := url.Parse(ref)
+	if err != nil {
+		return "", err
+	}
+	return b.ResolveReference(r).String(), nil
+}
+
+func loginLanding(raw string) bool {
+	u, err := url.Parse(raw)
+	if err != nil {
+		return false
+	}
+	return strings.Contains(u.Path, "/authentication/login") || strings.Contains(u.Path, "/saml/login")
 }
 
 func fetchDetail(c *httpx.Client, detailURL string) error {
@@ -324,86 +410,193 @@ func pageCSRF(doc *html.Node) (string, string, error) {
 	return token, tagAttr(doc, "meta", "name", "_csrf_header", "content"), nil
 }
 
-// searchFormFields returns controls from the form that contains status and
-// publishedDate.dateType. The form id is not used.
-func searchFormFields(doc *html.Node) (map[string]string, bool) {
-	var fields map[string]string
+// searchFormFields returns the successful controls of the form that contains
+// status and publishedDate.dateType. An unchecked box still identifies the
+// form. A browser omits that box from the body. The form id is not used.
+func searchFormFields(doc *html.Node) (url.Values, bool) {
+	var fields url.Values
 	found := walkHTML(doc, func(n *html.Node) bool {
 		if n.Type != html.ElementNode || n.Data != "form" {
 			return false
 		}
-		got := formControls(n)
-		if _, ok := got["status"]; !ok {
+		if !controlNamed(n, "status") || !controlNamed(n, "publishedDate.dateType") {
 			return false
 		}
-		if _, ok := got["publishedDate.dateType"]; !ok {
-			return false
-		}
-		fields = got
+		fields = formControls(n)
 		return true
 	})
 	return fields, found
 }
 
-func formControls(form *html.Node) map[string]string {
-	got := map[string]string{}
+// formControls serializes one form the way a browser builds the POST body.
+func formControls(form *html.Node) url.Values {
+	got := make(url.Values)
+	walkForm(form, func(n *html.Node) {
+		name, vals, ok := successfulControl(n)
+		if !ok {
+			return
+		}
+		for _, val := range vals {
+			got.Add(name, val)
+		}
+	})
+	return got
+}
+
+func controlNamed(form *html.Node, name string) bool {
+	found := false
+	walkForm(form, func(n *html.Node) {
+		if found || n.Type != html.ElementNode {
+			return
+		}
+		if n.Data != "input" && n.Data != "select" && n.Data != "textarea" {
+			return
+		}
+		if nodeAttr(n, "name") == name {
+			found = true
+		}
+	})
+	return found
+}
+
+func walkForm(form *html.Node, visit func(*html.Node)) {
 	var walk func(*html.Node, bool)
 	walk = func(n *html.Node, root bool) {
+		if n == nil {
+			return
+		}
 		if n.Type == html.ElementNode && n.Data == "form" && !root {
 			return
 		}
-		if n.Type == html.ElementNode && (n.Data == "input" || n.Data == "select" || n.Data == "textarea") {
-			if name := nodeAttr(n, "name"); name != "" {
-				got[name] = controlValue(n)
-			}
-		}
+		visit(n)
 		for c := n.FirstChild; c != nil; c = c.NextSibling {
 			walk(c, false)
 		}
 	}
 	walk(form, true)
-	return got
 }
 
-func controlValue(n *html.Node) string {
-	if n.Data != "select" {
-		if n.Data == "textarea" {
-			return directText(n)
-		}
-		return nodeAttr(n, "value")
+// successfulControl reports one control a browser would submit.
+// Unchecked radios and checkboxes are omitted. A submit button is omitted
+// because this POST is not a click on that button. Repeated names stay
+// repeated: the caller adds every returned value.
+func successfulControl(n *html.Node) (string, []string, bool) {
+	if n.Type != html.ElementNode {
+		return "", nil, false
 	}
-	first, chosen := "", ""
-	seen, picked := false, false
-	walkHTML(n, func(o *html.Node) bool {
-		if o.Type != html.ElementNode || o.Data != "option" {
-			return false
-		}
-		val := nodeAttr(o, "value")
-		if val == "" {
-			val = directText(o)
-		}
-		if !seen {
-			first, seen = val, true
-		}
-		if _, ok := attrPresent(o, "selected"); ok {
-			chosen, picked = val, true
-		}
-		return false
-	})
-	if picked {
-		return chosen
+	switch n.Data {
+	case "input", "select", "textarea":
+	default:
+		return "", nil, false
 	}
-	return first
+	if _, off := attrPresent(n, "disabled"); off {
+		return "", nil, false
+	}
+	name := nodeAttr(n, "name")
+	if name == "" {
+		return "", nil, false
+	}
+	switch n.Data {
+	case "textarea":
+		return name, []string{textareaValue(n)}, true
+	case "select":
+		vals, ok := selectValues(n)
+		if !ok {
+			return "", nil, false
+		}
+		return name, vals, true
+	default:
+		switch strings.ToLower(nodeAttr(n, "type")) {
+		case "radio", "checkbox":
+			if _, on := attrPresent(n, "checked"); !on {
+				return "", nil, false
+			}
+		case "button", "submit", "reset", "image":
+			return "", nil, false
+		}
+		return name, []string{inputValue(n)}, true
+	}
+}
+
+func inputValue(n *html.Node) string {
+	if v, ok := attrPresent(n, "value"); ok {
+		return v
+	}
+	switch strings.ToLower(nodeAttr(n, "type")) {
+	case "checkbox", "radio":
+		return "on"
+	default:
+		return ""
+	}
+}
+
+func selectValues(n *html.Node) ([]string, bool) {
+	_, multiple := attrPresent(n, "multiple")
+	var first string
+	var chosen []string
+	seen := false
+	var walk func(*html.Node)
+	walk = func(parent *html.Node) {
+		for c := parent.FirstChild; c != nil; c = c.NextSibling {
+			if c.Type != html.ElementNode {
+				continue
+			}
+			switch c.Data {
+			case "optgroup":
+				walk(c)
+			case "option":
+				if _, off := attrPresent(c, "disabled"); off {
+					continue
+				}
+				val := optionValue(c)
+				if !seen {
+					first, seen = val, true
+				}
+				if _, on := attrPresent(c, "selected"); on {
+					chosen = append(chosen, val)
+				}
+			}
+		}
+	}
+	walk(n)
+	if !seen {
+		return nil, false
+	}
+	if len(chosen) == 0 {
+		if multiple {
+			return nil, false
+		}
+		return []string{first}, true
+	}
+	if !multiple && len(chosen) > 1 {
+		return chosen[len(chosen)-1:], true
+	}
+	return chosen, true
+}
+
+func optionValue(o *html.Node) string {
+	if v, ok := attrPresent(o, "value"); ok {
+		return v
+	}
+	return directText(o)
+}
+
+func textareaValue(n *html.Node) string {
+	return strings.TrimPrefix(rawText(n), "\n")
 }
 
 func directText(n *html.Node) string {
+	return strings.TrimSpace(rawText(n))
+}
+
+func rawText(n *html.Node) string {
 	var b strings.Builder
 	for c := n.FirstChild; c != nil; c = c.NextSibling {
 		if c.Type == html.TextNode {
 			b.WriteString(c.Data)
 		}
 	}
-	return strings.TrimSpace(b.String())
+	return b.String()
 }
 
 func tagAttr(root *html.Node, tag, key, want, out string) string {
