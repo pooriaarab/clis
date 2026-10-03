@@ -1,0 +1,61 @@
+# Every E2E test
+--- PASS: TestCheckReportsFollow
+--- PASS: TestCheckReportsNofollow
+--- PASS: TestCheckFollowsRedirects
+--- PASS: TestCheckReportsMissingLink
+--- PASS: TestCheckNeedsARow
+--- PASS: TestCheckDryRunFetchesNothing
+--- PASS: TestDoctorHealthy
+--- PASS: TestDoctorMissingSites
+--- PASS: TestDirectoriesList
+--- PASS: TestKitRendersMarkdownAndJSON
+--- PASS: TestKitRejectsBadYAML
+--- PASS: TestKitDryRunWritesNothing
+--- PASS: TestLaunchingNextDryRunShowsBodies
+--- PASS: TestLaunchingNextPostsAndTracks
+--- PASS: TestLaunchingNextAbortsOnChangedForm
+--- PASS: TestLaunchingNextRefusesSmallGapOnRealSite
+--- PASS: TestLaunchingNextRespectsDailyLimit
+--- PASS: TestTrackInitSetList
+--- PASS: TestTrackSetEnforcesDailyLimit
+--- PASS: TestTrackSetRejectsBadInput
+--- PASS: TestTrackSetDryRunWritesNothing
+ok e2e
+
+# One launching-next dry run against a fake form
+    launchingnext_test.go:17: $ submit track init
+    launchingnext_test.go:17: store ready at $CONFIG/store.json
+    launchingnext_test.go:17: -> exit 0
+    launchingnext_test.go:19: $ submit launching-next --sites $SITES --dry-run
+    launchingnext_test.go:19: POST $LN/submit/
+        
+        site widgets (What is 2+3?):
+          description=Find+a+widget+maker+near+you&email=founder%40example.com&formSubmit=Submit+Startup&fulldescription=Widget+Directory+is+a+free+directory+of+120+independent+widget+makers+across+the+country%2C+with+addresses%2C+hours+and+verified+buyer+reviews.&funding=2&marketing_budget=%240&math=5&startupname=Widget+Directory&startupurl=https%3A%2F%2Fwidgets.example.com&tags=widgets%2C+makers%2C+directory%2C+shopping%2C+local&user=Test+Founder
+        
+        site gadgets (What is 2+3?):
+          description=Compare+gadget+specs+side+by+side&email=founder%40example.com&formSubmit=Submit+Startup&fulldescription=Gadget+Index+is+a+free+directory+comparing+340+gadgets+with+full+specs+and+street+prices%2C+updated+weekly+from+manufacturer+data+feeds.&funding=0&marketing_budget=%240&math=5&startupname=Gadget+Index&startupurl=https%3A%2F%2Fgadgets.example.com&tags=gadgets%2C+specs%2C+prices%2C+directory%2C+tech&user=Test+Founder
+        
+        dry run: nothing was posted
+    launchingnext_test.go:19: -> exit 0
+    launchingnext_test.go:35: $ submit track list
+    launchingnext_test.go:35: no rows
+    launchingnext_test.go:35: -> exit 0
+    launchingnext_test.go:39: $ submit launching-next --sites $SITES --dry-run --json
+    launchingnext_test.go:39: {
+          "dry_run": true,
+          "ok": true,
+          "submissions": [
+            {
+              "site": "widgets",
+              "question": "What is 2+3?",
+              "body": "description=Find+a+widget+maker+near+you\u0026email=founder%40example.com\u0026formSubmit=Submit+Startup\u0026fulldescription=Widget+Directory+is+a+free+directory+of+120+independent+widget+makers+across+the+country%2C+with+addresses%2C+hours+and+verified+buyer+reviews.\u0026funding=2\u0026marketing_budget=%240\u0026math=5\u0026startupname=Widget+Directory\u0026startupurl=https%3A%2F%2Fwidgets.example.com\u0026tags=widgets%2C+makers%2C+directory%2C+shopping%2C+local\u0026user=Test+Founder"
+            },
+            {
+              "site": "gadgets",
+              "question": "What is 2+3?",
+              "body": "description=Compare+gadget+specs+side+by+side\u0026email=founder%40example.com\u0026formSubmit=Submit+Startup\u0026fulldescription=Gadget+Index+is+a+free+directory+comparing+340+gadgets+with+full+specs+and+street+prices%2C+updated+weekly+from+manufacturer+data+feeds.\u0026funding=0\u0026marketing_budget=%240\u0026math=5\u0026startupname=Gadget+Index\u0026startupurl=https%3A%2F%2Fgadgets.example.com\u0026tags=gadgets%2C+specs%2C+prices%2C+directory%2C+tech\u0026user=Test+Founder"
+            }
+          ],
+          "submit_url": "$LN/submit/"
+        }
+    launchingnext_test.go:39: -> exit 0
